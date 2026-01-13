@@ -159,13 +159,31 @@ export const [AppProvider, useApp] = createContextHook(() => {
     }
   }, []);
 
+  const parsePrice = (priceStr: string): number => {
+    const cleanedPrice = priceStr.replace(/[^0-9,-]/g, '');
+    const parts = cleanedPrice.split('-').map(p => parseFloat(p.replace(/,/g, '')) || 0);
+    if (parts.length === 2) {
+      return (parts[0] + parts[1]) / 2;
+    }
+    return parts[0] || 0;
+  };
+
   const addLead = useCallback(async (name: string, phone: string): Promise<void> => {
     if (!currentAnalysis) return;
 
-    const estimatedValue = currentAnalysis.clinicalRoadmap.reduce((acc, proc) => {
-      const price = parseFloat(proc.price.replace(/[^0-9.-]/g, '')) || 0;
-      return acc + price;
+    const roadmapValue = currentAnalysis.clinicalRoadmap.reduce((acc, proc) => {
+      return acc + parsePrice(proc.price);
     }, 0);
+
+    const peptideValue = currentAnalysis.peptideTherapy.reduce((acc, peptide) => {
+      return acc + 350;
+    }, 0);
+
+    const ivValue = currentAnalysis.ivOptimization.reduce((acc, iv) => {
+      return acc + 275;
+    }, 0);
+
+    const estimatedValue = Math.round(roadmapValue + peptideValue + ivValue);
 
     const newLead: Lead = {
       id: Date.now().toString(),
