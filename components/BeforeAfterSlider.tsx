@@ -52,9 +52,11 @@ export default function BeforeAfterSlider({
     <View style={[styles.container, { height }]}>
       <View style={styles.imageContainer}>
         <Image
+          key={`after-${afterImage}`}
           source={{ uri: afterImage }}
           style={styles.baseImage}
           contentFit="cover"
+          cachePolicy="none"
         />
         
         <View
@@ -63,13 +65,13 @@ export default function BeforeAfterSlider({
             { width: clampedSliderPosition },
           ]}
         >
-          <View style={[styles.beforeImageWrapper, { width: containerWidth }]}>
-            <Image
-              source={{ uri: beforeImage }}
-              style={styles.beforeImage}
-              contentFit="cover"
-            />
-          </View>
+          <Image
+            key={`before-${beforeImage}`}
+            source={{ uri: beforeImage }}
+            style={[styles.beforeImage, { width: containerWidth }]}
+            contentFit="cover"
+            cachePolicy="none"
+          />
         </View>
 
         <View style={styles.labelBefore}>
@@ -134,14 +136,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     zIndex: 2,
   },
-  beforeImageWrapper: {
+  beforeImage: {
     position: 'absolute',
     top: 0,
     left: 0,
-    bottom: 0,
-  },
-  beforeImage: {
-    width: '100%',
     height: '100%',
   },
   sliderLine: {
