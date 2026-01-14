@@ -1,11 +1,12 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   PanResponder,
   Animated,
-  Dimensions,
+  useWindowDimensions,
+  LayoutChangeEvent,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { GripVertical, ChevronLeft, ChevronRight } from 'lucide-react-native';
@@ -15,33 +16,49 @@ interface BeforeAfterSliderProps {
   beforeImage: string;
   afterImage: string;
   height?: number;
+  maxWidth?: number;
 }
 
 export default function BeforeAfterSlider({
   beforeImage,
   afterImage,
   height = 400,
+  maxWidth = 500,
 }: BeforeAfterSliderProps) {
-  const containerWidth = Dimensions.get('window').width - 40;
+  const { width: windowWidth } = useWindowDimensions();
+  const [containerWidth, setContainerWidth] = useState(Math.min(windowWidth - 40, maxWidth));
   const [sliderPosition, setSliderPosition] = useState(containerWidth / 2);
   const panX = useRef(new Animated.Value(containerWidth / 2)).current;
+  const currentSliderPosition = useRef(sliderPosition);
+
+  const onLayout = useCallback((event: LayoutChangeEvent) => {
+    const { width } = event.nativeEvent.layout;
+    if (width > 0 && Math.abs(width - containerWidth) > 1) {
+      setContainerWidth(width);
+      const newPosition = width / 2;
+      setSliderPosition(newPosition);
+      currentSliderPosition.current = newPosition;
+      panX.setValue(newPosition);
+    }
+  }, [containerWidth, panX]);
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        panX.setOffset(sliderPosition);
+        panX.setOffset(currentSliderPosition.current);
         panX.setValue(0);
       },
       onPanResponderMove: (_, gestureState) => {
-        const newPosition = sliderPosition + gestureState.dx;
+        const newPosition = currentSliderPosition.current + gestureState.dx;
         const clampedPosition = Math.max(20, Math.min(containerWidth - 20, newPosition));
         panX.setValue(gestureState.dx);
         setSliderPosition(clampedPosition);
       },
       onPanResponderRelease: () => {
         panX.flattenOffset();
+        currentSliderPosition.current = sliderPosition;
       },
     })
   ).current;
@@ -49,7 +66,7 @@ export default function BeforeAfterSlider({
   const clampedSliderPosition = Math.max(20, Math.min(containerWidth - 20, sliderPosition));
 
   return (
-    <View style={[styles.container, { height }]}>
+    <View style={[styles.container, { height, maxWidth }]} onLayout={onLayout}>
       <View style={styles.imageContainer}>
         <Image
           key={`after-${afterImage}`}
@@ -65,13 +82,15 @@ export default function BeforeAfterSlider({
             { width: clampedSliderPosition },
           ]}
         >
-          <Image
-            key={`before-${beforeImage}`}
-            source={{ uri: beforeImage }}
-            style={[styles.beforeImage, { width: containerWidth }]}
-            contentFit="cover"
-            cachePolicy="none"
-          />
+          <View style={[styles.beforeImageWrapper, { width: containerWidth }]}>
+            <Image
+              key={`before-${beforeImage}`}
+              source={{ uri: beforeImage }}
+              style={styles.beforeImage}
+              contentFit="cover"
+              cachePolicy="none"
+            />
+          </View>
         </View>
 
         <View style={styles.labelBefore}>
@@ -116,6 +135,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     overflow: 'hidden',
     backgroundColor: Colors.surface,
+    alignSelf: 'center',
   },
   imageContainer: {
     flex: 1,
@@ -136,10 +156,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     zIndex: 2,
   },
-  beforeImage: {
+  beforeImageWrapper: {
     position: 'absolute',
     top: 0,
     left: 0,
+    height: '100%',
+  },
+  beforeImage: {
+    width: '100%',
     height: '100%',
   },
   sliderLine: {

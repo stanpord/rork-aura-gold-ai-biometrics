@@ -8,6 +8,7 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { File } from 'expo-file-system';
 import { Image } from 'expo-image';
@@ -53,7 +54,13 @@ import PatientConsentModal from '@/components/PatientConsentModal';
 
 
 
+const MAX_CONTENT_WIDTH = 600;
+const MAX_SLIDER_WIDTH = 500;
+
 export default function ScanScreen() {
+  const { width: windowWidth } = useWindowDimensions();
+  const isTablet = windowWidth > 768;
+  
   const {
     currentAnalysis,
     setCurrentAnalysis,
@@ -802,7 +809,7 @@ Be honest and specific. A young person with good skin should get minimal recomme
         contentContainerStyle={styles.resultsScrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.sliderSection}>
+        <View style={[styles.sliderSection, isTablet && styles.tabletCentered]}>
           <View style={styles.sliderHeader}>
             <Wand2 size={14} color={Colors.gold} />
             <Text style={styles.sliderTitle}>TREATMENT COMPARISON</Text>
@@ -810,7 +817,8 @@ Be honest and specific. A young person with good skin should get minimal recomme
           <BeforeAfterSlider
             beforeImage={capturedImage}
             afterImage={simulatedImage || capturedImage}
-            height={420}
+            height={isTablet ? 500 : 420}
+            maxWidth={MAX_SLIDER_WIDTH}
           />
         </View>
 
@@ -1024,6 +1032,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 20,
     paddingBottom: 40,
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
+    width: '100%',
   },
   heroSection: {
     alignItems: 'center',
@@ -1277,6 +1288,12 @@ const styles = StyleSheet.create({
   resultsScrollContent: {
     padding: 20,
     paddingBottom: 40,
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  tabletCentered: {
+    alignItems: 'center',
   },
   sliderSection: {
     marginBottom: 24,
