@@ -23,6 +23,8 @@ import {
   Settings,
   RefreshCw,
   Trash2,
+  Printer,
+  X,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -30,7 +32,7 @@ import { useApp } from '@/contexts/AppContext';
 import ClinicLoginModal from '@/components/ClinicLoginModal';
 import LeadDetailModal from '@/components/LeadDetailModal';
 import TermsOfServiceModal from '@/components/TermsOfServiceModal';
-import { Lead, TermsOfServiceAcknowledgment } from '@/types';
+import { Lead, TermsOfServiceAcknowledgment, SelectedTreatment } from '@/types';
 
 interface ZenotiConfig {
   apiKey: string;
@@ -54,6 +56,7 @@ export default function ClinicScreen() {
   const [showLeadDetail, setShowLeadDetail] = useState(false);
   const [showTosModal, setShowTosModal] = useState(false);
   const [pendingAuth, setPendingAuth] = useState(false);
+  const [showPrintSummary, setShowPrintSummary] = useState(false);
 
   const handleLogin = (passcode: string): boolean => {
     const success = authenticateStaff(passcode);
@@ -110,6 +113,50 @@ export default function ClinicScreen() {
       setIsValidating(false);
     }
   };
+
+  const getAllSignedOffTreatments = () => {
+    const signedOff: { lead: Lead; treatment: SelectedTreatment }[] = [];
+    leads.forEach(lead => {
+      if (lead.selectedTreatments) {
+        lead.selectedTreatments.forEach(st => {
+          if (st.complianceSignOff?.acknowledged) {
+            signedOff.push({ lead, treatment: st });
+          }
+        });
+      }
+    });
+    return signedOff;
+  };
+
+  const getAllRecommendedTreatments = () => {
+    const recommended: { lead: Lead; treatmentName: string; type: string; price: string }[] = [];
+    leads.forEach(lead => {
+      lead.roadmap?.forEach(t => {
+        recommended.push({ lead, treatmentName: t.name, type: 'Procedure', price: t.price });
+      });
+      lead.peptides?.forEach(t => {
+        recommended.push({ lead, treatmentName: t.name, type: 'Peptide', price: '-' });
+      });
+      lead.ivDrips?.forEach(t => {
+        recommended.push({ lead, treatmentName: t.name, type: 'IV Therapy', price: '-' });
+      });
+    });
+    return recommended;
+  };
+
+  const handlePrint = () => {
+    if (Platform.OS === 'web') {
+      window.print();
+    } else {
+      setShowPrintSummary(true);
+    }
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const signedOffTreatments = getAllSignedOffTreatments();
+  const recommendedTreatments = getAllRecommendedTreatments();
 
   const syncAllLeads = async () => {
     if (!isConnected) {
@@ -185,14 +232,24 @@ export default function ClinicScreen() {
               </Text>
             </View>
           </View>
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={logoutStaff}
-            activeOpacity={0.7}
-          >
-            <ChevronLeft size={16} color={Colors.textMuted} />
-            <Text style={styles.logoutText}>Exit</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.printButton}
+              onPress={() => setShowPrintSummary(true)}
+              activeOpacity={0.7}
+            >
+              <Printer size={16} color={Colors.gold} />
+              <Text style={styles.printButtonText}>Summary</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={logoutStaff}
+              activeOpacity={0.7}
+            >
+              <ChevronLeft size={16} color={Colors.textMuted} />
+              <Text style={styles.logoutText}>Exit</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.statsGrid}>
@@ -405,6 +462,152 @@ export default function ClinicScreen() {
           onClose={handleTosDecline}
           onAccept={handleTosAccept}
         />
+
+        {showPrintSummary && (
+          <View style={styles.printOverlay}>
+            <View style={styles.printModal}>
+              <View style={styles.printHeader}>
+                <Text style={styles.printTitle}>TREATMENT SUMMARY</Text>
+                <TouchableOpacity
+                  style={styles.printCloseButton}
+                  onPress={() => setShowPrintSummary(false)}
+                  activeOpacity={0.7}
+                >
+                  <X size={20} color={Colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.printContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.printSection}>
+                  <View style={styles.printSectionHeader}>
+                    <CheckCircle size={16} color={Colors.success} />
+                    <Text style={styles.printSectionTitle}>SIGNED OFF TREATMENTS ({signedOffTreatments.length})</Text>
+                  </View>
+                  {signedOffTreatments.length === 0 ? (
+                    <Text style={styles.printEmptyText}>No treatments signed off yet</Text>
+                  ) : (
+                    signedOffTreatments.map((item, index) => {
+                      const treatmentName = item.treatment.treatmentType === 'procedure' 
+                        ? (item.treatment.treatment as any).name 
+                        : item.treatment.treatmentType === 'peptide'
+                        ? (item.treatment.treatment as any).name
+                        : (item.treatment.treatment as any).name;
+                      return (
+                        <View key={index} style={styles.printItem}>
+                          <View style={styles.printItemLeft}>
+                            <Text style={styles.printItemName}>{treatmentName}</Text>
+                            <Text style={styles.printItemPatient}>Patient: {item.lead.name}</Text>
+                            {item.treatment.dosing && Object.keys(item.treatment.dosing).length > 0 && (
+                              <View style={styles.printDosingContainer}>
+                                {item.treatment.dosing.units && (
+                                  <Text style={styles.printDosingText}>Units: {item.treatment.dosing.units}</Text>
+                                )}
+                                {item.treatment.dosing.volume && (
+                                  <Text style={styles.printDosingText}>Volume: {item.treatment.dosing.volume}</Text>
+                                )}
+                                {item.treatment.dosing.depth && (
+                                  <Text style={styles.printDosingText}>Depth: {item.treatment.dosing.depth}</Text>
+                                )}
+                                {item.treatment.dosing.energy && (
+                                  <Text style={styles.printDosingText}>Energy: {item.treatment.dosing.energy}</Text>
+                                )}
+                                {item.treatment.dosing.passes && (
+                                  <Text style={styles.printDosingText}>Passes: {item.treatment.dosing.passes}</Text>
+                                )}
+                                {item.treatment.dosing.customNotes && (
+                                  <Text style={styles.printDosingText}>Notes: {item.treatment.dosing.customNotes}</Text>
+                                )}
+                              </View>
+                            )}
+                          </View>
+                          <View style={styles.printItemRight}>
+                            <Text style={styles.printItemType}>{item.treatment.treatmentType.toUpperCase()}</Text>
+                            <Text style={styles.printSignedDate}>
+                              {item.treatment.complianceSignOff?.signedAt 
+                                ? new Date(item.treatment.complianceSignOff.signedAt).toLocaleDateString()
+                                : ''}
+                            </Text>
+                          </View>
+                        </View>
+                      );
+                    })
+                  )}
+                </View>
+
+                <View style={styles.printDivider} />
+
+                <View style={styles.printSection}>
+                  <View style={styles.printSectionHeader}>
+                    <ClipboardCheck size={16} color={Colors.gold} />
+                    <Text style={styles.printSectionTitle}>ALL RECOMMENDED ({recommendedTreatments.length})</Text>
+                  </View>
+                  {recommendedTreatments.length === 0 ? (
+                    <Text style={styles.printEmptyText}>No recommendations yet</Text>
+                  ) : (
+                    recommendedTreatments.map((item, index) => (
+                      <View key={index} style={styles.printItemCompact}>
+                        <View style={styles.printItemLeft}>
+                          <Text style={styles.printItemNameCompact}>{item.treatmentName}</Text>
+                          <Text style={styles.printItemPatientCompact}>{item.lead.name}</Text>
+                        </View>
+                        <View style={styles.printItemRight}>
+                          <Text style={styles.printItemTypeCompact}>{item.type}</Text>
+                          {item.price !== '-' && (
+                            <Text style={styles.printItemPrice}>{item.price}</Text>
+                          )}
+                        </View>
+                      </View>
+                    ))
+                  )}
+                </View>
+
+                <View style={styles.printDivider} />
+
+                <View style={styles.printSection}>
+                  <View style={styles.printSectionHeader}>
+                    <DollarSign size={16} color={Colors.gold} />
+                    <Text style={styles.printSectionTitle}>SERVICE SUMMARY</Text>
+                  </View>
+                  <View style={styles.summaryGrid}>
+                    <View style={styles.summaryItem}>
+                      <Text style={styles.summaryValue}>{leads.length}</Text>
+                      <Text style={styles.summaryLabel}>Total Patients</Text>
+                    </View>
+                    <View style={styles.summaryItem}>
+                      <Text style={styles.summaryValue}>{signedOffTreatments.length}</Text>
+                      <Text style={styles.summaryLabel}>Treatments Signed</Text>
+                    </View>
+                    <View style={styles.summaryItem}>
+                      <Text style={styles.summaryValue}>{recommendedTreatments.length}</Text>
+                      <Text style={styles.summaryLabel}>Total Recommended</Text>
+                    </View>
+                    <View style={styles.summaryItem}>
+                      <Text style={styles.summaryValueGold}>${stats.pipeline.toLocaleString()}</Text>
+                      <Text style={styles.summaryLabel}>Pipeline Value</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.printFooter}>
+                  <Text style={styles.printFooterText}>
+                    Generated: {new Date().toLocaleString()}
+                  </Text>
+                </View>
+              </ScrollView>
+
+              {Platform.OS === 'web' && (
+                <TouchableOpacity
+                  style={styles.webPrintButton}
+                  onPress={handlePrint}
+                  activeOpacity={0.8}
+                >
+                  <Printer size={16} color={Colors.black} />
+                  <Text style={styles.webPrintButtonText}>PRINT</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
     </View>
   );
 }
@@ -813,5 +1016,244 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  printButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  printButtonText: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: Colors.gold,
+  },
+  printOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  printModal: {
+    backgroundColor: Colors.surface,
+    borderRadius: 24,
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: '90%',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: 'hidden',
+  },
+  printHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    backgroundColor: Colors.surfaceLight,
+  },
+  printTitle: {
+    fontSize: 16,
+    fontWeight: '900' as const,
+    color: Colors.white,
+    letterSpacing: 1,
+  },
+  printCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  printContent: {
+    padding: 20,
+  },
+  printSection: {
+    marginBottom: 16,
+  },
+  printSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  printSectionTitle: {
+    fontSize: 11,
+    fontWeight: '800' as const,
+    color: Colors.textMuted,
+    letterSpacing: 1,
+  },
+  printEmptyText: {
+    fontSize: 13,
+    color: Colors.textMuted,
+    fontStyle: 'italic',
+    paddingLeft: 26,
+  },
+  printItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  printItemLeft: {
+    flex: 1,
+  },
+  printItemRight: {
+    alignItems: 'flex-end',
+  },
+  printItemName: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: Colors.white,
+    marginBottom: 4,
+  },
+  printItemPatient: {
+    fontSize: 11,
+    color: Colors.textMuted,
+  },
+  printDosingContainer: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  printDosingText: {
+    fontSize: 11,
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  printItemType: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    color: Colors.gold,
+    letterSpacing: 0.5,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  printSignedDate: {
+    fontSize: 10,
+    color: Colors.success,
+  },
+  printItemCompact: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  printItemNameCompact: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: Colors.white,
+  },
+  printItemPatientCompact: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  printItemTypeCompact: {
+    fontSize: 9,
+    fontWeight: '600' as const,
+    color: Colors.textMuted,
+    letterSpacing: 0.5,
+  },
+  printItemPrice: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: Colors.gold,
+    marginTop: 2,
+  },
+  printDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginVertical: 16,
+  },
+  summaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  summaryItem: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  summaryValue: {
+    fontSize: 24,
+    fontWeight: '900' as const,
+    color: Colors.white,
+    marginBottom: 4,
+  },
+  summaryValueGold: {
+    fontSize: 24,
+    fontWeight: '900' as const,
+    color: Colors.gold,
+    marginBottom: 4,
+  },
+  summaryLabel: {
+    fontSize: 10,
+    fontWeight: '600' as const,
+    color: Colors.textMuted,
+    textAlign: 'center',
+  },
+  printFooter: {
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    alignItems: 'center',
+  },
+  printFooterText: {
+    fontSize: 10,
+    color: Colors.textMuted,
+  },
+  webPrintButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.gold,
+    paddingVertical: 16,
+    margin: 20,
+    marginTop: 0,
+    borderRadius: 12,
+  },
+  webPrintButtonText: {
+    fontSize: 12,
+    fontWeight: '800' as const,
+    color: Colors.black,
+    letterSpacing: 1,
   },
 });
