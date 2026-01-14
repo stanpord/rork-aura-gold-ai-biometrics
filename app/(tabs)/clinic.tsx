@@ -734,11 +734,19 @@ export default function ClinicScreen() {
                         : item.treatment.treatmentType === 'peptide'
                         ? (item.treatment.treatment as any).name
                         : (item.treatment.treatment as any).name;
+                      const treatmentPrice = item.treatment.treatmentType === 'procedure'
+                        ? (item.treatment.treatment as any).price
+                        : null;
                       return (
                         <View key={index} style={styles.printItem}>
                           <View style={styles.printItemLeft}>
                             <Text style={styles.printItemName}>{treatmentName}</Text>
                             <Text style={styles.printItemPatient}>Patient: {item.lead.name}</Text>
+                            {item.treatment.complianceSignOff?.practitionerSignature && (
+                              <Text style={styles.printPractitioner}>
+                                Signed by: {item.treatment.complianceSignOff.practitionerSignature}
+                              </Text>
+                            )}
                             {item.treatment.dosing && Object.keys(item.treatment.dosing).length > 0 && (
                               <View style={styles.printDosingContainer}>
                                 {item.treatment.dosing.units && (
@@ -756,6 +764,12 @@ export default function ClinicScreen() {
                                 {item.treatment.dosing.passes && (
                                   <Text style={styles.printDosingText}>Passes: {item.treatment.dosing.passes}</Text>
                                 )}
+                                {item.treatment.dosing.dilution && (
+                                  <Text style={styles.printDosingText}>Dilution: {item.treatment.dosing.dilution}</Text>
+                                )}
+                                {item.treatment.dosing.injectionSites && (
+                                  <Text style={styles.printDosingText}>Sites: {item.treatment.dosing.injectionSites}</Text>
+                                )}
                                 {item.treatment.dosing.customNotes && (
                                   <Text style={styles.printDosingText}>Notes: {item.treatment.dosing.customNotes}</Text>
                                 )}
@@ -764,6 +778,9 @@ export default function ClinicScreen() {
                           </View>
                           <View style={styles.printItemRight}>
                             <Text style={styles.printItemType}>{item.treatment.treatmentType.toUpperCase()}</Text>
+                            {treatmentPrice && (
+                              <Text style={styles.printItemPriceGold}>{treatmentPrice}</Text>
+                            )}
                             <Text style={styles.printSignedDate}>
                               {item.treatment.complianceSignOff?.signedAt 
                                 ? new Date(item.treatment.complianceSignOff.signedAt).toLocaleDateString()
@@ -1375,6 +1392,18 @@ const styles = StyleSheet.create({
   printItemPatient: {
     fontSize: 11,
     color: Colors.textMuted,
+  },
+  printPractitioner: {
+    fontSize: 11,
+    color: Colors.success,
+    marginTop: 2,
+    fontWeight: '600' as const,
+  },
+  printItemPriceGold: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.gold,
+    marginTop: 4,
   },
   printDosingContainer: {
     marginTop: 8,
