@@ -1070,7 +1070,7 @@ const styles = StyleSheet.create({
   crmSetupContainer: {
     backgroundColor: Colors.surfaceLight,
     borderRadius: 20,
-    padding: 20,
+    padding: 24,
     marginBottom: 20,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -1085,7 +1085,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   inputLabel: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '700' as const,
     color: Colors.textMuted,
     letterSpacing: 1,
@@ -1098,8 +1098,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.white,
+    minHeight: 48,
   },
   crmButtons: {
     flexDirection: 'row',
@@ -1501,7 +1502,7 @@ const styles = StyleSheet.create({
   treatmentSetupContainer: {
     backgroundColor: Colors.surfaceLight,
     borderRadius: 20,
-    padding: 20,
+    padding: 24,
     marginBottom: 20,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -1575,10 +1576,10 @@ const styles = StyleSheet.create({
   },
   priceButton: {
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 8,
-    minWidth: 90,
+    minWidth: 100,
     alignItems: 'center',
   },
   priceButtonText: {
@@ -1597,11 +1598,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.gold,
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    fontSize: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
     color: Colors.white,
-    minWidth: 90,
+    minWidth: 100,
     textAlign: 'center',
   },
 });
