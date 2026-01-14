@@ -77,8 +77,6 @@ export default function ScanScreen() {
     patientConsent,
     savePatientConsent,
     clearPatientConsent,
-    devModeEnabled,
-    setHasUnlockedResults,
   } = useApp();
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -530,17 +528,14 @@ Be honest and specific. A young person with good skin should get minimal recomme
   const runAnalysis = async () => {
     if (!capturedImage) return;
 
-    // Only show questionnaire and consent for non-dev mode users
-    if (!devModeEnabled) {
-      if (!patientHealthProfile) {
-        setShowHealthQuestionnaire(true);
-        return;
-      }
+    if (!patientHealthProfile) {
+      setShowHealthQuestionnaire(true);
+      return;
+    }
 
-      if (!patientConsent) {
-        setShowConsentModal(true);
-        return;
-      }
+    if (!patientConsent) {
+      setShowConsentModal(true);
+      return;
     }
 
     setIsAnalyzing(true);
@@ -562,12 +557,7 @@ Be honest and specific. A young person with good skin should get minimal recomme
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     
-    if (devModeEnabled) {
-      console.log('🔧 DEV MODE: Auto-unlocking results');
-      setHasUnlockedResults(true);
-    } else {
-      setTimeout(() => setShowLeadModal(true), 1000);
-    }
+    setTimeout(() => setShowLeadModal(true), 1000);
   };
 
   const handleSaveLead = async (name: string, phone: string) => {
