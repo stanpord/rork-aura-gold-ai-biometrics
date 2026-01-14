@@ -135,7 +135,6 @@ export default function TreatmentDosingModal({
   const [dosing, setDosing] = useState<TreatmentDosingSettings>({});
   const [customNotes, setCustomNotes] = useState('');
   const [acknowledged, setAcknowledged] = useState(false);
-  const [practitionerSignature, setPractitionerSignature] = useState('');
 
   const treatmentName = treatment ? ('name' in treatment ? treatment.name : '') : '';
   const fields = TREATMENT_FIELDS[treatmentName] || DEFAULT_FIELDS;
@@ -153,7 +152,7 @@ export default function TreatmentDosingModal({
     });
   }, []);
 
-  const canSubmit = acknowledged && practitionerSignature.trim().length > 0;
+  const canSubmit = acknowledged;
 
   const handleConfirm = useCallback(() => {
     if (!canSubmit) return;
@@ -164,19 +163,18 @@ export default function TreatmentDosingModal({
     
     const signOff: ComplianceSignOff = {
       acknowledged,
-      practitionerSignature: practitionerSignature.trim(),
+      practitionerSignature: '',
       signedAt: new Date(),
       timestamp: currentTimestamp,
     };
     
     onConfirm({ ...dosing, customNotes }, signOff);
-  }, [dosing, customNotes, onConfirm, acknowledged, practitionerSignature, currentTimestamp, canSubmit]);
+  }, [dosing, customNotes, onConfirm, acknowledged, currentTimestamp, canSubmit]);
 
   const handleClose = useCallback(() => {
     setDosing({});
     setCustomNotes('');
     setAcknowledged(false);
-    setPractitionerSignature('');
     onClose();
   }, [onClose]);
 
@@ -361,18 +359,6 @@ export default function TreatmentDosingModal({
                 </Text>
               </TouchableOpacity>
 
-              <View style={styles.signatureSection}>
-                <Text style={styles.signatureLabel}>Practitioner Signature (Digital)</Text>
-                <TextInput
-                  style={styles.signatureInput}
-                  placeholder="Enter your full name as signature"
-                  placeholderTextColor={Colors.textMuted}
-                  value={practitionerSignature}
-                  onChangeText={setPractitionerSignature}
-                  autoCapitalize="words"
-                />
-              </View>
-
               <View style={styles.timestampRow}>
                 <Clock size={14} color={Colors.textMuted} />
                 <Text style={styles.timestampText}>Timestamp: {currentTimestamp}</Text>
@@ -396,7 +382,7 @@ export default function TreatmentDosingModal({
             >
               <CheckCircle size={16} color={canSubmit ? Colors.black : Colors.textMuted} />
               <Text style={[styles.confirmButtonText, !canSubmit && styles.confirmButtonTextDisabled]}>
-                {canSubmit ? 'CONFIRM & SIGN' : 'SIGN-OFF REQUIRED'}
+                {canSubmit ? 'CONFIRM' : 'ACKNOWLEDGMENT REQUIRED'}
               </Text>
             </TouchableOpacity>
           </View>
