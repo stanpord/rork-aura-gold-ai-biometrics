@@ -77,6 +77,8 @@ export default function ScanScreen() {
     patientConsent,
     savePatientConsent,
     clearPatientConsent,
+    devModeEnabled,
+    setHasUnlockedResults,
   } = useApp();
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -557,7 +559,12 @@ Be honest and specific. A young person with good skin should get minimal recomme
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     
-    setTimeout(() => setShowLeadModal(true), 1000);
+    if (devModeEnabled) {
+      console.log('🔧 DEV MODE: Auto-unlocking results');
+      setHasUnlockedResults(true);
+    } else {
+      setTimeout(() => setShowLeadModal(true), 1000);
+    }
   };
 
   const handleSaveLead = async (name: string, phone: string) => {

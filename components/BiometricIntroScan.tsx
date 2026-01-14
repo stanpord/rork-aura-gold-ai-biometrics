@@ -6,12 +6,16 @@ import {
   Animated,
   Dimensions,
   Platform,
+  TouchableOpacity,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { CheckCircle } from 'lucide-react-native';
+import { CheckCircle, Code } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { useApp } from '@/contexts/AppContext';
 
 // Beautiful model with biometric scanning overlay - ideal for medspa diagnostic
 const FACE_IMAGE = 'https://r2-pub.rork.com/generated-images/475a6908-3419-4157-b237-ce96bff62622.png';
@@ -25,7 +29,11 @@ interface BiometricIntroScanProps {
 
 
 export default function BiometricIntroScan({ onComplete }: BiometricIntroScanProps) {
+  const { enableDevMode } = useApp();
   const [currentPhase, setCurrentPhase] = useState(0);
+  const [tapCount, setTapCount] = useState(0);
+  const [showDevInput, setShowDevInput] = useState(false);
+  const [devCode, setDevCode] = useState('');
 
   const [progressPercent, setProgressPercent] = useState(0);
 
@@ -37,6 +45,40 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
   const faceOutlineOpacity = useRef(new Animated.Value(0)).current;
 
   const exitAnim = useRef(new Animated.Value(1)).current;
+  const tapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSecretTap = () => {
+    if (tapTimeoutRef.current) {
+      clearTimeout(tapTimeoutRef.current);
+    }
+    
+    const newCount = tapCount + 1;
+    setTapCount(newCount);
+    
+    if (newCount >= 5) {
+      setShowDevInput(true);
+      setTapCount(0);
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      }
+    }
+    
+    tapTimeoutRef.current = setTimeout(() => {
+      setTapCount(0);
+    }, 1500);
+  };
+
+  const handleDevCodeSubmit = () => {
+    if (enableDevMode(devCode)) {
+      Alert.alert('Developer Mode', 'Dev mode enabled. All intake flows bypassed.', [
+        { text: 'OK', onPress: onComplete }
+      ]);
+    } else {
+      Alert.alert('Invalid Code', 'The developer code is incorrect.');
+    }
+    setDevCode('');
+    setShowDevInput(false);
+  };
 
   useEffect(() => {
     startIntroSequence();
@@ -230,6 +272,49 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
         <View style={styles.progressOverlay}>
           <Text style={styles.progressText}>{progressPercent}%</Text>
         </View>
+
+        {/* Hidden dev mode tap area */}
+        <TouchableOpacity
+          style={styles.devTapArea}
+          onPress={handleSecretTap}
+          activeOpacity={1}
+        />
+
+        {/* Dev mode input overlay */}
+        {showDevInput && (
+          <View style={styles.devInputOverlay}>
+            <View style={styles.devInputContainer}>
+              <View style={styles.devInputHeader}>
+                <Code size={20} color={Colors.gold} />
+                <Text style={styles.devInputTitle}>DEVELOPER MODE</Text>
+              </View>
+              <TextInput
+                style={styles.devInput}
+                placeholder="Enter dev code"
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                value={devCode}
+                onChangeText={setDevCode}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                secureTextEntry
+              />
+              <View style={styles.devButtonRow}>
+                <TouchableOpacity
+                  style={styles.devCancelButton}
+                  onPress={() => setShowDevInput(false)}
+                >
+                  <Text style={styles.devCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.devSubmitButton}
+                  onPress={handleDevCodeSubmit}
+                >
+                  <Text style={styles.devSubmitText}>Activate</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
       </View>
 
       {currentPhase === 3 && (
@@ -315,5 +400,80 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: 'rgba(16, 185, 129, 0.5)',
+  },
+  devTapArea: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    width: 50,
+    height: 50,
+  },
+  devInputOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+  },
+  devInputContainer: {
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    padding: 24,
+    width: '80%',
+    maxWidth: 320,
+    borderWidth: 1,
+    borderColor: Colors.gold,
+  },
+  devInputHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 20,
+  },
+  devInputTitle: {
+    fontSize: 14,
+    fontWeight: '800' as const,
+    color: Colors.gold,
+    letterSpacing: 2,
+  },
+  devInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: Colors.white,
+    textAlign: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  devButtonRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  devCancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+  },
+  devCancelText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: Colors.textMuted,
+  },
+  devSubmitButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: Colors.gold,
+    alignItems: 'center',
+  },
+  devSubmitText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: Colors.black,
   },
 });

@@ -57,6 +57,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const [patientConsent, setPatientConsent] = useState<PatientConsent | null>(null);
   const [tosAcknowledgment, setTosAcknowledgment] = useState<TermsOfServiceAcknowledgment | null>(null);
   const [clinicSettings, setClinicSettings] = useState<ClinicSettings | null>(null);
+  const [devModeEnabled, setDevModeEnabled] = useState(false);
 
   const leadsQuery = trpc.leads.getAll.useQuery(undefined, {
     refetchOnWindowFocus: false,
@@ -173,6 +174,48 @@ export const [AppProvider, useApp] = createContextHook(() => {
       return true;
     }
     return false;
+  }, []);
+
+  const enableDevMode = useCallback((code: string): boolean => {
+    if (code === 'DEV2026' || code === 'dev2026') {
+      console.log('🔧 DEVELOPER MODE ENABLED - Bypassing all intake flows');
+      setDevModeEnabled(true);
+      setHasCompletedIntro(true);
+      
+      // Create mock health profile
+      const mockHealthProfile: PatientHealthProfile = {
+        conditions: [],
+        hasRecentLabWork: true,
+        completedAt: new Date(),
+      };
+      setPatientHealthProfile(mockHealthProfile);
+      
+      // Create mock consent
+      const mockConsent: PatientConsent = {
+        patientName: 'Dev Mode User',
+        patientSignature: 'DEV_MODE',
+        providerSignature: 'DEV_MODE',
+        consentedAt: new Date(),
+        timestamp: new Date().toISOString(),
+        acknowledgedSections: {
+          aiDisclosure: true,
+          aiRole: true,
+          dataPrivacy: true,
+          risksLimitations: true,
+          humanOnlyRight: true,
+        },
+        optedOutOfAI: false,
+      };
+      setPatientConsent(mockConsent);
+      
+      return true;
+    }
+    return false;
+  }, []);
+
+  const disableDevMode = useCallback(() => {
+    console.log('🔧 DEVELOPER MODE DISABLED');
+    setDevModeEnabled(false);
   }, []);
 
   const logoutStaff = useCallback(() => {
@@ -466,5 +509,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
     updateTreatmentConfig,
     getTreatmentPrice,
     isTreatmentEnabled,
+    devModeEnabled,
+    enableDevMode,
+    disableDevMode,
   };
 });
