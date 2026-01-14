@@ -115,7 +115,7 @@ export default function ScanScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [3, 4],
-        quality: 0.8,
+        quality: 0.5,
       });
 
       if (!result.canceled && result.assets[0]) {
@@ -153,7 +153,7 @@ export default function ScanScreen() {
       }
       const photo = await cameraRef.current.takePictureAsync({
         base64: true,
-        quality: 0.8,
+        quality: 0.5,
       });
       if (photo) {
         setCapturedImage(photo.uri);
@@ -301,7 +301,7 @@ IMPORTANT:
       }).describe('CRITICAL: Accurately assess the Fitzpatrick skin type from the image. This affects treatment safety for IPL, lasers, and other light-based therapies. Types V and VI have HIGH RISK for burns with IPL.'),
     });
 
-    const maxRetries = 2;
+    const maxRetries = 1;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
@@ -540,20 +540,21 @@ Be honest and specific. A young person with good skin should get minimal recomme
     setIsAnalyzing(true);
 
     try {
-      const [aiAnalysisResult, simulatedResult] = await Promise.all([
-        analyzeImageWithAI(capturedImage),
-        generateTreatmentSimulation(capturedImage, ['Botox', 'Morpheus8', 'Sculptra']),
-      ]);
-
-      if (simulatedResult) {
-        setSimulatedImage(simulatedResult);
-        console.log('Treatment simulation set successfully');
-      } else {
-        console.log('Using original image as fallback');
-      }
-
+      const aiAnalysisResult = await analyzeImageWithAI(capturedImage);
+      
       const safetyCheckedAnalysis = applyContraindicationChecks(aiAnalysisResult);
       setCurrentAnalysis(safetyCheckedAnalysis);
+      
+      generateTreatmentSimulation(capturedImage, ['Botox', 'Morpheus8', 'Sculptra'])
+        .then((simulatedResult) => {
+          if (simulatedResult) {
+            setSimulatedImage(simulatedResult);
+            console.log('Treatment simulation set successfully');
+          } else {
+            console.log('Using original image as fallback');
+          }
+        })
+        .catch((err) => console.log('Simulation generation failed:', err));
       console.log('AI analysis with safety checks:', JSON.stringify(safetyCheckedAnalysis, null, 2));
     } catch (error) {
       console.log('Analysis error:', error);
