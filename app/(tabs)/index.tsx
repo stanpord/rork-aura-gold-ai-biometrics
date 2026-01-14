@@ -858,42 +858,6 @@ Be honest and specific. A young person with good skin should get minimal recomme
         contentContainerStyle={styles.resultsScrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.sliderSection, isTablet && styles.tabletCentered]}>
-          <View style={styles.sliderHeader}>
-            <Wand2 size={14} color={Colors.gold} />
-            <Text style={styles.sliderTitle}>TREATMENT COMPARISON</Text>
-            {!simulatedImage && (
-              <View style={styles.simulationLoadingBadge}>
-                <ActivityIndicator size="small" color={Colors.gold} />
-                <Text style={styles.simulationLoadingText}>Generating preview...</Text>
-              </View>
-            )}
-          </View>
-          {simulatedImage ? (
-            <BeforeAfterSlider
-              beforeImage={capturedImage}
-              afterImage={simulatedImage}
-              height={isTablet ? 500 : 420}
-              maxWidth={MAX_SLIDER_WIDTH}
-            />
-          ) : (
-            <View style={[styles.sliderPlaceholder, { height: isTablet ? 500 : 420, maxWidth: MAX_SLIDER_WIDTH }]}>
-              <Image
-                source={{ uri: capturedImage }}
-                style={styles.placeholderImage}
-                contentFit="cover"
-              />
-              <View style={styles.placeholderOverlay}>
-                <View style={styles.placeholderContent}>
-                  <ActivityIndicator size="large" color={Colors.gold} />
-                  <Text style={styles.placeholderText}>AI SIMULATION IN PROGRESS</Text>
-                  <Text style={styles.placeholderSubtext}>Generating your treatment preview...</Text>
-                </View>
-              </View>
-            </View>
-          )}
-        </View>
-
         {currentAnalysis.fitzpatrickAssessment && (currentAnalysis.fitzpatrickAssessment.riskLevel === 'high' || currentAnalysis.fitzpatrickAssessment.riskLevel === 'caution') && (
           <View style={[
             styles.fitzpatrickWarningBanner,
@@ -946,6 +910,42 @@ Be honest and specific. A young person with good skin should get minimal recomme
               ))}
             </View>
           </View>
+        </View>
+
+        <View style={[styles.sliderSection, isTablet && styles.tabletCentered]}>
+          <View style={styles.sliderHeader}>
+            <Wand2 size={14} color={Colors.gold} />
+            <Text style={styles.sliderTitle}>TREATMENT COMPARISON</Text>
+            {!simulatedImage && (
+              <View style={styles.simulationLoadingBadge}>
+                <ActivityIndicator size="small" color={Colors.gold} />
+                <Text style={styles.simulationLoadingText}>Generating preview...</Text>
+              </View>
+            )}
+          </View>
+          {simulatedImage ? (
+            <BeforeAfterSlider
+              beforeImage={capturedImage}
+              afterImage={simulatedImage}
+              height={isTablet ? 500 : 420}
+              maxWidth={MAX_SLIDER_WIDTH}
+            />
+          ) : (
+            <View style={[styles.sliderPlaceholder, { height: isTablet ? 500 : 420, maxWidth: MAX_SLIDER_WIDTH }]}>
+              <Image
+                source={{ uri: capturedImage }}
+                style={styles.placeholderImage}
+                contentFit="cover"
+              />
+              <View style={styles.placeholderOverlay}>
+                <View style={styles.placeholderContent}>
+                  <ActivityIndicator size="large" color={Colors.gold} />
+                  <Text style={styles.placeholderText}>AI SIMULATION IN PROGRESS</Text>
+                  <Text style={styles.placeholderSubtext}>Generating your treatment preview...</Text>
+                </View>
+              </View>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
