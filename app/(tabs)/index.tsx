@@ -270,11 +270,11 @@ IMPORTANT:
         redness: z.enum(['Low', 'Moderate', 'High']).describe('Visible redness, erythema, or vascular concerns'),
       }),
       clinicalRoadmap: z.array(z.object({
-        name: z.string().describe('Treatment name from these categories: Wrinkle Relaxers (Botox, Wrinkle Relaxers), Anti-Aging Treatments, Injectables (Botox Cosmetic, Baby Botox, Lip Flip, Dermal Filler, Lip Filler, Plasma BioFiller, Sculptra, Radiesse, Kybella), Energy-Based (Red Light Therapy, LED Therapy, Stellar IPL, IPL, Clear + Brilliant, MOXI Laser, ResurFX), Surface/Beauty (DiamondGlow, Facials, Chemical Peels, Microdermabrasion, HydraFacial, Dermaplaning, Microneedling), RF/Tightening (RF Microneedling, Morpheus8), Lifting/Biostimulators (PDO Thread Lift, Endolift, Exosome Therapy)'),
+        name: z.string().describe('Treatment name - IMPORTANT: Select the MOST APPROPRIATE treatment for what you observe. Available options by category: SURFACE TREATMENTS (for texture, pores, dullness, mild concerns): DiamondGlow, Facials, Chemical Peels, Microdermabrasion, Dermaplaning. HYDRATION/GLOW: HydraFacial. PIGMENTATION/REDNESS: Stellar IPL, IPL, Clear + Brilliant. RESURFACING (for scars, deeper texture): MOXI Laser, ResurFX, Microneedling. WRINKLES: Botox Cosmetic, Baby Botox (subtle), Wrinkle Relaxers, Lip Flip (lip lines). VOLUME LOSS: Dermal Filler, Lip Filler, Sculptra, Radiesse, Plasma BioFiller. FAT REDUCTION: Kybella. SKIN TIGHTENING (laxity): RF Microneedling, Morpheus8 (only for significant laxity). LIFTING: PDO Thread Lift, Endolift. HEALING/REGENERATIVE: Exosome Therapy, Red Light Therapy, LED Therapy. Match treatment intensity to the severity of concerns - use gentle surface treatments for mild issues, reserve intense treatments like Morpheus8 for significant laxity.'),
         benefit: z.string().describe('What this treatment achieves for this specific patient'),
         price: z.string().describe('Typical price range (e.g., $450, $1,200)'),
         clinicalReason: z.string().describe('Specific clinical indication based on what was ACTUALLY detected in THIS patients face - reference specific observed features like wrinkle depth, volume loss areas, skin laxity zones, pigmentation issues'),
-      })).min(2).max(6).describe('Personalized treatment recommendations based on detected facial concerns - ONLY include treatments relevant to observed issues. For high-intensity RF treatments like Morpheus8, consider recommending Red Light Therapy as post-care. For microneedling, consider Exosome Therapy as add-on.'),
+      })).min(2).max(6).describe('CRITICAL: Personalized treatment recommendations - DIVERSIFY your selections across categories. DO NOT default to Morpheus8, Botox, and HydraFacial for everyone. Match treatment intensity to concern severity: mild texture issues = DiamondGlow or Chemical Peels, pigmentation = IPL or Clear+Brilliant, moderate aging = MOXI or Microneedling, significant laxity ONLY = Morpheus8. Always include at least one surface/beauty treatment (DiamondGlow, Facials, Chemical Peels, Dermaplaning) when skin texture or pore concerns exist.'),
       peptideTherapy: z.array(z.object({
         name: z.string().describe('Peptide name (e.g., BPC-157, GHK-Cu, Epithalon, TB-500, Thymosin Alpha-1)'),
         goal: z.string().describe('Specific goal for this patient based on detected concerns'),
@@ -325,10 +325,22 @@ CRITICAL INSTRUCTIONS:
 6. Volume loss percentages should reflect what you ACTUALLY observe - hollow temples, sunken cheeks, deep folds
 7. Do NOT recommend treatments for areas that appear healthy
 8. CRITICAL: Accurately assess Fitzpatrick skin type - this is essential for patient safety with light-based treatments
-8. When recommending high-intensity treatments (Morpheus8, Microneedling), also suggest Red Light Therapy or LED as post-care
-9. For skin puncture procedures (Microneedling), consider Exosome Therapy as mandatory post-care
-10. For subtle wrinkle concerns, consider Baby Botox over full Botox for natural results
-11. If lip enhancement without volume is noted, consider Lip Flip option
+9. When recommending high-intensity treatments (Morpheus8, Microneedling), also suggest Red Light Therapy or LED as post-care
+10. For skin puncture procedures (Microneedling), consider Exosome Therapy as mandatory post-care
+11. For subtle wrinkle concerns, consider Baby Botox over full Botox for natural results
+12. If lip enhancement without volume is noted, consider Lip Flip option
+
+TREATMENT SELECTION RULES - FOLLOW STRICTLY:
+- For TEXTURE/PORE concerns: Recommend DiamondGlow, Chemical Peels, Microdermabrasion, or Dermaplaning FIRST
+- For DULLNESS/HYDRATION: Recommend HydraFacial or Facials
+- For PIGMENTATION/SUN DAMAGE/REDNESS: Recommend Stellar IPL, IPL, or Clear + Brilliant
+- For FINE LINES (not deep wrinkles): Recommend MOXI Laser, Microneedling, or Chemical Peels
+- For DYNAMIC WRINKLES (forehead, crows feet, frown): Recommend Botox or Wrinkle Relaxers
+- For VOLUME LOSS: Recommend Dermal Filler, Sculptra, or Radiesse based on area
+- For SIGNIFICANT SKIN LAXITY ONLY: Recommend RF Microneedling or Morpheus8
+- DO NOT recommend Morpheus8 unless there is VISIBLE sagging or significant laxity
+- DO NOT recommend Botox unless there are VISIBLE dynamic wrinkles
+- ALWAYS include at least ONE surface treatment (DiamondGlow, Chemical Peels, Facials, Dermaplaning) for skin quality improvement
 
 Analyze and provide personalized results for:
 - Overall facial harmony and structure (auraScore)
@@ -369,6 +381,36 @@ Be honest and specific. A young person with good skin should get minimal recomme
     const faceTypes = ['Diamond Elite', 'Classic Oval', 'Heart Symmetry', 'Angular Sculpted', 'Square Strong'];
     const randomFaceType = faceTypes[Math.floor(Math.random() * faceTypes.length)];
     
+    const fallbackTreatmentSets = [
+      [
+        { name: 'DiamondGlow', benefit: 'Deep exfoliation and serum infusion for instantly glowing skin', price: '$200-300', clinicalReason: 'Addresses skin texture and pore congestion with customizable serums' },
+        { name: 'Chemical Peels', benefit: 'Accelerate cell turnover for smoother, more even skin tone', price: '$150-400', clinicalReason: 'Improves overall skin clarity and reduces superficial discoloration' },
+        { name: 'LED Therapy', benefit: 'Reduce inflammation and stimulate collagen production', price: '$75-150', clinicalReason: 'Non-invasive treatment for general skin health maintenance' },
+      ],
+      [
+        { name: 'Stellar IPL', benefit: 'Target pigmentation and vascular concerns for clearer skin', price: '$350-500', clinicalReason: 'Effective for sun damage, redness, and uneven skin tone' },
+        { name: 'Microdermabrasion', benefit: 'Mechanical exfoliation to reveal fresh, smooth skin', price: '$150-250', clinicalReason: 'Improves skin texture and enhances product absorption' },
+        { name: 'Facials', benefit: 'Professional deep cleansing and customized treatment', price: '$100-200', clinicalReason: 'Maintains skin health and addresses specific concerns' },
+      ],
+      [
+        { name: 'Clear + Brilliant', benefit: 'Gentle laser resurfacing for refreshed, youthful skin', price: '$400-600', clinicalReason: 'Preventative treatment for early signs of aging and texture concerns' },
+        { name: 'Dermaplaning', benefit: 'Remove peach fuzz and dead skin for smooth canvas', price: '$100-175', clinicalReason: 'Enhances skin smoothness and improves makeup application' },
+        { name: 'Red Light Therapy', benefit: 'Stimulate cellular energy and promote healing', price: '$50-100', clinicalReason: 'Supports overall skin rejuvenation and recovery' },
+      ],
+      [
+        { name: 'MOXI Laser', benefit: 'Gentle fractional laser for tone and texture improvement', price: '$500-800', clinicalReason: 'Addresses early sun damage and promotes collagen remodeling' },
+        { name: 'DiamondGlow', benefit: 'Deep exfoliation with simultaneous serum infusion', price: '$200-300', clinicalReason: 'Provides immediate glow while addressing pore concerns' },
+        { name: 'Chemical Peels', benefit: 'Professional-grade exfoliation for renewed skin', price: '$150-400', clinicalReason: 'Accelerates cell turnover for improved texture and tone' },
+      ],
+      [
+        { name: 'Microneedling', benefit: 'Stimulate natural collagen production for firmer skin', price: '$300-500', clinicalReason: 'Addresses fine lines and improves overall skin quality' },
+        { name: 'Facials', benefit: 'Customized treatment for your specific skin needs', price: '$100-200', clinicalReason: 'Professional cleansing and targeted treatment' },
+        { name: 'Exosome Therapy', benefit: 'Accelerate healing and enhance treatment results', price: '$400-800', clinicalReason: 'Boosts cellular regeneration when combined with procedures' },
+      ],
+    ];
+    
+    const selectedTreatments = fallbackTreatmentSets[Math.floor(Math.random() * fallbackTreatmentSets.length)];
+    
     return {
       auraScore: randomScore,
       faceType: randomFaceType,
@@ -378,11 +420,7 @@ Be honest and specific. A young person with good skin should get minimal recomme
         pigment: 'Mild Variation',
         redness: 'Low',
       },
-      clinicalRoadmap: [
-        { name: 'Morpheus8', benefit: 'Skin tightening and collagen stimulation for improved texture', price: '$800-1,200', clinicalReason: 'Recommended for general skin rejuvenation and addressing early signs of laxity' },
-        { name: 'Botox Cosmetic', benefit: 'Smooth dynamic wrinkles and prevent new lines from forming', price: '$350-600', clinicalReason: 'Preventative treatment for expression lines in forehead and around eyes' },
-        { name: 'HydraFacial', benefit: 'Deep cleansing and hydration for radiant skin', price: '$200-350', clinicalReason: 'Addresses pore congestion and improves overall skin clarity' },
-      ],
+      clinicalRoadmap: selectedTreatments,
       peptideTherapy: [
         { name: 'GHK-Cu', goal: 'Enhance skin repair and collagen production', mechanism: 'Copper peptide complex that activates regenerative genes and promotes wound healing', frequency: '2x daily topical application' },
         { name: 'BPC-157', goal: 'Accelerate tissue healing and reduce inflammation', mechanism: 'Body protection compound that enhances angiogenesis and tissue repair', frequency: 'As directed by provider' },
