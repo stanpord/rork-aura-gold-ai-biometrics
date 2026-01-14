@@ -864,6 +864,7 @@ Be specific to THIS face. Don't give generic results.`
           onClose={() => setShowLeadModal(false)}
           onSubmit={handleSaveLead}
           isSuccess={isLeadSaved}
+          initialName={patientConsent?.patientName || ''}
         />
 
         <HealthQuestionnaire

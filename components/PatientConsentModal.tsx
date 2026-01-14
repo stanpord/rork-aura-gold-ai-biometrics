@@ -48,6 +48,7 @@ export default function PatientConsentModal({
     humanOnlyRight: false,
   });
   const [patientSignature, setPatientSignature] = useState('');
+  const [autoFillSignature, setAutoFillSignature] = useState(true);
   const [providerSignature, setProviderSignature] = useState('');
   const [patientName, setPatientName] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
@@ -224,7 +225,12 @@ export default function PatientConsentModal({
             <TextInput
               style={styles.textInput}
               value={patientName}
-              onChangeText={setPatientName}
+              onChangeText={(text) => {
+                setPatientName(text);
+                if (autoFillSignature) {
+                  setPatientSignature(text);
+                }
+              }}
               placeholder="Enter patient full name"
               placeholderTextColor={Colors.textMuted}
               autoCapitalize="words"
@@ -361,11 +367,19 @@ export default function PatientConsentModal({
               <TextInput
                 style={styles.signatureInput}
                 value={patientSignature}
-                onChangeText={setPatientSignature}
+                onChangeText={(text) => {
+                  setPatientSignature(text);
+                  if (text !== patientName) {
+                    setAutoFillSignature(false);
+                  }
+                }}
                 placeholder="Type your full name as signature"
                 placeholderTextColor={Colors.textMuted}
                 autoCapitalize="words"
               />
+              {patientName && patientSignature === patientName && (
+                <Text style={styles.autoFillHint}>Auto-filled from patient name</Text>
+              )}
             </View>
 
             <View style={styles.signatureBox}>
@@ -616,6 +630,12 @@ const styles = StyleSheet.create({
     color: Colors.white,
     borderWidth: 1,
     borderColor: Colors.borderLight,
+    fontStyle: 'italic',
+  },
+  autoFillHint: {
+    fontSize: 10,
+    color: Colors.success,
+    marginTop: 6,
     fontStyle: 'italic',
   },
   timestampBox: {
