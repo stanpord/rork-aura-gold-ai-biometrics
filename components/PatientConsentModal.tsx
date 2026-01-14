@@ -49,12 +49,11 @@ export default function PatientConsentModal({
   });
   const [patientSignature, setPatientSignature] = useState('');
   const [autoFillSignature, setAutoFillSignature] = useState(true);
-  const [providerSignature, setProviderSignature] = useState('');
   const [patientName, setPatientName] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
 
   const allChecked = Object.values(consentChecks).every(Boolean);
-  const canSubmit = allChecked && patientSignature.trim() && providerSignature.trim() && patientName.trim();
+  const canSubmit = allChecked && patientSignature.trim() && patientName.trim();
 
   const handleScroll = (event: any) => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
@@ -81,7 +80,7 @@ export default function PatientConsentModal({
     const consent: PatientConsent = {
       patientName: patientName.trim(),
       patientSignature: patientSignature.trim(),
-      providerSignature: providerSignature.trim(),
+      providerSignature: '',
       consentedAt: new Date(),
       timestamp: new Date().toLocaleString('en-US', {
         year: 'numeric',
@@ -111,14 +110,14 @@ export default function PatientConsentModal({
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
 
-    if (!patientName.trim() || !patientSignature.trim() || !providerSignature.trim()) {
+    if (!patientName.trim() || !patientSignature.trim()) {
       return;
     }
 
     const consent: PatientConsent = {
       patientName: patientName.trim(),
       patientSignature: patientSignature.trim(),
-      providerSignature: providerSignature.trim(),
+      providerSignature: '',
       consentedAt: new Date(),
       timestamp: new Date().toLocaleString('en-US', {
         year: 'numeric',
@@ -152,7 +151,6 @@ export default function PatientConsentModal({
       humanOnlyRight: false,
     });
     setPatientSignature('');
-    setProviderSignature('');
     setPatientName('');
     setHasReadAll(false);
   };
@@ -382,18 +380,6 @@ export default function PatientConsentModal({
               )}
             </View>
 
-            <View style={styles.signatureBox}>
-              <Text style={styles.inputLabel}>Provider Acknowledgment (Digital)</Text>
-              <TextInput
-                style={styles.signatureInput}
-                value={providerSignature}
-                onChangeText={setProviderSignature}
-                placeholder="Provider name and credentials"
-                placeholderTextColor={Colors.textMuted}
-                autoCapitalize="words"
-              />
-            </View>
-
             <View style={styles.timestampBox}>
               <Text style={styles.timestampLabel}>Timestamp</Text>
               <Text style={styles.timestampValue}>
@@ -414,11 +400,11 @@ export default function PatientConsentModal({
           <TouchableOpacity
             style={[
               styles.optOutButton,
-              (!patientName.trim() || !patientSignature.trim() || !providerSignature.trim()) && styles.buttonDisabled,
+              (!patientName.trim() || !patientSignature.trim()) && styles.buttonDisabled,
             ]}
             onPress={handleOptOut}
             activeOpacity={0.8}
-            disabled={!patientName.trim() || !patientSignature.trim() || !providerSignature.trim()}
+            disabled={!patientName.trim() || !patientSignature.trim()}
           >
             <UserX size={16} color={Colors.gold} />
             <Text style={styles.optOutButtonText}>OPT-OUT OF AI</Text>

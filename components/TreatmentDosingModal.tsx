@@ -29,6 +29,7 @@ interface TreatmentDosingModalProps {
     pigment: string;
     redness: string;
   };
+  practitionerSignature?: string;
 }
 
 const TREATMENT_FIELDS: Record<string, { label: string; placeholder: string; unit?: string }[]> = {
@@ -131,6 +132,7 @@ export default function TreatmentDosingModal({
   onConfirm,
   patientConditions = [],
   skinIQData,
+  practitionerSignature = '',
 }: TreatmentDosingModalProps) {
   const [dosing, setDosing] = useState<TreatmentDosingSettings>({});
   const [customNotes, setCustomNotes] = useState('');
@@ -163,13 +165,13 @@ export default function TreatmentDosingModal({
     
     const signOff: ComplianceSignOff = {
       acknowledged,
-      practitionerSignature: '',
+      practitionerSignature,
       signedAt: new Date(),
       timestamp: currentTimestamp,
     };
     
     onConfirm({ ...dosing, customNotes }, signOff);
-  }, [dosing, customNotes, onConfirm, acknowledged, currentTimestamp, canSubmit]);
+  }, [dosing, customNotes, onConfirm, acknowledged, currentTimestamp, canSubmit, practitionerSignature]);
 
   const handleClose = useCallback(() => {
     setDosing({});
