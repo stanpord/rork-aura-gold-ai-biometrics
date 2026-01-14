@@ -505,6 +505,41 @@ Be specific to THIS face. Don't give generic results.`
   }, [savePatientConsent]);
 
   const [isRunningAnalysis, setIsRunningAnalysis] = useState(false);
+  const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
+
+  const getInstantPlaceholderAnalysis = useCallback((): AnalysisResult => {
+    return {
+      auraScore: 0,
+      faceType: 'Analyzing...',
+      skinIQ: {
+        texture: 'Moderate',
+        pores: 'Visible',
+        pigment: 'Mild Variation',
+        redness: 'Low',
+      },
+      clinicalRoadmap: [
+        { name: 'Loading...', benefit: 'Analyzing your skin profile...', price: '---', clinicalReason: 'Please wait...' },
+        { name: 'Loading...', benefit: 'Analyzing your skin profile...', price: '---', clinicalReason: 'Please wait...' },
+      ],
+      peptideTherapy: [
+        { name: 'Loading...', goal: 'Analyzing...', mechanism: 'Please wait...', frequency: '---' },
+        { name: 'Loading...', goal: 'Analyzing...', mechanism: 'Please wait...', frequency: '---' },
+      ],
+      ivOptimization: [
+        { name: 'Loading...', benefit: 'Analyzing...', ingredients: '---', duration: '---' },
+      ],
+      volumeAssessment: [
+        { zone: 'Cheeks', volumeLoss: 0, ageRelatedCause: 'Analyzing...', recommendation: 'Please wait...' },
+        { zone: 'Temples', volumeLoss: 0, ageRelatedCause: 'Analyzing...', recommendation: 'Please wait...' },
+      ],
+      fitzpatrickAssessment: {
+        type: 'III',
+        description: 'Analyzing skin type...',
+        riskLevel: 'low',
+        detectedIndicators: ['Analyzing...'],
+      },
+    };
+  }, []);
 
   const runAnalysis = async () => {
     if (!capturedImage) return;
@@ -519,25 +554,33 @@ Be specific to THIS face. Don't give generic results.`
       return;
     }
 
+    console.log('Starting analysis - showing placeholder results immediately');
+    
+    // IMMEDIATELY show placeholder results so user sees the results screen
+    const placeholderAnalysis = getInstantPlaceholderAnalysis();
+    setCurrentAnalysis(placeholderAnalysis);
+    setIsAnalysisLoading(true);
     setIsRunningAnalysis(true);
-    console.log('Starting actual AI analysis - waiting for real results...');
+    
+    // Show lead modal immediately so user can enter info while analysis runs
+    setTimeout(() => setShowLeadModal(true), 300);
 
+    // Run AI analysis in background
     try {
-      // Wait for the actual AI analysis to complete
       const aiAnalysisResult = await analyzeImageWithAI(capturedImage);
       const safetyCheckedAnalysis = applyContraindicationChecks(aiAnalysisResult);
       setCurrentAnalysis(safetyCheckedAnalysis);
-      console.log('AI analysis complete - showing real results');
+      setIsAnalysisLoading(false);
+      console.log('AI analysis complete - updated with real results');
       
       if (Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      
-      // Show lead modal after real results are ready
-      setTimeout(() => setShowLeadModal(true), 500);
     } catch (error) {
-      console.log('AI analysis error:', error);
-      Alert.alert('Analysis Error', 'Failed to analyze image. Please try again.');
+      console.log('AI analysis error, using fallback:', error);
+      const fallbackAnalysis = applyContraindicationChecks(getFallbackAnalysis());
+      setCurrentAnalysis(fallbackAnalysis);
+      setIsAnalysisLoading(false);
     } finally {
       setIsRunningAnalysis(false);
     }
@@ -880,9 +923,16 @@ Be specific to THIS face. Don't give generic results.`
         )}
 
         <View style={styles.scoreCard}>
-          <AuraScoreGauge score={currentAnalysis.auraScore} size={160} />
+          {isAnalysisLoading ? (
+            <View style={styles.scoreLoadingContainer}>
+              <ActivityIndicator size="large" color={Colors.gold} />
+              <Text style={styles.scoreLoadingText}>CALCULATING AURA</Text>
+            </View>
+          ) : (
+            <AuraScoreGauge score={currentAnalysis.auraScore} size={160} />
+          )}
           <View style={styles.scoreInfo}>
-            <Text style={styles.faceType}>{currentAnalysis.faceType}</Text>
+            <Text style={styles.faceType}>{isAnalysisLoading ? 'Analyzing Your Profile...' : currentAnalysis.faceType}</Text>
             <Text style={styles.scoreDescription}>
               Structural biometrics identified. We have curated a holistic protocol to optimize your Aura Index.
             </Text>
@@ -902,6 +952,11 @@ Be specific to THIS face. Don't give generic results.`
           <View style={styles.sectionHeader}>
             <Syringe size={16} color={Colors.gold} />
             <Text style={styles.sectionTitle}>CLINICAL ROADMAP</Text>
+            {isAnalysisLoading && (
+              <View style={styles.sectionLoadingBadge}>
+                <ActivityIndicator size="small" color={Colors.gold} />
+              </View>
+            )}
           </View>
           <View style={styles.proceduresGrid}>
             {currentAnalysis.clinicalRoadmap.map((proc, index) => (
@@ -929,6 +984,11 @@ Be specific to THIS face. Don't give generic results.`
           <View style={styles.sectionHeader}>
             <FlaskConical size={16} color={Colors.gold} />
             <Text style={styles.sectionTitle}>PEPTIDE THERAPY</Text>
+            {isAnalysisLoading && (
+              <View style={styles.sectionLoadingBadge}>
+                <ActivityIndicator size="small" color={Colors.gold} />
+              </View>
+            )}
           </View>
           <View style={styles.therapyGrid}>
             {currentAnalysis.peptideTherapy.map((peptide, index) => (
@@ -956,6 +1016,11 @@ Be specific to THIS face. Don't give generic results.`
           <View style={styles.sectionHeader}>
             <Beaker size={16} color={Colors.gold} />
             <Text style={styles.sectionTitle}>IV OPTIMIZATION</Text>
+            {isAnalysisLoading && (
+              <View style={styles.sectionLoadingBadge}>
+                <ActivityIndicator size="small" color={Colors.gold} />
+              </View>
+            )}
           </View>
           <View style={styles.therapyGrid}>
             {currentAnalysis.ivOptimization.map((iv, index) => (
@@ -983,6 +1048,11 @@ Be specific to THIS face. Don't give generic results.`
           <View style={styles.sectionHeader}>
             <Droplets size={16} color={Colors.gold} />
             <Text style={styles.sectionTitle}>VOLUME ASSESSMENT</Text>
+            {isAnalysisLoading && (
+              <View style={styles.sectionLoadingBadge}>
+                <ActivityIndicator size="small" color={Colors.gold} />
+              </View>
+            )}
           </View>
           <View style={styles.fillerGrid}>
             {currentAnalysis.volumeAssessment.map((zone, index) => (
@@ -1697,6 +1767,26 @@ const styles = StyleSheet.create({
     fontWeight: '800' as const,
     color: Colors.gold,
     letterSpacing: 1,
+  },
+  scoreLoadingContainer: {
+    width: 160,
+    height: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 80,
+    borderWidth: 2,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  scoreLoadingText: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: Colors.gold,
+    letterSpacing: 1,
+    marginTop: 12,
+  },
+  sectionLoadingBadge: {
+    marginLeft: 'auto',
   },
   fillerGrid: {
     gap: 12,
