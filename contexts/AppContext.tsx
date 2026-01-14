@@ -301,16 +301,23 @@ export const [AppProvider, useApp] = createContextHook(() => {
     });
   }, [leads, updateLeadMutation]);
 
+  const treatmentsSignedOff = leads.reduce((acc, lead) => {
+    if (!lead.selectedTreatments) return acc;
+    return acc + lead.selectedTreatments.filter(t => t.complianceSignOff?.acknowledged).length;
+  }, 0);
+
   const stats = isStaffAuthenticated ? {
     pipeline: leads.reduce((acc, lead) => acc + (lead.estimatedValue || 0), 0),
     scans: leads.length,
     conversion: leads.length > 0
       ? Math.round((leads.filter(l => l.status === 'contacted').length / leads.length) * 100)
       : 0,
+    treatmentsSignedOff,
   } : {
     pipeline: 0,
     scans: 0,
     conversion: 0,
+    treatmentsSignedOff: 0,
   };
 
   const protectedLeads = isStaffAuthenticated ? leads : [];

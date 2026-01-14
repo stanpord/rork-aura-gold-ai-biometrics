@@ -19,7 +19,7 @@ import {
   AlertCircle,
   DollarSign,
   Users,
-  TrendingUp,
+  ClipboardCheck,
   Settings,
   RefreshCw,
   Trash2,
@@ -210,9 +210,9 @@ export default function ClinicScreen() {
               <Text style={styles.statValueSmall}>{stats.scans}</Text>
             </View>
             <View style={styles.statCardSmall}>
-              <TrendingUp size={16} color={Colors.textMuted} />
-              <Text style={styles.statLabelSmall}>CONVERSION</Text>
-              <Text style={styles.statValueSmall}>{stats.conversion}%</Text>
+              <ClipboardCheck size={16} color={Colors.success} />
+              <Text style={styles.statLabelSmall}>TX SELECTED</Text>
+              <Text style={styles.statValueSmall}>{stats.treatmentsSignedOff}</Text>
             </View>
           </View>
         </View>
