@@ -18,7 +18,6 @@ interface LeadCaptureModalProps {
   onClose: () => void;
   onSubmit: (name: string, phone: string) => Promise<void>;
   isSuccess: boolean;
-  initialName?: string;
 }
 
 export default function LeadCaptureModal({
@@ -26,16 +25,9 @@ export default function LeadCaptureModal({
   onClose,
   onSubmit,
   isSuccess,
-  initialName = '',
 }: LeadCaptureModalProps) {
-  const [name, setName] = useState(initialName);
+  const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-
-  React.useEffect(() => {
-    if (initialName) {
-      setName(initialName);
-    }
-  }, [initialName]);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async () => {

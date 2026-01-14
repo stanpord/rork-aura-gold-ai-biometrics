@@ -36,7 +36,7 @@ interface LeadDetailModalProps {
 }
 
 export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailModalProps) {
-  const { updateLeadTreatments, tosAcknowledgment } = useApp();
+  const { updateLeadTreatments } = useApp();
   const [selectedTreatmentForDosing, setSelectedTreatmentForDosing] = useState<{
     treatment: ClinicalProcedure | PeptideTherapy | IVOptimization;
     type: 'procedure' | 'peptide' | 'iv';
@@ -441,7 +441,6 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
         onConfirm={handleConfirmDosing}
         patientConditions={[]}
         skinIQData={undefined}
-        practitionerSignature={tosAcknowledgment?.practitionerSignature || ''}
       />
     </Modal>
   );

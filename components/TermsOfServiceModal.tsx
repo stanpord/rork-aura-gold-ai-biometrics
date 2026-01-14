@@ -62,7 +62,7 @@ export default function TermsOfServiceModal({
     recommendationLimitations: false,
     dataPrivacy: false,
   });
-  
+  const [practitionerSignature, setPractitionerSignature] = useState('');
   const [practitionerCredentials, setPractitionerCredentials] = useState('');
   const [clinicName, setClinicName] = useState('');
   const [stateJurisdiction, setStateJurisdiction] = useState('');
@@ -71,6 +71,7 @@ export default function TermsOfServiceModal({
 
   const allChecked = Object.values(tosChecks).every(Boolean);
   const canSubmit = allChecked && 
+    practitionerSignature.trim() && 
     practitionerCredentials.trim() && 
     stateJurisdiction;
 
@@ -113,7 +114,7 @@ export default function TermsOfServiceModal({
         recommendationLimitations: tosChecks.recommendationLimitations,
         dataPrivacy: tosChecks.dataPrivacy,
       },
-      practitionerSignature: '',
+      practitionerSignature: practitionerSignature.trim(),
       practitionerCredentials: practitionerCredentials.trim(),
       clinicName: clinicName.trim() || undefined,
       stateJurisdiction,
@@ -130,6 +131,7 @@ export default function TermsOfServiceModal({
       recommendationLimitations: false,
       dataPrivacy: false,
     });
+    setPractitionerSignature('');
     setPractitionerCredentials('');
     setClinicName('');
     setStateJurisdiction('');
@@ -427,6 +429,18 @@ export default function TermsOfServiceModal({
                 onChangeText={setPractitionerCredentials}
                 placeholder="e.g., MD, DO, NP, RN, PA-C"
                 placeholderTextColor={Colors.textMuted}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Digital Signature *</Text>
+              <TextInput
+                style={styles.signatureInput}
+                value={practitionerSignature}
+                onChangeText={setPractitionerSignature}
+                placeholder="Type your full name as signature"
+                placeholderTextColor={Colors.textMuted}
+                autoCapitalize="words"
               />
             </View>
 

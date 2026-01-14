@@ -390,19 +390,21 @@ export default function ClinicScreen() {
           )}
         </View>
       </ScrollView>
-      <LeadDetailModal
-        visible={showLeadDetail}
-        onClose={() => {
-          setShowLeadDetail(false);
-          setSelectedLead(null);
-        }}
-        lead={selectedLead}
-      />
-      <TermsOfServiceModal
-        visible={showTosModal}
-        onClose={handleTosDecline}
-        onAccept={handleTosAccept}
-      />
+
+        <LeadDetailModal
+          visible={showLeadDetail}
+          onClose={() => {
+            setShowLeadDetail(false);
+            setSelectedLead(null);
+          }}
+          lead={selectedLead}
+        />
+
+        <TermsOfServiceModal
+          visible={showTosModal}
+          onClose={handleTosDecline}
+          onAccept={handleTosAccept}
+        />
     </View>
   );
 }

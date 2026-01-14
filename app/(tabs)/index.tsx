@@ -81,7 +81,7 @@ export default function ScanScreen() {
 
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraActive, setIsCameraActive] = useState(false);
-  const [isAnalyzing] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showIntroScan, setShowIntroScan] = useState(true);
 
   const [showLeadModal, setShowLeadModal] = useState(false);
@@ -239,11 +239,15 @@ IMPORTANT:
     }
   }, []);
 
-  const convertImageToBase64 = useCallback(async (imageUri: string): Promise<string> => {
+  const analyzeImageWithAI = useCallback(async (imageUri: string): Promise<AnalysisResult> => {
+    console.log('Starting AI clinical analysis of captured image...');
+    
+    let base64Image = '';
+    
     if (Platform.OS === 'web') {
       const response = await fetch(imageUri);
       const blob = await response.blob();
-      return await new Promise<string>((resolve) => {
+      base64Image = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => {
           const result = reader.result as string;
@@ -253,134 +257,125 @@ IMPORTANT:
       });
     } else {
       const file = new File(imageUri);
-      return await file.base64();
+      base64Image = await file.base64();
     }
-  }, []);
 
-  const analyzeImageFast = useCallback(async (base64Image: string): Promise<AnalysisResult> => {
-    console.log('Starting FAST AI analysis with timeout...');
-    
-    const fastSchema = z.object({
-      auraScore: z.number(),
-      faceType: z.string(),
-      texture: z.string(),
-      pores: z.string(),
-      pigment: z.string(),
-      redness: z.string(),
-      fitzpatrickType: z.string(),
-      treatment1: z.object({ name: z.string(), benefit: z.string(), price: z.string(), reason: z.string() }),
-      treatment2: z.object({ name: z.string(), benefit: z.string(), price: z.string(), reason: z.string() }),
-      treatment3: z.object({ name: z.string(), benefit: z.string(), price: z.string(), reason: z.string() }),
-      peptide1: z.object({ name: z.string(), goal: z.string(), mechanism: z.string(), frequency: z.string() }),
-      peptide2: z.object({ name: z.string(), goal: z.string(), mechanism: z.string(), frequency: z.string() }),
-      ivName: z.string(),
-      ivBenefit: z.string(),
-      ivIngredients: z.string(),
-      ivDuration: z.string(),
-      zone1: z.string(),
-      zone1Loss: z.number(),
-      zone1Cause: z.string(),
-      zone2: z.string(),
-      zone2Loss: z.number(),
-      zone2Cause: z.string(),
-      zone3: z.string(),
-      zone3Loss: z.number(),
-      zone3Cause: z.string(),
-      zone4: z.string(),
-      zone4Loss: z.number(),
-      zone4Cause: z.string(),
+    const analysisSchema = z.object({
+      auraScore: z.number().min(300).max(1000).describe('Overall aesthetic score based on facial harmony, skin quality, and structural balance. Higher scores indicate better baseline aesthetics.'),
+      faceType: z.string().describe('Detected face shape classification (e.g., Diamond Elite, Classic Oval, Angular Sculpted, Heart Symmetry, Square Strong, Round Soft)'),
+      skinIQ: z.object({
+        texture: z.enum(['Refined', 'Moderate', 'Needs Attention']).describe('Skin surface texture quality based on visible smoothness and evenness'),
+        pores: z.enum(['Minimal', 'Visible', 'Enlarged']).describe('Pore visibility assessment'),
+        pigment: z.enum(['Even', 'Mild Variation', 'Uneven']).describe('Skin tone evenness and pigmentation assessment'),
+        redness: z.enum(['Low', 'Moderate', 'High']).describe('Visible redness, erythema, or vascular concerns'),
+      }),
+      clinicalRoadmap: z.array(z.object({
+        name: z.string().describe('Treatment name - IMPORTANT: Select the MOST APPROPRIATE treatment for what you observe. Available options by category: SURFACE TREATMENTS (for texture, pores, dullness, mild concerns): DiamondGlow, Facials, Chemical Peels, Microdermabrasion, Dermaplaning. HYDRATION/GLOW: HydraFacial. PIGMENTATION/REDNESS: Stellar IPL, IPL, Clear + Brilliant. RESURFACING (for scars, deeper texture): MOXI Laser, ResurFX, Microneedling. WRINKLES: Botox Cosmetic, Baby Botox (subtle), Wrinkle Relaxers, Lip Flip (lip lines). VOLUME LOSS: Dermal Filler, Lip Filler, Sculptra, Radiesse, Plasma BioFiller. FAT REDUCTION: Kybella. SKIN TIGHTENING (laxity): RF Microneedling, Morpheus8 (only for significant laxity). LIFTING: PDO Thread Lift, Endolift. HEALING/REGENERATIVE: Exosome Therapy, Red Light Therapy, LED Therapy. Match treatment intensity to the severity of concerns - use gentle surface treatments for mild issues, reserve intense treatments like Morpheus8 for significant laxity.'),
+        benefit: z.string().describe('What this treatment achieves for this specific patient'),
+        price: z.string().describe('Typical price range (e.g., $450, $1,200)'),
+        clinicalReason: z.string().describe('Specific clinical indication based on what was ACTUALLY detected in THIS patients face - reference specific observed features like wrinkle depth, volume loss areas, skin laxity zones, pigmentation issues'),
+      })).min(2).max(6).describe('CRITICAL: Personalized treatment recommendations - DIVERSIFY your selections across categories. DO NOT default to Morpheus8, Botox, and HydraFacial for everyone. Match treatment intensity to concern severity: mild texture issues = DiamondGlow or Chemical Peels, pigmentation = IPL or Clear+Brilliant, moderate aging = MOXI or Microneedling, significant laxity ONLY = Morpheus8. Always include at least one surface/beauty treatment (DiamondGlow, Facials, Chemical Peels, Dermaplaning) when skin texture or pore concerns exist.'),
+      peptideTherapy: z.array(z.object({
+        name: z.string().describe('Peptide name - select from: GHK-Cu (copper peptide for skin repair/collagen), BPC-157 (tissue healing/gut health), Epithalon (telomere/anti-aging), TB-500 (recovery/wound healing), Thymosin Alpha-1 (immune modulation), AOD-9604 (fat metabolism/body composition), CJC-1295/Ipamorelin (growth hormone/recovery), PT-141 (sexual wellness), Selank (stress/cognitive), Semax (neuroprotection/focus), DSIP (sleep optimization), Melanotan II (skin pigmentation/protection), LL-37 (antimicrobial/immune), KPV (anti-inflammatory/gut), Pentosan Polysulfate (joint health)'),
+        goal: z.string().describe('Specific goal for this patient based on detected concerns'),
+        mechanism: z.string().describe('How this peptide addresses the detected issues'),
+        frequency: z.string().describe('Recommended protocol dosing'),
+      })).min(2).max(4).describe('DIVERSIFY peptide recommendations based on patient presentation. Consider: skin quality peptides (GHK-Cu), healing peptides (BPC-157, TB-500), longevity peptides (Epithalon), body composition (AOD-9604), cognitive/stress (Selank, Semax), immune (Thymosin Alpha-1, LL-37), sleep (DSIP), or growth hormone support (CJC-1295/Ipamorelin). Match peptides to observed aging patterns and lifestyle factors.'),
+      ivOptimization: z.array(z.object({
+        name: z.string().describe('IV therapy name (e.g., Glow Drip, NAD+ Infusion, Myers Cocktail, Glutathione Push, Vitamin C Drip)'),
+        benefit: z.string().describe('Specific benefit for this patients detected skin concerns'),
+        ingredients: z.string().describe('Key ingredients and dosages'),
+        duration: z.string().describe('Session duration and frequency recommendation'),
+      })).min(1).max(2).describe('IV therapy recommendations based on detected skin quality and aging concerns'),
+      volumeAssessment: z.array(z.object({
+        zone: z.enum(['Forehead', 'Temples', 'Brows', 'Upper Eyelids', 'Under Eyes', 'Cheeks', 'Midface', 'Nasolabial Folds', 'Marionette Lines', 'Lips', 'Perioral Area', 'Chin', 'Jawline', 'Jowls', 'Neck']).describe('Specific facial zone being assessed'),
+        volumeLoss: z.number().min(0).max(60).describe('Estimated percentage of volume loss or concern level in this zone - 0 if zone looks healthy'),
+        ageRelatedCause: z.string().describe('Specific cause of the concern in this zone, or "No significant concerns" if healthy'),
+        recommendation: z.string().describe('Targeted treatment for this zone, or "Maintenance only" if healthy'),
+      })).min(4).max(8).describe('Comprehensive facial zone assessment - include ALL zones you can evaluate from the image, even if they appear healthy (use 0-5% for healthy zones). Must include at least: temples, cheeks, under eyes, and jawline areas.'),
+      fitzpatrickAssessment: z.object({
+        type: z.enum(['I', 'II', 'III', 'IV', 'V', 'VI']).describe('Fitzpatrick Skin Type classification based on skin tone analysis: I=Very fair/always burns, II=Fair/usually burns, III=Medium/sometimes burns, IV=Olive/rarely burns, V=Brown/very rarely burns, VI=Dark brown to black/never burns'),
+        description: z.string().describe('Brief description of the detected skin phototype characteristics'),
+        riskLevel: z.enum(['low', 'caution', 'high']).describe('Risk level for light-based treatments: low for I-III, caution for IV, high for V-VI'),
+        detectedIndicators: z.array(z.string()).describe('Visual indicators used to determine skin type (melanin density, undertones, etc.)'),
+      }).describe('CRITICAL: Accurately assess the Fitzpatrick skin type from the image. This affects treatment safety for IPL, lasers, and other light-based therapies. Types V and VI have HIGH RISK for burns with IPL.'),
     });
 
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Analysis timeout after 25s')), 25000);
-    });
+    const maxRetries = 1;
 
-    try {
-      const analysisPromise = generateObject({
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: `Analyze this face. Return:
-- auraScore: 300-1000 based on facial harmony
-- faceType: Diamond Elite, Classic Oval, Angular Sculpted, Heart Symmetry, or Square Strong
-- texture/pores/pigment/redness: Refined/Moderate/Needs Attention, Minimal/Visible/Enlarged, Even/Mild Variation/Uneven, Low/Moderate/High
-- fitzpatrickType: I, II, III, IV, V, or VI
-- treatment1/2/3: name from (DiamondGlow, Chemical Peels, HydraFacial, IPL, MOXI, Microneedling, Botox, Dermal Filler, Morpheus8), benefit, price range, reason
-- peptide1/2: name from (GHK-Cu, BPC-157, Epithalon, TB-500, AOD-9604), goal, mechanism, frequency
-- ivName/ivBenefit/ivIngredients/ivDuration: IV therapy recommendation
-- zone1-4: facial zone name, volumeLoss 0-60, cause
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`AI analysis attempt ${attempt + 1}/${maxRetries + 1}`);
+        
+        const result = await generateObject({
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: `You are an expert aesthetic medicine AI diagnostician. Analyze this facial photograph with clinical precision.
 
-Be specific to THIS face.`
-              },
-              {
-                type: 'image',
-                image: `data:image/jpeg;base64,${base64Image}`
-              }
-            ]
-          }
-        ],
-        schema: fastSchema,
-      });
+CRITICAL INSTRUCTIONS:
+1. ACTUALLY EXAMINE the image - do not give generic recommendations
+2. Only recommend treatments for issues you ACTUALLY SEE in the image
+3. Each clinical reason must reference SPECIFIC observations from THIS face
+4. If the skin looks healthy with minimal concerns, reflect that with fewer/milder recommendations
+5. If significant aging or skin issues are visible, provide comprehensive recommendations
+6. Volume loss percentages should reflect what you ACTUALLY observe - hollow temples, sunken cheeks, deep folds
+7. Do NOT recommend treatments for areas that appear healthy
+8. CRITICAL: Accurately assess Fitzpatrick skin type - this is essential for patient safety with light-based treatments
+9. When recommending high-intensity treatments (Morpheus8, Microneedling), also suggest Red Light Therapy or LED as post-care
+10. For skin puncture procedures (Microneedling), consider Exosome Therapy as mandatory post-care
+11. For subtle wrinkle concerns, consider Baby Botox over full Botox for natural results
+12. If lip enhancement without volume is noted, consider Lip Flip option
 
-      const result = await Promise.race([analysisPromise, timeoutPromise]);
-      console.log('Fast analysis complete - parsing results');
-      
-      const fitzType = result.fitzpatrickType as 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI';
-      const fitzRisk = ['I', 'II', 'III'].includes(fitzType) ? 'low' as const :
-                       fitzType === 'IV' ? 'caution' as const : 'high' as const;
+TREATMENT SELECTION RULES - FOLLOW STRICTLY:
+- For TEXTURE/PORE concerns: Recommend DiamondGlow, Chemical Peels, Microdermabrasion, or Dermaplaning FIRST
+- For DULLNESS/HYDRATION: Recommend HydraFacial or Facials
+- For PIGMENTATION/SUN DAMAGE/REDNESS: Recommend Stellar IPL, IPL, or Clear + Brilliant
+- For FINE LINES (not deep wrinkles): Recommend MOXI Laser, Microneedling, or Chemical Peels
+- For DYNAMIC WRINKLES (forehead, crows feet, frown): Recommend Botox or Wrinkle Relaxers
+- For VOLUME LOSS: Recommend Dermal Filler, Sculptra, or Radiesse based on area
+- For SIGNIFICANT SKIN LAXITY ONLY: Recommend RF Microneedling or Morpheus8
+- DO NOT recommend Morpheus8 unless there is VISIBLE sagging or significant laxity
+- DO NOT recommend Botox unless there are VISIBLE dynamic wrinkles
+- ALWAYS include at least ONE surface treatment (DiamondGlow, Chemical Peels, Facials, Dermaplaning) for skin quality improvement
 
-      const skinIQ = {
-        texture: (result.texture === 'Refined' || result.texture === 'Needs Attention' ? result.texture : 'Moderate') as 'Refined' | 'Moderate' | 'Needs Attention',
-        pores: (result.pores === 'Minimal' || result.pores === 'Enlarged' ? result.pores : 'Visible') as 'Minimal' | 'Visible' | 'Enlarged',
-        pigment: (result.pigment === 'Even' || result.pigment === 'Uneven' ? result.pigment : 'Mild Variation') as 'Even' | 'Mild Variation' | 'Uneven',
-        redness: (result.redness === 'Low' || result.redness === 'High' ? result.redness : 'Moderate') as 'Low' | 'Moderate' | 'High',
-      };
+Analyze and provide personalized results for:
+- Overall facial harmony and structure (auraScore)
+- Face shape classification
+- Skin quality assessment (texture, pores, pigment, redness)
+- Clinical treatment roadmap with SPECIFIC reasons tied to observations
+- Peptide therapy recommendations based on detected aging patterns
+- IV optimization based on skin health indicators
+- Comprehensive volume assessment across ALL visible facial zones
 
-      const validZones = ['Forehead', 'Temples', 'Brows', 'Upper Eyelids', 'Under Eyes', 'Cheeks', 'Midface', 'Nasolabial Folds', 'Marionette Lines', 'Lips', 'Perioral Area', 'Chin', 'Jawline', 'Jowls', 'Neck'] as const;
-      type VolumeZone = typeof validZones[number];
-      const getValidZone = (zone: string): VolumeZone => {
-        const found = validZones.find(v => zone.toLowerCase().includes(v.toLowerCase()));
-        return found || 'Cheeks';
-      };
+Be honest and specific. A young person with good skin should get minimal recommendations. An older person with visible concerns should get targeted recommendations addressing those specific issues.`
+                },
+                {
+                  type: 'image',
+                  image: `data:image/jpeg;base64,${base64Image}`
+                }
+              ]
+            }
+          ],
+          schema: analysisSchema,
+        });
 
-      return {
-        auraScore: Math.max(300, Math.min(1000, result.auraScore || 700)),
-        faceType: result.faceType || 'Classic Oval',
-        skinIQ,
-        clinicalRoadmap: [
-          { name: result.treatment1.name, benefit: result.treatment1.benefit, price: result.treatment1.price, clinicalReason: result.treatment1.reason },
-          { name: result.treatment2.name, benefit: result.treatment2.benefit, price: result.treatment2.price, clinicalReason: result.treatment2.reason },
-          { name: result.treatment3.name, benefit: result.treatment3.benefit, price: result.treatment3.price, clinicalReason: result.treatment3.reason },
-        ],
-        peptideTherapy: [
-          { name: result.peptide1.name, goal: result.peptide1.goal, mechanism: result.peptide1.mechanism, frequency: result.peptide1.frequency },
-          { name: result.peptide2.name, goal: result.peptide2.goal, mechanism: result.peptide2.mechanism, frequency: result.peptide2.frequency },
-        ],
-        ivOptimization: [{ name: result.ivName, benefit: result.ivBenefit, ingredients: result.ivIngredients, duration: result.ivDuration }],
-        volumeAssessment: [
-          { zone: getValidZone(result.zone1), volumeLoss: Math.min(60, result.zone1Loss || 10), ageRelatedCause: result.zone1Cause, recommendation: 'Filler or Sculptra' },
-          { zone: getValidZone(result.zone2), volumeLoss: Math.min(60, result.zone2Loss || 10), ageRelatedCause: result.zone2Cause, recommendation: 'Filler or Sculptra' },
-          { zone: getValidZone(result.zone3), volumeLoss: Math.min(60, result.zone3Loss || 10), ageRelatedCause: result.zone3Cause, recommendation: 'Filler or Sculptra' },
-          { zone: getValidZone(result.zone4), volumeLoss: Math.min(60, result.zone4Loss || 10), ageRelatedCause: result.zone4Cause, recommendation: 'Filler or Sculptra' },
-        ],
-        fitzpatrickAssessment: {
-          type: fitzType,
-          description: `Fitzpatrick Type ${fitzType}`,
-          riskLevel: fitzRisk,
-          detectedIndicators: ['AI detected from image'],
-        },
-      };
-    } catch (error) {
-      console.log('Fast analysis failed or timed out:', error);
-      throw error;
+        console.log('AI clinical analysis completed successfully');
+        return result;
+      } catch (error) {
+        console.log(`AI analysis attempt ${attempt + 1} failed:`, error);
+        
+        if (attempt < maxRetries) {
+          console.log(`Retrying in 1 second...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
     }
-  }, []);
 
-  const getFallbackAnalysis = useCallback((): AnalysisResult => {
-    console.log('Using fallback analysis');
+    console.log('All AI analysis attempts failed, using intelligent fallback');
     
     const randomScore = Math.floor(Math.random() * 200) + 650;
     const faceTypes = ['Diamond Elite', 'Classic Oval', 'Heart Symmetry', 'Angular Sculpted', 'Square Strong'];
@@ -402,6 +397,16 @@ Be specific to THIS face.`
         { name: 'Dermaplaning', benefit: 'Remove peach fuzz and dead skin for smooth canvas', price: '$100-175', clinicalReason: 'Enhances skin smoothness and improves makeup application' },
         { name: 'Red Light Therapy', benefit: 'Stimulate cellular energy and promote healing', price: '$50-100', clinicalReason: 'Supports overall skin rejuvenation and recovery' },
       ],
+      [
+        { name: 'MOXI Laser', benefit: 'Gentle fractional laser for tone and texture improvement', price: '$500-800', clinicalReason: 'Addresses early sun damage and promotes collagen remodeling' },
+        { name: 'DiamondGlow', benefit: 'Deep exfoliation with simultaneous serum infusion', price: '$200-300', clinicalReason: 'Provides immediate glow while addressing pore concerns' },
+        { name: 'Chemical Peels', benefit: 'Professional-grade exfoliation for renewed skin', price: '$150-400', clinicalReason: 'Accelerates cell turnover for improved texture and tone' },
+      ],
+      [
+        { name: 'Microneedling', benefit: 'Stimulate natural collagen production for firmer skin', price: '$300-500', clinicalReason: 'Addresses fine lines and improves overall skin quality' },
+        { name: 'Facials', benefit: 'Customized treatment for your specific skin needs', price: '$100-200', clinicalReason: 'Professional cleansing and targeted treatment' },
+        { name: 'Exosome Therapy', benefit: 'Accelerate healing and enhance treatment results', price: '$400-800', clinicalReason: 'Boosts cellular regeneration when combined with procedures' },
+      ],
     ];
     
     const selectedTreatments = fallbackTreatmentSets[Math.floor(Math.random() * fallbackTreatmentSets.length)];
@@ -417,18 +422,20 @@ Be specific to THIS face.`
       },
       clinicalRoadmap: selectedTreatments,
       peptideTherapy: [
-        { name: 'GHK-Cu', goal: 'Enhance skin repair and collagen production', mechanism: 'Copper peptide complex that activates regenerative genes', frequency: '2x daily topical' },
-        { name: 'BPC-157', goal: 'Accelerate tissue healing', mechanism: 'Body protection compound enhancing tissue repair', frequency: '250-500mcg daily' },
-        { name: 'Epithalon', goal: 'Support cellular longevity', mechanism: 'Activates telomerase enzyme', frequency: '5-10mg daily for 10-20 days' },
+        { name: 'GHK-Cu', goal: 'Enhance skin repair and collagen production', mechanism: 'Copper peptide complex that activates regenerative genes and promotes wound healing', frequency: '2x daily topical application' },
+        { name: 'BPC-157', goal: 'Accelerate tissue healing and reduce inflammation', mechanism: 'Body protection compound that enhances angiogenesis and tissue repair', frequency: '250-500mcg daily, 4-6 week cycles' },
+        { name: 'Epithalon', goal: 'Support cellular longevity and telomere health', mechanism: 'Activates telomerase enzyme to maintain telomere length and slow cellular aging', frequency: '5-10mg daily for 10-20 days, every 6 months' },
       ],
       ivOptimization: [
         { name: 'Glow Drip', benefit: 'Brightens skin and supports detoxification', ingredients: 'Glutathione 600mg, Vitamin C 2500mg, B-Complex', duration: '45-60 minutes, weekly for 4 weeks' },
       ],
       volumeAssessment: [
-        { zone: 'Temples', volumeLoss: 12, ageRelatedCause: 'Temporal fat pad atrophy', recommendation: 'Temple filler or Sculptra' },
-        { zone: 'Cheeks', volumeLoss: 15, ageRelatedCause: 'Natural fat pad descent', recommendation: 'Sculptra or dermal filler' },
-        { zone: 'Under Eyes', volumeLoss: 10, ageRelatedCause: 'Tear trough hollowing', recommendation: 'HA filler or PRP' },
-        { zone: 'Jawline', volumeLoss: 5, ageRelatedCause: 'Early bone resorption', recommendation: 'Jawline contouring' },
+        { zone: 'Temples', volumeLoss: 12, ageRelatedCause: 'Temporal fat pad atrophy', recommendation: 'Temple filler or Sculptra for structural support' },
+        { zone: 'Cheeks', volumeLoss: 15, ageRelatedCause: 'Natural fat pad descent with aging', recommendation: 'Sculptra or dermal filler for subtle volume restoration' },
+        { zone: 'Under Eyes', volumeLoss: 10, ageRelatedCause: 'Tear trough hollowing from collagen loss', recommendation: 'HA filler or PRP under-eye treatment' },
+        { zone: 'Nasolabial Folds', volumeLoss: 8, ageRelatedCause: 'Midface volume loss creating fold depth', recommendation: 'Cheek volumization to lift folds naturally' },
+        { zone: 'Jawline', volumeLoss: 5, ageRelatedCause: 'Early bone resorption and soft tissue laxity', recommendation: 'Jawline contouring with filler or Sculptra' },
+        { zone: 'Lips', volumeLoss: 7, ageRelatedCause: 'Collagen depletion and vermillion border thinning', recommendation: 'Lip filler for hydration and subtle enhancement' },
       ],
       fitzpatrickAssessment: {
         type: 'III',
@@ -438,19 +445,6 @@ Be specific to THIS face.`
       },
     };
   }, []);
-
-  const analyzeImageWithAI = useCallback(async (imageUri: string): Promise<AnalysisResult> => {
-    console.log('Starting AI clinical analysis...');
-    
-    const base64Image = await convertImageToBase64(imageUri);
-
-    try {
-      return await analyzeImageFast(base64Image);
-    } catch (error) {
-      console.log('Analysis failed, using fallback:', error);
-      return getFallbackAnalysis();
-    }
-  }, [convertImageToBase64, analyzeImageFast, getFallbackAnalysis]);
 
   const applyContraindicationChecks = useCallback((analysis: AnalysisResult): AnalysisResult => {
     const baseConditions = patientHealthProfile?.conditions || [];
@@ -531,43 +525,6 @@ Be specific to THIS face.`
     console.log('Patient consent saved:', consent.optedOutOfAI ? 'Opted out of AI' : 'Consented to AI');
   }, [savePatientConsent]);
 
-  const [isRunningAnalysis, setIsRunningAnalysis] = useState(false);
-  const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
-
-  const getInstantPlaceholderAnalysis = useCallback((): AnalysisResult => {
-    return {
-      auraScore: 0,
-      faceType: 'Analyzing...',
-      skinIQ: {
-        texture: 'Moderate',
-        pores: 'Visible',
-        pigment: 'Mild Variation',
-        redness: 'Low',
-      },
-      clinicalRoadmap: [
-        { name: 'Loading...', benefit: 'Analyzing your skin profile...', price: '---', clinicalReason: 'Please wait...' },
-        { name: 'Loading...', benefit: 'Analyzing your skin profile...', price: '---', clinicalReason: 'Please wait...' },
-      ],
-      peptideTherapy: [
-        { name: 'Loading...', goal: 'Analyzing...', mechanism: 'Please wait...', frequency: '---' },
-        { name: 'Loading...', goal: 'Analyzing...', mechanism: 'Please wait...', frequency: '---' },
-      ],
-      ivOptimization: [
-        { name: 'Loading...', benefit: 'Analyzing...', ingredients: '---', duration: '---' },
-      ],
-      volumeAssessment: [
-        { zone: 'Cheeks', volumeLoss: 0, ageRelatedCause: 'Analyzing...', recommendation: 'Please wait...' },
-        { zone: 'Temples', volumeLoss: 0, ageRelatedCause: 'Analyzing...', recommendation: 'Please wait...' },
-      ],
-      fitzpatrickAssessment: {
-        type: 'III',
-        description: 'Analyzing skin type...',
-        riskLevel: 'low',
-        detectedIndicators: ['Analyzing...'],
-      },
-    };
-  }, []);
-
   const runAnalysis = async () => {
     if (!capturedImage) return;
 
@@ -581,44 +538,26 @@ Be specific to THIS face.`
       return;
     }
 
-    console.log('Starting analysis - running AI analysis first');
-    
-    setIsAnalysisLoading(true);
-    setIsRunningAnalysis(true);
-    
-    // Show placeholder while loading
-    const placeholderAnalysis = getInstantPlaceholderAnalysis();
-    setCurrentAnalysis(placeholderAnalysis);
+    setIsAnalyzing(true);
 
-    // Run AI analysis FIRST before showing lead modal
     try {
-      console.log('Running AI analysis...');
       const aiAnalysisResult = await analyzeImageWithAI(capturedImage);
+      
       const safetyCheckedAnalysis = applyContraindicationChecks(aiAnalysisResult);
-      
-      console.log('AI analysis complete - clinical roadmap loaded:', safetyCheckedAnalysis.clinicalRoadmap.length, 'treatments');
-      
-      // Set the real analysis result
       setCurrentAnalysis(safetyCheckedAnalysis);
-      setIsAnalysisLoading(false);
-      
-      // NOW show lead modal after analysis is complete
-      setShowLeadModal(true);
-      
-      if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
+      console.log('AI analysis with safety checks:', JSON.stringify(safetyCheckedAnalysis, null, 2));
     } catch (error) {
-      console.log('AI analysis error, using fallback:', error);
-      const fallbackAnalysis = applyContraindicationChecks(getFallbackAnalysis());
-      setCurrentAnalysis(fallbackAnalysis);
-      setIsAnalysisLoading(false);
-      
-      // Show lead modal with fallback data
-      setShowLeadModal(true);
+      console.log('Analysis error:', error);
+      Alert.alert('Analysis Error', 'Unable to complete facial analysis. Please try again.');
     } finally {
-      setIsRunningAnalysis(false);
+      setIsAnalyzing(false);
     }
+    
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    
+    setTimeout(() => setShowLeadModal(true), 1000);
   };
 
   const handleSaveLead = async (name: string, phone: string) => {
@@ -856,14 +795,11 @@ Be specific to THIS face.`
               <TouchableOpacity
                 style={styles.generateButton}
                 onPress={runAnalysis}
-                disabled={isRunningAnalysis}
+                disabled={isAnalyzing}
                 activeOpacity={0.8}
               >
-                {isRunningAnalysis ? (
-                  <>
-                    <ActivityIndicator color={Colors.black} size="small" />
-                    <Text style={styles.generateButtonText}>ANALYZING...</Text>
-                  </>
+                {isAnalyzing ? (
+                  <ActivityIndicator color={Colors.black} />
                 ) : (
                   <>
                     <Play size={16} color={Colors.black} />
@@ -899,7 +835,6 @@ Be specific to THIS face.`
           onClose={() => setShowLeadModal(false)}
           onSubmit={handleSaveLead}
           isSuccess={isLeadSaved}
-          initialName={patientConsent?.patientName || ''}
         />
 
         <HealthQuestionnaire
@@ -959,16 +894,9 @@ Be specific to THIS face.`
         )}
 
         <View style={styles.scoreCard}>
-          {isAnalysisLoading ? (
-            <View style={styles.scoreLoadingContainer}>
-              <ActivityIndicator size="large" color={Colors.gold} />
-              <Text style={styles.scoreLoadingText}>CALCULATING AURA</Text>
-            </View>
-          ) : (
-            <AuraScoreGauge score={currentAnalysis.auraScore} size={160} />
-          )}
+          <AuraScoreGauge score={currentAnalysis.auraScore} size={160} />
           <View style={styles.scoreInfo}>
-            <Text style={styles.faceType}>{isAnalysisLoading ? 'Analyzing Your Profile...' : currentAnalysis.faceType}</Text>
+            <Text style={styles.faceType}>{currentAnalysis.faceType}</Text>
             <Text style={styles.scoreDescription}>
               Structural biometrics identified. We have curated a holistic protocol to optimize your Aura Index.
             </Text>
@@ -988,11 +916,6 @@ Be specific to THIS face.`
           <View style={styles.sectionHeader}>
             <Syringe size={16} color={Colors.gold} />
             <Text style={styles.sectionTitle}>CLINICAL ROADMAP</Text>
-            {isAnalysisLoading && (
-              <View style={styles.sectionLoadingBadge}>
-                <ActivityIndicator size="small" color={Colors.gold} />
-              </View>
-            )}
           </View>
           <View style={styles.proceduresGrid}>
             {currentAnalysis.clinicalRoadmap.map((proc, index) => (
@@ -1020,11 +943,6 @@ Be specific to THIS face.`
           <View style={styles.sectionHeader}>
             <FlaskConical size={16} color={Colors.gold} />
             <Text style={styles.sectionTitle}>PEPTIDE THERAPY</Text>
-            {isAnalysisLoading && (
-              <View style={styles.sectionLoadingBadge}>
-                <ActivityIndicator size="small" color={Colors.gold} />
-              </View>
-            )}
           </View>
           <View style={styles.therapyGrid}>
             {currentAnalysis.peptideTherapy.map((peptide, index) => (
@@ -1052,11 +970,6 @@ Be specific to THIS face.`
           <View style={styles.sectionHeader}>
             <Beaker size={16} color={Colors.gold} />
             <Text style={styles.sectionTitle}>IV OPTIMIZATION</Text>
-            {isAnalysisLoading && (
-              <View style={styles.sectionLoadingBadge}>
-                <ActivityIndicator size="small" color={Colors.gold} />
-              </View>
-            )}
           </View>
           <View style={styles.therapyGrid}>
             {currentAnalysis.ivOptimization.map((iv, index) => (
@@ -1084,11 +997,6 @@ Be specific to THIS face.`
           <View style={styles.sectionHeader}>
             <Droplets size={16} color={Colors.gold} />
             <Text style={styles.sectionTitle}>VOLUME ASSESSMENT</Text>
-            {isAnalysisLoading && (
-              <View style={styles.sectionLoadingBadge}>
-                <ActivityIndicator size="small" color={Colors.gold} />
-              </View>
-            )}
           </View>
           <View style={styles.fillerGrid}>
             {currentAnalysis.volumeAssessment.map((zone, index) => (
@@ -1803,26 +1711,6 @@ const styles = StyleSheet.create({
     fontWeight: '800' as const,
     color: Colors.gold,
     letterSpacing: 1,
-  },
-  scoreLoadingContainer: {
-    width: 160,
-    height: 160,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderRadius: 80,
-    borderWidth: 2,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
-  },
-  scoreLoadingText: {
-    fontSize: 10,
-    fontWeight: '800' as const,
-    color: Colors.gold,
-    letterSpacing: 1,
-    marginTop: 12,
-  },
-  sectionLoadingBadge: {
-    marginLeft: 'auto',
   },
   fillerGrid: {
     gap: 12,
