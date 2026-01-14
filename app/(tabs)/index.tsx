@@ -288,11 +288,11 @@ IMPORTANT:
         duration: z.string().describe('Session duration and frequency recommendation'),
       })).min(1).max(2).describe('IV therapy recommendations based on detected skin quality and aging concerns'),
       volumeAssessment: z.array(z.object({
-        zone: z.string().describe('Facial zone (Temples, Cheeks, Nasolabial Folds, Jawline, Under Eyes, Lips, Chin)'),
-        volumeLoss: z.number().min(0).max(60).describe('Estimated percentage of volume loss detected in this zone - base on visible hollowing, shadowing, and contour changes'),
-        ageRelatedCause: z.string().describe('Specific cause of volume loss in this zone'),
-        recommendation: z.string().describe('Targeted treatment for this zone'),
-      })).min(2).max(5).describe('Volume assessment ONLY for zones where actual volume loss is detected - do not include zones that appear full'),
+        zone: z.enum(['Forehead', 'Temples', 'Brows', 'Upper Eyelids', 'Under Eyes', 'Cheeks', 'Midface', 'Nasolabial Folds', 'Marionette Lines', 'Lips', 'Perioral Area', 'Chin', 'Jawline', 'Jowls', 'Neck']).describe('Specific facial zone being assessed'),
+        volumeLoss: z.number().min(0).max(60).describe('Estimated percentage of volume loss or concern level in this zone - 0 if zone looks healthy'),
+        ageRelatedCause: z.string().describe('Specific cause of the concern in this zone, or "No significant concerns" if healthy'),
+        recommendation: z.string().describe('Targeted treatment for this zone, or "Maintenance only" if healthy'),
+      })).min(4).max(8).describe('Comprehensive facial zone assessment - include ALL zones you can evaluate from the image, even if they appear healthy (use 0-5% for healthy zones). Must include at least: temples, cheeks, under eyes, and jawline areas.'),
       fitzpatrickAssessment: z.object({
         type: z.enum(['I', 'II', 'III', 'IV', 'V', 'VI']).describe('Fitzpatrick Skin Type classification based on skin tone analysis: I=Very fair/always burns, II=Fair/usually burns, III=Medium/sometimes burns, IV=Olive/rarely burns, V=Brown/very rarely burns, VI=Dark brown to black/never burns'),
         description: z.string().describe('Brief description of the detected skin phototype characteristics'),
@@ -349,7 +349,7 @@ Analyze and provide personalized results for:
 - Clinical treatment roadmap with SPECIFIC reasons tied to observations
 - Peptide therapy recommendations based on detected aging patterns
 - IV optimization based on skin health indicators
-- Volume assessment ONLY for zones showing actual loss
+- Comprehensive volume assessment across ALL visible facial zones
 
 Be honest and specific. A young person with good skin should get minimal recommendations. An older person with visible concerns should get targeted recommendations addressing those specific issues.`
                 },
@@ -429,8 +429,12 @@ Be honest and specific. A young person with good skin should get minimal recomme
         { name: 'Glow Drip', benefit: 'Brightens skin and supports detoxification', ingredients: 'Glutathione 600mg, Vitamin C 2500mg, B-Complex', duration: '45-60 minutes, weekly for 4 weeks' },
       ],
       volumeAssessment: [
+        { zone: 'Temples', volumeLoss: 12, ageRelatedCause: 'Temporal fat pad atrophy', recommendation: 'Temple filler or Sculptra for structural support' },
         { zone: 'Cheeks', volumeLoss: 15, ageRelatedCause: 'Natural fat pad descent with aging', recommendation: 'Sculptra or dermal filler for subtle volume restoration' },
         { zone: 'Under Eyes', volumeLoss: 10, ageRelatedCause: 'Tear trough hollowing from collagen loss', recommendation: 'HA filler or PRP under-eye treatment' },
+        { zone: 'Nasolabial Folds', volumeLoss: 8, ageRelatedCause: 'Midface volume loss creating fold depth', recommendation: 'Cheek volumization to lift folds naturally' },
+        { zone: 'Jawline', volumeLoss: 5, ageRelatedCause: 'Early bone resorption and soft tissue laxity', recommendation: 'Jawline contouring with filler or Sculptra' },
+        { zone: 'Lips', volumeLoss: 7, ageRelatedCause: 'Collagen depletion and vermillion border thinning', recommendation: 'Lip filler for hydration and subtle enhancement' },
       ],
       fitzpatrickAssessment: {
         type: 'III',
