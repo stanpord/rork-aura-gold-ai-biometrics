@@ -554,24 +554,29 @@ Be specific to THIS face. Don't give generic results.`
       return;
     }
 
-    console.log('Starting analysis - showing placeholder results immediately');
+    console.log('Starting analysis - running AI analysis first');
     
-    // IMMEDIATELY show placeholder results so user sees the results screen
-    const placeholderAnalysis = getInstantPlaceholderAnalysis();
-    setCurrentAnalysis(placeholderAnalysis);
     setIsAnalysisLoading(true);
     setIsRunningAnalysis(true);
     
-    // Show lead modal immediately so user can enter info while analysis runs
-    setTimeout(() => setShowLeadModal(true), 300);
+    // Show placeholder while loading
+    const placeholderAnalysis = getInstantPlaceholderAnalysis();
+    setCurrentAnalysis(placeholderAnalysis);
 
-    // Run AI analysis in background
+    // Run AI analysis FIRST before showing lead modal
     try {
+      console.log('Running AI analysis...');
       const aiAnalysisResult = await analyzeImageWithAI(capturedImage);
       const safetyCheckedAnalysis = applyContraindicationChecks(aiAnalysisResult);
+      
+      console.log('AI analysis complete - clinical roadmap loaded:', safetyCheckedAnalysis.clinicalRoadmap.length, 'treatments');
+      
+      // Set the real analysis result
       setCurrentAnalysis(safetyCheckedAnalysis);
       setIsAnalysisLoading(false);
-      console.log('AI analysis complete - updated with real results');
+      
+      // NOW show lead modal after analysis is complete
+      setShowLeadModal(true);
       
       if (Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -581,6 +586,9 @@ Be specific to THIS face. Don't give generic results.`
       const fallbackAnalysis = applyContraindicationChecks(getFallbackAnalysis());
       setCurrentAnalysis(fallbackAnalysis);
       setIsAnalysisLoading(false);
+      
+      // Show lead modal with fallback data
+      setShowLeadModal(true);
     } finally {
       setIsRunningAnalysis(false);
     }
