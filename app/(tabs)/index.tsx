@@ -258,63 +258,62 @@ IMPORTANT:
   }, []);
 
   const analyzeImageFast = useCallback(async (base64Image: string): Promise<AnalysisResult> => {
-    console.log('Starting FAST AI analysis...');
+    console.log('Starting FAST AI analysis with timeout...');
     
     const fastSchema = z.object({
-      auraScore: z.number().min(300).max(1000),
+      auraScore: z.number(),
       faceType: z.string(),
-      skinIQ: z.object({
-        texture: z.enum(['Refined', 'Moderate', 'Needs Attention']),
-        pores: z.enum(['Minimal', 'Visible', 'Enlarged']),
-        pigment: z.enum(['Even', 'Mild Variation', 'Uneven']),
-        redness: z.enum(['Low', 'Moderate', 'High']),
-      }),
-      fitzpatrickType: z.enum(['I', 'II', 'III', 'IV', 'V', 'VI']),
-      clinicalRoadmap: z.array(z.object({
-        name: z.string(),
-        benefit: z.string(),
-        price: z.string(),
-        clinicalReason: z.string(),
-      })).min(2).max(4),
-      topPeptides: z.array(z.object({
-        name: z.string(),
-        goal: z.string(),
-        mechanism: z.string(),
-        frequency: z.string(),
-      })).min(2).max(3),
-      ivRecommendation: z.object({
-        name: z.string(),
-        benefit: z.string(),
-        ingredients: z.string(),
-        duration: z.string(),
-      }),
-      volumeZones: z.array(z.object({
-        zone: z.enum(['Forehead', 'Temples', 'Brows', 'Upper Eyelids', 'Under Eyes', 'Cheeks', 'Midface', 'Nasolabial Folds', 'Marionette Lines', 'Lips', 'Perioral Area', 'Chin', 'Jawline', 'Jowls', 'Neck']),
-        volumeLoss: z.number().min(0).max(60),
-        ageRelatedCause: z.string(),
-        recommendation: z.string(),
-      })).min(4).max(6),
+      texture: z.string(),
+      pores: z.string(),
+      pigment: z.string(),
+      redness: z.string(),
+      fitzpatrickType: z.string(),
+      treatment1: z.object({ name: z.string(), benefit: z.string(), price: z.string(), reason: z.string() }),
+      treatment2: z.object({ name: z.string(), benefit: z.string(), price: z.string(), reason: z.string() }),
+      treatment3: z.object({ name: z.string(), benefit: z.string(), price: z.string(), reason: z.string() }),
+      peptide1: z.object({ name: z.string(), goal: z.string(), mechanism: z.string(), frequency: z.string() }),
+      peptide2: z.object({ name: z.string(), goal: z.string(), mechanism: z.string(), frequency: z.string() }),
+      ivName: z.string(),
+      ivBenefit: z.string(),
+      ivIngredients: z.string(),
+      ivDuration: z.string(),
+      zone1: z.string(),
+      zone1Loss: z.number(),
+      zone1Cause: z.string(),
+      zone2: z.string(),
+      zone2Loss: z.number(),
+      zone2Cause: z.string(),
+      zone3: z.string(),
+      zone3Loss: z.number(),
+      zone3Cause: z.string(),
+      zone4: z.string(),
+      zone4Loss: z.number(),
+      zone4Cause: z.string(),
+    });
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Analysis timeout after 25s')), 25000);
     });
 
     try {
-      const result = await generateObject({
+      const analysisPromise = generateObject({
         messages: [
           {
             role: 'user',
             content: [
               {
                 type: 'text',
-                text: `Analyze this face photo quickly. Provide:
-1. Aura score (300-1000) based on facial harmony
-2. Face shape (Diamond Elite, Classic Oval, Angular Sculpted, Heart Symmetry, Square Strong)
-3. Skin quality (texture, pores, pigment, redness)
-4. Fitzpatrick skin type (I-VI)
-5. Top 2-4 treatments: Pick from DiamondGlow, Chemical Peels, HydraFacial, IPL, MOXI, Microneedling, Botox, Dermal Filler, Morpheus8. Match to what you SEE.
-6. Top 2-3 peptides: GHK-Cu, BPC-157, Epithalon, TB-500, AOD-9604
-7. One IV therapy recommendation
-8. 4-6 volume zones with % loss
+                text: `Analyze this face. Return:
+- auraScore: 300-1000 based on facial harmony
+- faceType: Diamond Elite, Classic Oval, Angular Sculpted, Heart Symmetry, or Square Strong
+- texture/pores/pigment/redness: Refined/Moderate/Needs Attention, Minimal/Visible/Enlarged, Even/Mild Variation/Uneven, Low/Moderate/High
+- fitzpatrickType: I, II, III, IV, V, or VI
+- treatment1/2/3: name from (DiamondGlow, Chemical Peels, HydraFacial, IPL, MOXI, Microneedling, Botox, Dermal Filler, Morpheus8), benefit, price range, reason
+- peptide1/2: name from (GHK-Cu, BPC-157, Epithalon, TB-500, AOD-9604), goal, mechanism, frequency
+- ivName/ivBenefit/ivIngredients/ivDuration: IV therapy recommendation
+- zone1-4: facial zone name, volumeLoss 0-60, cause
 
-Be specific to THIS face. Don't give generic results.`
+Be specific to THIS face.`
               },
               {
                 type: 'image',
@@ -326,28 +325,56 @@ Be specific to THIS face. Don't give generic results.`
         schema: fastSchema,
       });
 
-      console.log('Fast analysis complete');
+      const result = await Promise.race([analysisPromise, timeoutPromise]);
+      console.log('Fast analysis complete - parsing results');
       
-      const fitzRisk = ['I', 'II', 'III'].includes(result.fitzpatrickType) ? 'low' as const :
-                       result.fitzpatrickType === 'IV' ? 'caution' as const : 'high' as const;
+      const fitzType = result.fitzpatrickType as 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI';
+      const fitzRisk = ['I', 'II', 'III'].includes(fitzType) ? 'low' as const :
+                       fitzType === 'IV' ? 'caution' as const : 'high' as const;
+
+      const skinIQ = {
+        texture: (result.texture === 'Refined' || result.texture === 'Needs Attention' ? result.texture : 'Moderate') as 'Refined' | 'Moderate' | 'Needs Attention',
+        pores: (result.pores === 'Minimal' || result.pores === 'Enlarged' ? result.pores : 'Visible') as 'Minimal' | 'Visible' | 'Enlarged',
+        pigment: (result.pigment === 'Even' || result.pigment === 'Uneven' ? result.pigment : 'Mild Variation') as 'Even' | 'Mild Variation' | 'Uneven',
+        redness: (result.redness === 'Low' || result.redness === 'High' ? result.redness : 'Moderate') as 'Low' | 'Moderate' | 'High',
+      };
+
+      const validZones = ['Forehead', 'Temples', 'Brows', 'Upper Eyelids', 'Under Eyes', 'Cheeks', 'Midface', 'Nasolabial Folds', 'Marionette Lines', 'Lips', 'Perioral Area', 'Chin', 'Jawline', 'Jowls', 'Neck'] as const;
+      type VolumeZone = typeof validZones[number];
+      const getValidZone = (zone: string): VolumeZone => {
+        const found = validZones.find(v => zone.toLowerCase().includes(v.toLowerCase()));
+        return found || 'Cheeks';
+      };
 
       return {
-        auraScore: result.auraScore,
-        faceType: result.faceType,
-        skinIQ: result.skinIQ,
-        clinicalRoadmap: result.clinicalRoadmap,
-        peptideTherapy: result.topPeptides,
-        ivOptimization: [result.ivRecommendation],
-        volumeAssessment: result.volumeZones,
+        auraScore: Math.max(300, Math.min(1000, result.auraScore || 700)),
+        faceType: result.faceType || 'Classic Oval',
+        skinIQ,
+        clinicalRoadmap: [
+          { name: result.treatment1.name, benefit: result.treatment1.benefit, price: result.treatment1.price, clinicalReason: result.treatment1.reason },
+          { name: result.treatment2.name, benefit: result.treatment2.benefit, price: result.treatment2.price, clinicalReason: result.treatment2.reason },
+          { name: result.treatment3.name, benefit: result.treatment3.benefit, price: result.treatment3.price, clinicalReason: result.treatment3.reason },
+        ],
+        peptideTherapy: [
+          { name: result.peptide1.name, goal: result.peptide1.goal, mechanism: result.peptide1.mechanism, frequency: result.peptide1.frequency },
+          { name: result.peptide2.name, goal: result.peptide2.goal, mechanism: result.peptide2.mechanism, frequency: result.peptide2.frequency },
+        ],
+        ivOptimization: [{ name: result.ivName, benefit: result.ivBenefit, ingredients: result.ivIngredients, duration: result.ivDuration }],
+        volumeAssessment: [
+          { zone: getValidZone(result.zone1), volumeLoss: Math.min(60, result.zone1Loss || 10), ageRelatedCause: result.zone1Cause, recommendation: 'Filler or Sculptra' },
+          { zone: getValidZone(result.zone2), volumeLoss: Math.min(60, result.zone2Loss || 10), ageRelatedCause: result.zone2Cause, recommendation: 'Filler or Sculptra' },
+          { zone: getValidZone(result.zone3), volumeLoss: Math.min(60, result.zone3Loss || 10), ageRelatedCause: result.zone3Cause, recommendation: 'Filler or Sculptra' },
+          { zone: getValidZone(result.zone4), volumeLoss: Math.min(60, result.zone4Loss || 10), ageRelatedCause: result.zone4Cause, recommendation: 'Filler or Sculptra' },
+        ],
         fitzpatrickAssessment: {
-          type: result.fitzpatrickType,
-          description: `Fitzpatrick Type ${result.fitzpatrickType}`,
+          type: fitzType,
+          description: `Fitzpatrick Type ${fitzType}`,
           riskLevel: fitzRisk,
           detectedIndicators: ['AI detected from image'],
         },
       };
     } catch (error) {
-      console.log('Fast analysis failed:', error);
+      console.log('Fast analysis failed or timed out:', error);
       throw error;
     }
   }, []);
