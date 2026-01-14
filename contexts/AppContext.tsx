@@ -404,6 +404,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
     return acc + lead.selectedTreatments.filter(t => t.complianceSignOff?.acknowledged).length;
   }, 0);
 
+  const treatmentsSelected = leads.reduce((acc, lead) => {
+    if (!lead.selectedTreatments) return acc;
+    return acc + lead.selectedTreatments.length;
+  }, 0);
+
   const stats = isStaffAuthenticated ? {
     pipeline: leads.reduce((acc, lead) => acc + (lead.estimatedValue || 0), 0),
     scans: leads.length,
@@ -411,11 +416,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
       ? Math.round((leads.filter(l => l.status === 'contacted').length / leads.length) * 100)
       : 0,
     treatmentsSignedOff,
+    treatmentsSelected,
   } : {
     pipeline: 0,
     scans: 0,
     conversion: 0,
     treatmentsSignedOff: 0,
+    treatmentsSelected: 0,
   };
 
   const protectedLeads = isStaffAuthenticated ? leads : [];

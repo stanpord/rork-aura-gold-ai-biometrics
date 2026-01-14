@@ -300,7 +300,7 @@ export default function ClinicScreen() {
             <View style={styles.statCardSmall}>
               <ClipboardCheck size={16} color={Colors.success} />
               <Text style={styles.statLabelSmall}>TX SELECTED</Text>
-              <Text style={styles.statValueSmall}>{stats.treatmentsSignedOff}</Text>
+              <Text style={styles.statValueSmall}>{stats.treatmentsSelected}</Text>
             </View>
           </View>
         </View>
