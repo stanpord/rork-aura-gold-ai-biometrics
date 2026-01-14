@@ -857,13 +857,36 @@ Be honest and specific. A young person with good skin should get minimal recomme
           <View style={styles.sliderHeader}>
             <Wand2 size={14} color={Colors.gold} />
             <Text style={styles.sliderTitle}>TREATMENT COMPARISON</Text>
+            {!simulatedImage && (
+              <View style={styles.simulationLoadingBadge}>
+                <ActivityIndicator size="small" color={Colors.gold} />
+                <Text style={styles.simulationLoadingText}>Generating preview...</Text>
+              </View>
+            )}
           </View>
-          <BeforeAfterSlider
-            beforeImage={capturedImage}
-            afterImage={simulatedImage || capturedImage}
-            height={isTablet ? 500 : 420}
-            maxWidth={MAX_SLIDER_WIDTH}
-          />
+          {simulatedImage ? (
+            <BeforeAfterSlider
+              beforeImage={capturedImage}
+              afterImage={simulatedImage}
+              height={isTablet ? 500 : 420}
+              maxWidth={MAX_SLIDER_WIDTH}
+            />
+          ) : (
+            <View style={[styles.sliderPlaceholder, { height: isTablet ? 500 : 420, maxWidth: MAX_SLIDER_WIDTH }]}>
+              <Image
+                source={{ uri: capturedImage }}
+                style={styles.placeholderImage}
+                contentFit="cover"
+              />
+              <View style={styles.placeholderOverlay}>
+                <View style={styles.placeholderContent}>
+                  <ActivityIndicator size="large" color={Colors.gold} />
+                  <Text style={styles.placeholderText}>AI SIMULATION IN PROGRESS</Text>
+                  <Text style={styles.placeholderSubtext}>Generating your treatment preview...</Text>
+                </View>
+              </View>
+            </View>
+          )}
         </View>
 
         {currentAnalysis.fitzpatrickAssessment && (currentAnalysis.fitzpatrickAssessment.riskLevel === 'high' || currentAnalysis.fitzpatrickAssessment.riskLevel === 'caution') && (
@@ -1353,6 +1376,54 @@ const styles = StyleSheet.create({
     fontWeight: '900' as const,
     color: Colors.gold,
     letterSpacing: 3,
+  },
+  simulationLoadingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 'auto',
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  simulationLoadingText: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    color: Colors.gold,
+    letterSpacing: 0.5,
+  },
+  sliderPlaceholder: {
+    width: '100%',
+    borderRadius: 28,
+    overflow: 'hidden',
+    backgroundColor: Colors.surface,
+    alignSelf: 'center',
+  },
+  placeholderImage: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.4,
+  },
+  placeholderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  placeholderContent: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  placeholderText: {
+    fontSize: 12,
+    fontWeight: '900' as const,
+    color: Colors.gold,
+    letterSpacing: 2,
+    marginTop: 8,
+  },
+  placeholderSubtext: {
+    fontSize: 11,
+    color: Colors.textMuted,
   },
   scoreCard: {
     backgroundColor: Colors.surfaceLight,
