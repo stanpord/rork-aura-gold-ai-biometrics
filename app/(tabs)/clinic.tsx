@@ -41,7 +41,7 @@ interface ZenotiConfig {
 }
 
 export default function ClinicScreen() {
-  const { leads, stats, logoutStaff, isStaffAuthenticated, authenticateStaff, tosAcknowledgment, saveTosAcknowledgment, deleteLead } = useApp();
+  const { leads, stats, logoutStaff, isStaffAuthenticated, authenticateStaff, tosAcknowledgment, saveTosAcknowledgment, deleteLead, clinicSettings, updateTreatmentConfig } = useApp();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showCrmSetup, setShowCrmSetup] = useState(false);
   const [zenotiConfig, setZenotiConfig] = useState<ZenotiConfig>({
@@ -57,6 +57,9 @@ export default function ClinicScreen() {
   const [showTosModal, setShowTosModal] = useState(false);
   const [pendingAuth, setPendingAuth] = useState(false);
   const [showPrintSummary, setShowPrintSummary] = useState(false);
+  const [showTreatmentSetup, setShowTreatmentSetup] = useState(false);
+  const [editingTreatment, setEditingTreatment] = useState<string | null>(null);
+  const [editingPrice, setEditingPrice] = useState('');
 
   const handleLogin = (passcode: string): boolean => {
     const success = authenticateStaff(passcode);
@@ -157,6 +160,34 @@ export default function ClinicScreen() {
 
   const signedOffTreatments = getAllSignedOffTreatments();
   const recommendedTreatments = getAllRecommendedTreatments();
+
+  const handleToggleTreatment = (treatmentName: string, enabled: boolean) => {
+    updateTreatmentConfig(treatmentName, { enabled });
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const handlePriceEdit = (treatmentName: string) => {
+    const config = clinicSettings?.treatmentConfigs.find(c => c.treatmentName === treatmentName);
+    setEditingTreatment(treatmentName);
+    setEditingPrice(config?.customPrice || '');
+  };
+
+  const handlePriceSave = () => {
+    if (editingTreatment && editingPrice) {
+      updateTreatmentConfig(editingTreatment, { customPrice: editingPrice });
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    }
+    setEditingTreatment(null);
+    setEditingPrice('');
+  };
+
+  const procedureConfigs = clinicSettings?.treatmentConfigs.filter(c => c.category === 'procedure') || [];
+  const peptideConfigs = clinicSettings?.treatmentConfigs.filter(c => c.category === 'peptide') || [];
+  const ivConfigs = clinicSettings?.treatmentConfigs.filter(c => c.category === 'iv') || [];
 
   const syncAllLeads = async () => {
     if (!isConnected) {
@@ -294,6 +325,217 @@ export default function ClinicScreen() {
             </Text>
           </View>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.crmToggle}
+          onPress={() => setShowTreatmentSetup(!showTreatmentSetup)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.crmToggleLeft}>
+            <DollarSign size={18} color={Colors.gold} />
+            <Text style={styles.crmToggleText}>Treatment Setup</Text>
+          </View>
+          <View style={styles.crmStatusBadge}>
+            <Text style={styles.crmStatusText}>
+              {clinicSettings?.treatmentConfigs.filter(c => c.enabled).length || 0} ACTIVE
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        {showTreatmentSetup && (
+          <View style={styles.treatmentSetupContainer}>
+            <Text style={styles.treatmentSetupTitle}>Configure Treatments & Pricing</Text>
+            <Text style={styles.treatmentSetupSubtitle}>
+              Toggle treatments your clinic offers and set custom pricing
+            </Text>
+
+            <View style={styles.treatmentCategorySection}>
+              <Text style={styles.treatmentCategoryTitle}>PROCEDURES</Text>
+              {procedureConfigs.map((config) => (
+                <View key={config.treatmentName} style={styles.treatmentConfigRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.treatmentToggle,
+                      config.enabled && styles.treatmentToggleActive,
+                    ]}
+                    onPress={() => handleToggleTreatment(config.treatmentName, !config.enabled)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[
+                      styles.toggleTrack,
+                      config.enabled && styles.toggleTrackActive,
+                    ]}>
+                      <View style={[
+                        styles.toggleThumb,
+                        config.enabled && styles.toggleThumbActive,
+                      ]} />
+                    </View>
+                  </TouchableOpacity>
+                  <View style={styles.treatmentConfigInfo}>
+                    <Text style={[
+                      styles.treatmentConfigName,
+                      !config.enabled && styles.treatmentConfigNameDisabled,
+                    ]}>
+                      {config.treatmentName}
+                    </Text>
+                  </View>
+                  {editingTreatment === config.treatmentName ? (
+                    <View style={styles.priceEditContainer}>
+                      <TextInput
+                        style={styles.priceInput}
+                        value={editingPrice}
+                        onChangeText={setEditingPrice}
+                        placeholder="$0"
+                        placeholderTextColor={Colors.textMuted}
+                        autoFocus
+                        onBlur={handlePriceSave}
+                        onSubmitEditing={handlePriceSave}
+                      />
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.priceButton}
+                      onPress={() => handlePriceEdit(config.treatmentName)}
+                      activeOpacity={0.7}
+                      disabled={!config.enabled}
+                    >
+                      <Text style={[
+                        styles.priceButtonText,
+                        !config.enabled && styles.priceButtonTextDisabled,
+                      ]}>
+                        {config.customPrice}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.treatmentCategorySection}>
+              <Text style={styles.treatmentCategoryTitle}>PEPTIDES</Text>
+              {peptideConfigs.map((config) => (
+                <View key={config.treatmentName} style={styles.treatmentConfigRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.treatmentToggle,
+                      config.enabled && styles.treatmentToggleActive,
+                    ]}
+                    onPress={() => handleToggleTreatment(config.treatmentName, !config.enabled)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[
+                      styles.toggleTrack,
+                      config.enabled && styles.toggleTrackActive,
+                    ]}>
+                      <View style={[
+                        styles.toggleThumb,
+                        config.enabled && styles.toggleThumbActive,
+                      ]} />
+                    </View>
+                  </TouchableOpacity>
+                  <View style={styles.treatmentConfigInfo}>
+                    <Text style={[
+                      styles.treatmentConfigName,
+                      !config.enabled && styles.treatmentConfigNameDisabled,
+                    ]}>
+                      {config.treatmentName}
+                    </Text>
+                  </View>
+                  {editingTreatment === config.treatmentName ? (
+                    <View style={styles.priceEditContainer}>
+                      <TextInput
+                        style={styles.priceInput}
+                        value={editingPrice}
+                        onChangeText={setEditingPrice}
+                        placeholder="$0"
+                        placeholderTextColor={Colors.textMuted}
+                        autoFocus
+                        onBlur={handlePriceSave}
+                        onSubmitEditing={handlePriceSave}
+                      />
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.priceButton}
+                      onPress={() => handlePriceEdit(config.treatmentName)}
+                      activeOpacity={0.7}
+                      disabled={!config.enabled}
+                    >
+                      <Text style={[
+                        styles.priceButtonText,
+                        !config.enabled && styles.priceButtonTextDisabled,
+                      ]}>
+                        {config.customPrice}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.treatmentCategorySection}>
+              <Text style={styles.treatmentCategoryTitle}>IV THERAPIES</Text>
+              {ivConfigs.map((config) => (
+                <View key={config.treatmentName} style={styles.treatmentConfigRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.treatmentToggle,
+                      config.enabled && styles.treatmentToggleActive,
+                    ]}
+                    onPress={() => handleToggleTreatment(config.treatmentName, !config.enabled)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[
+                      styles.toggleTrack,
+                      config.enabled && styles.toggleTrackActive,
+                    ]}>
+                      <View style={[
+                        styles.toggleThumb,
+                        config.enabled && styles.toggleThumbActive,
+                      ]} />
+                    </View>
+                  </TouchableOpacity>
+                  <View style={styles.treatmentConfigInfo}>
+                    <Text style={[
+                      styles.treatmentConfigName,
+                      !config.enabled && styles.treatmentConfigNameDisabled,
+                    ]}>
+                      {config.treatmentName}
+                    </Text>
+                  </View>
+                  {editingTreatment === config.treatmentName ? (
+                    <View style={styles.priceEditContainer}>
+                      <TextInput
+                        style={styles.priceInput}
+                        value={editingPrice}
+                        onChangeText={setEditingPrice}
+                        placeholder="$0"
+                        placeholderTextColor={Colors.textMuted}
+                        autoFocus
+                        onBlur={handlePriceSave}
+                        onSubmitEditing={handlePriceSave}
+                      />
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.priceButton}
+                      onPress={() => handlePriceEdit(config.treatmentName)}
+                      activeOpacity={0.7}
+                      disabled={!config.enabled}
+                    >
+                      <Text style={[
+                        styles.priceButtonText,
+                        !config.enabled && styles.priceButtonTextDisabled,
+                      ]}>
+                        {config.customPrice}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {showCrmSetup && (
           <View style={styles.crmSetupContainer}>
@@ -1255,5 +1497,111 @@ const styles = StyleSheet.create({
     fontWeight: '800' as const,
     color: Colors.black,
     letterSpacing: 1,
+  },
+  treatmentSetupContainer: {
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  treatmentSetupTitle: {
+    fontSize: 14,
+    fontWeight: '800' as const,
+    color: Colors.white,
+    marginBottom: 4,
+  },
+  treatmentSetupSubtitle: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginBottom: 20,
+  },
+  treatmentCategorySection: {
+    marginBottom: 20,
+  },
+  treatmentCategoryTitle: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: Colors.gold,
+    letterSpacing: 1.5,
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  treatmentConfigRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  treatmentToggle: {
+    marginRight: 12,
+  },
+  treatmentToggleActive: {},
+  toggleTrack: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    padding: 2,
+    justifyContent: 'center',
+  },
+  toggleTrackActive: {
+    backgroundColor: Colors.gold,
+  },
+  toggleThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.textMuted,
+  },
+  toggleThumbActive: {
+    backgroundColor: Colors.black,
+    alignSelf: 'flex-end',
+  },
+  treatmentConfigInfo: {
+    flex: 1,
+  },
+  treatmentConfigName: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: Colors.white,
+  },
+  treatmentConfigNameDisabled: {
+    color: Colors.textMuted,
+  },
+  priceButton: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    minWidth: 90,
+    alignItems: 'center',
+  },
+  priceButtonText: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: Colors.gold,
+  },
+  priceButtonTextDisabled: {
+    color: Colors.textMuted,
+  },
+  priceEditContainer: {
+    minWidth: 100,
+  },
+  priceInput: {
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.gold,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 12,
+    color: Colors.white,
+    minWidth: 90,
+    textAlign: 'center',
   },
 });
