@@ -239,15 +239,11 @@ IMPORTANT:
     }
   }, []);
 
-  const analyzeImageWithAI = useCallback(async (imageUri: string): Promise<AnalysisResult> => {
-    console.log('Starting AI clinical analysis of captured image...');
-    
-    let base64Image = '';
-    
+  const convertImageToBase64 = useCallback(async (imageUri: string): Promise<string> => {
     if (Platform.OS === 'web') {
       const response = await fetch(imageUri);
       const blob = await response.blob();
-      base64Image = await new Promise<string>((resolve) => {
+      return await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => {
           const result = reader.result as string;
@@ -257,125 +253,107 @@ IMPORTANT:
       });
     } else {
       const file = new File(imageUri);
-      base64Image = await file.base64();
+      return await file.base64();
     }
+  }, []);
 
-    const analysisSchema = z.object({
-      auraScore: z.number().min(300).max(1000).describe('Overall aesthetic score based on facial harmony, skin quality, and structural balance. Higher scores indicate better baseline aesthetics.'),
-      faceType: z.string().describe('Detected face shape classification (e.g., Diamond Elite, Classic Oval, Angular Sculpted, Heart Symmetry, Square Strong, Round Soft)'),
+  const analyzeImageFast = useCallback(async (base64Image: string): Promise<AnalysisResult> => {
+    console.log('Starting FAST AI analysis...');
+    
+    const fastSchema = z.object({
+      auraScore: z.number().min(300).max(1000),
+      faceType: z.string(),
       skinIQ: z.object({
-        texture: z.enum(['Refined', 'Moderate', 'Needs Attention']).describe('Skin surface texture quality based on visible smoothness and evenness'),
-        pores: z.enum(['Minimal', 'Visible', 'Enlarged']).describe('Pore visibility assessment'),
-        pigment: z.enum(['Even', 'Mild Variation', 'Uneven']).describe('Skin tone evenness and pigmentation assessment'),
-        redness: z.enum(['Low', 'Moderate', 'High']).describe('Visible redness, erythema, or vascular concerns'),
+        texture: z.enum(['Refined', 'Moderate', 'Needs Attention']),
+        pores: z.enum(['Minimal', 'Visible', 'Enlarged']),
+        pigment: z.enum(['Even', 'Mild Variation', 'Uneven']),
+        redness: z.enum(['Low', 'Moderate', 'High']),
       }),
+      fitzpatrickType: z.enum(['I', 'II', 'III', 'IV', 'V', 'VI']),
       clinicalRoadmap: z.array(z.object({
-        name: z.string().describe('Treatment name - IMPORTANT: Select the MOST APPROPRIATE treatment for what you observe. Available options by category: SURFACE TREATMENTS (for texture, pores, dullness, mild concerns): DiamondGlow, Facials, Chemical Peels, Microdermabrasion, Dermaplaning. HYDRATION/GLOW: HydraFacial. PIGMENTATION/REDNESS: Stellar IPL, IPL, Clear + Brilliant. RESURFACING (for scars, deeper texture): MOXI Laser, ResurFX, Microneedling. WRINKLES: Botox Cosmetic, Baby Botox (subtle), Wrinkle Relaxers, Lip Flip (lip lines). VOLUME LOSS: Dermal Filler, Lip Filler, Sculptra, Radiesse, Plasma BioFiller. FAT REDUCTION: Kybella. SKIN TIGHTENING (laxity): RF Microneedling, Morpheus8 (only for significant laxity). LIFTING: PDO Thread Lift, Endolift. HEALING/REGENERATIVE: Exosome Therapy, Red Light Therapy, LED Therapy. Match treatment intensity to the severity of concerns - use gentle surface treatments for mild issues, reserve intense treatments like Morpheus8 for significant laxity.'),
-        benefit: z.string().describe('What this treatment achieves for this specific patient'),
-        price: z.string().describe('Typical price range (e.g., $450, $1,200)'),
-        clinicalReason: z.string().describe('Specific clinical indication based on what was ACTUALLY detected in THIS patients face - reference specific observed features like wrinkle depth, volume loss areas, skin laxity zones, pigmentation issues'),
-      })).min(2).max(6).describe('CRITICAL: Personalized treatment recommendations - DIVERSIFY your selections across categories. DO NOT default to Morpheus8, Botox, and HydraFacial for everyone. Match treatment intensity to concern severity: mild texture issues = DiamondGlow or Chemical Peels, pigmentation = IPL or Clear+Brilliant, moderate aging = MOXI or Microneedling, significant laxity ONLY = Morpheus8. Always include at least one surface/beauty treatment (DiamondGlow, Facials, Chemical Peels, Dermaplaning) when skin texture or pore concerns exist.'),
-      peptideTherapy: z.array(z.object({
-        name: z.string().describe('Peptide name - select from: GHK-Cu (copper peptide for skin repair/collagen), BPC-157 (tissue healing/gut health), Epithalon (telomere/anti-aging), TB-500 (recovery/wound healing), Thymosin Alpha-1 (immune modulation), AOD-9604 (fat metabolism/body composition), CJC-1295/Ipamorelin (growth hormone/recovery), PT-141 (sexual wellness), Selank (stress/cognitive), Semax (neuroprotection/focus), DSIP (sleep optimization), Melanotan II (skin pigmentation/protection), LL-37 (antimicrobial/immune), KPV (anti-inflammatory/gut), Pentosan Polysulfate (joint health)'),
-        goal: z.string().describe('Specific goal for this patient based on detected concerns'),
-        mechanism: z.string().describe('How this peptide addresses the detected issues'),
-        frequency: z.string().describe('Recommended protocol dosing'),
-      })).min(2).max(4).describe('DIVERSIFY peptide recommendations based on patient presentation. Consider: skin quality peptides (GHK-Cu), healing peptides (BPC-157, TB-500), longevity peptides (Epithalon), body composition (AOD-9604), cognitive/stress (Selank, Semax), immune (Thymosin Alpha-1, LL-37), sleep (DSIP), or growth hormone support (CJC-1295/Ipamorelin). Match peptides to observed aging patterns and lifestyle factors.'),
-      ivOptimization: z.array(z.object({
-        name: z.string().describe('IV therapy name (e.g., Glow Drip, NAD+ Infusion, Myers Cocktail, Glutathione Push, Vitamin C Drip)'),
-        benefit: z.string().describe('Specific benefit for this patients detected skin concerns'),
-        ingredients: z.string().describe('Key ingredients and dosages'),
-        duration: z.string().describe('Session duration and frequency recommendation'),
-      })).min(1).max(2).describe('IV therapy recommendations based on detected skin quality and aging concerns'),
-      volumeAssessment: z.array(z.object({
-        zone: z.enum(['Forehead', 'Temples', 'Brows', 'Upper Eyelids', 'Under Eyes', 'Cheeks', 'Midface', 'Nasolabial Folds', 'Marionette Lines', 'Lips', 'Perioral Area', 'Chin', 'Jawline', 'Jowls', 'Neck']).describe('Specific facial zone being assessed'),
-        volumeLoss: z.number().min(0).max(60).describe('Estimated percentage of volume loss or concern level in this zone - 0 if zone looks healthy'),
-        ageRelatedCause: z.string().describe('Specific cause of the concern in this zone, or "No significant concerns" if healthy'),
-        recommendation: z.string().describe('Targeted treatment for this zone, or "Maintenance only" if healthy'),
-      })).min(4).max(8).describe('Comprehensive facial zone assessment - include ALL zones you can evaluate from the image, even if they appear healthy (use 0-5% for healthy zones). Must include at least: temples, cheeks, under eyes, and jawline areas.'),
-      fitzpatrickAssessment: z.object({
-        type: z.enum(['I', 'II', 'III', 'IV', 'V', 'VI']).describe('Fitzpatrick Skin Type classification based on skin tone analysis: I=Very fair/always burns, II=Fair/usually burns, III=Medium/sometimes burns, IV=Olive/rarely burns, V=Brown/very rarely burns, VI=Dark brown to black/never burns'),
-        description: z.string().describe('Brief description of the detected skin phototype characteristics'),
-        riskLevel: z.enum(['low', 'caution', 'high']).describe('Risk level for light-based treatments: low for I-III, caution for IV, high for V-VI'),
-        detectedIndicators: z.array(z.string()).describe('Visual indicators used to determine skin type (melanin density, undertones, etc.)'),
-      }).describe('CRITICAL: Accurately assess the Fitzpatrick skin type from the image. This affects treatment safety for IPL, lasers, and other light-based therapies. Types V and VI have HIGH RISK for burns with IPL.'),
+        name: z.string(),
+        benefit: z.string(),
+        price: z.string(),
+        clinicalReason: z.string(),
+      })).min(2).max(4),
+      topPeptides: z.array(z.object({
+        name: z.string(),
+        goal: z.string(),
+        mechanism: z.string(),
+        frequency: z.string(),
+      })).min(2).max(3),
+      ivRecommendation: z.object({
+        name: z.string(),
+        benefit: z.string(),
+        ingredients: z.string(),
+        duration: z.string(),
+      }),
+      volumeZones: z.array(z.object({
+        zone: z.enum(['Forehead', 'Temples', 'Brows', 'Upper Eyelids', 'Under Eyes', 'Cheeks', 'Midface', 'Nasolabial Folds', 'Marionette Lines', 'Lips', 'Perioral Area', 'Chin', 'Jawline', 'Jowls', 'Neck']),
+        volumeLoss: z.number().min(0).max(60),
+        ageRelatedCause: z.string(),
+        recommendation: z.string(),
+      })).min(4).max(6),
     });
 
-    const maxRetries = 1;
+    try {
+      const result = await generateObject({
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Analyze this face photo quickly. Provide:
+1. Aura score (300-1000) based on facial harmony
+2. Face shape (Diamond Elite, Classic Oval, Angular Sculpted, Heart Symmetry, Square Strong)
+3. Skin quality (texture, pores, pigment, redness)
+4. Fitzpatrick skin type (I-VI)
+5. Top 2-4 treatments: Pick from DiamondGlow, Chemical Peels, HydraFacial, IPL, MOXI, Microneedling, Botox, Dermal Filler, Morpheus8. Match to what you SEE.
+6. Top 2-3 peptides: GHK-Cu, BPC-157, Epithalon, TB-500, AOD-9604
+7. One IV therapy recommendation
+8. 4-6 volume zones with % loss
 
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`AI analysis attempt ${attempt + 1}/${maxRetries + 1}`);
-        
-        const result = await generateObject({
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: `You are an expert aesthetic medicine AI diagnostician. Analyze this facial photograph with clinical precision.
+Be specific to THIS face. Don't give generic results.`
+              },
+              {
+                type: 'image',
+                image: `data:image/jpeg;base64,${base64Image}`
+              }
+            ]
+          }
+        ],
+        schema: fastSchema,
+      });
 
-CRITICAL INSTRUCTIONS:
-1. ACTUALLY EXAMINE the image - do not give generic recommendations
-2. Only recommend treatments for issues you ACTUALLY SEE in the image
-3. Each clinical reason must reference SPECIFIC observations from THIS face
-4. If the skin looks healthy with minimal concerns, reflect that with fewer/milder recommendations
-5. If significant aging or skin issues are visible, provide comprehensive recommendations
-6. Volume loss percentages should reflect what you ACTUALLY observe - hollow temples, sunken cheeks, deep folds
-7. Do NOT recommend treatments for areas that appear healthy
-8. CRITICAL: Accurately assess Fitzpatrick skin type - this is essential for patient safety with light-based treatments
-9. When recommending high-intensity treatments (Morpheus8, Microneedling), also suggest Red Light Therapy or LED as post-care
-10. For skin puncture procedures (Microneedling), consider Exosome Therapy as mandatory post-care
-11. For subtle wrinkle concerns, consider Baby Botox over full Botox for natural results
-12. If lip enhancement without volume is noted, consider Lip Flip option
+      console.log('Fast analysis complete');
+      
+      const fitzRisk = ['I', 'II', 'III'].includes(result.fitzpatrickType) ? 'low' as const :
+                       result.fitzpatrickType === 'IV' ? 'caution' as const : 'high' as const;
 
-TREATMENT SELECTION RULES - FOLLOW STRICTLY:
-- For TEXTURE/PORE concerns: Recommend DiamondGlow, Chemical Peels, Microdermabrasion, or Dermaplaning FIRST
-- For DULLNESS/HYDRATION: Recommend HydraFacial or Facials
-- For PIGMENTATION/SUN DAMAGE/REDNESS: Recommend Stellar IPL, IPL, or Clear + Brilliant
-- For FINE LINES (not deep wrinkles): Recommend MOXI Laser, Microneedling, or Chemical Peels
-- For DYNAMIC WRINKLES (forehead, crows feet, frown): Recommend Botox or Wrinkle Relaxers
-- For VOLUME LOSS: Recommend Dermal Filler, Sculptra, or Radiesse based on area
-- For SIGNIFICANT SKIN LAXITY ONLY: Recommend RF Microneedling or Morpheus8
-- DO NOT recommend Morpheus8 unless there is VISIBLE sagging or significant laxity
-- DO NOT recommend Botox unless there are VISIBLE dynamic wrinkles
-- ALWAYS include at least ONE surface treatment (DiamondGlow, Chemical Peels, Facials, Dermaplaning) for skin quality improvement
-
-Analyze and provide personalized results for:
-- Overall facial harmony and structure (auraScore)
-- Face shape classification
-- Skin quality assessment (texture, pores, pigment, redness)
-- Clinical treatment roadmap with SPECIFIC reasons tied to observations
-- Peptide therapy recommendations based on detected aging patterns
-- IV optimization based on skin health indicators
-- Comprehensive volume assessment across ALL visible facial zones
-
-Be honest and specific. A young person with good skin should get minimal recommendations. An older person with visible concerns should get targeted recommendations addressing those specific issues.`
-                },
-                {
-                  type: 'image',
-                  image: `data:image/jpeg;base64,${base64Image}`
-                }
-              ]
-            }
-          ],
-          schema: analysisSchema,
-        });
-
-        console.log('AI clinical analysis completed successfully');
-        return result;
-      } catch (error) {
-        console.log(`AI analysis attempt ${attempt + 1} failed:`, error);
-        
-        if (attempt < maxRetries) {
-          console.log(`Retrying in 1 second...`);
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
+      return {
+        auraScore: result.auraScore,
+        faceType: result.faceType,
+        skinIQ: result.skinIQ,
+        clinicalRoadmap: result.clinicalRoadmap,
+        peptideTherapy: result.topPeptides,
+        ivOptimization: [result.ivRecommendation],
+        volumeAssessment: result.volumeZones,
+        fitzpatrickAssessment: {
+          type: result.fitzpatrickType,
+          description: `Fitzpatrick Type ${result.fitzpatrickType}`,
+          riskLevel: fitzRisk,
+          detectedIndicators: ['AI detected from image'],
+        },
+      };
+    } catch (error) {
+      console.log('Fast analysis failed:', error);
+      throw error;
     }
+  }, []);
 
-    console.log('All AI analysis attempts failed, using intelligent fallback');
+  const getFallbackAnalysis = useCallback((): AnalysisResult => {
+    console.log('Using fallback analysis');
     
     const randomScore = Math.floor(Math.random() * 200) + 650;
     const faceTypes = ['Diamond Elite', 'Classic Oval', 'Heart Symmetry', 'Angular Sculpted', 'Square Strong'];
@@ -397,16 +375,6 @@ Be honest and specific. A young person with good skin should get minimal recomme
         { name: 'Dermaplaning', benefit: 'Remove peach fuzz and dead skin for smooth canvas', price: '$100-175', clinicalReason: 'Enhances skin smoothness and improves makeup application' },
         { name: 'Red Light Therapy', benefit: 'Stimulate cellular energy and promote healing', price: '$50-100', clinicalReason: 'Supports overall skin rejuvenation and recovery' },
       ],
-      [
-        { name: 'MOXI Laser', benefit: 'Gentle fractional laser for tone and texture improvement', price: '$500-800', clinicalReason: 'Addresses early sun damage and promotes collagen remodeling' },
-        { name: 'DiamondGlow', benefit: 'Deep exfoliation with simultaneous serum infusion', price: '$200-300', clinicalReason: 'Provides immediate glow while addressing pore concerns' },
-        { name: 'Chemical Peels', benefit: 'Professional-grade exfoliation for renewed skin', price: '$150-400', clinicalReason: 'Accelerates cell turnover for improved texture and tone' },
-      ],
-      [
-        { name: 'Microneedling', benefit: 'Stimulate natural collagen production for firmer skin', price: '$300-500', clinicalReason: 'Addresses fine lines and improves overall skin quality' },
-        { name: 'Facials', benefit: 'Customized treatment for your specific skin needs', price: '$100-200', clinicalReason: 'Professional cleansing and targeted treatment' },
-        { name: 'Exosome Therapy', benefit: 'Accelerate healing and enhance treatment results', price: '$400-800', clinicalReason: 'Boosts cellular regeneration when combined with procedures' },
-      ],
     ];
     
     const selectedTreatments = fallbackTreatmentSets[Math.floor(Math.random() * fallbackTreatmentSets.length)];
@@ -422,20 +390,18 @@ Be honest and specific. A young person with good skin should get minimal recomme
       },
       clinicalRoadmap: selectedTreatments,
       peptideTherapy: [
-        { name: 'GHK-Cu', goal: 'Enhance skin repair and collagen production', mechanism: 'Copper peptide complex that activates regenerative genes and promotes wound healing', frequency: '2x daily topical application' },
-        { name: 'BPC-157', goal: 'Accelerate tissue healing and reduce inflammation', mechanism: 'Body protection compound that enhances angiogenesis and tissue repair', frequency: '250-500mcg daily, 4-6 week cycles' },
-        { name: 'Epithalon', goal: 'Support cellular longevity and telomere health', mechanism: 'Activates telomerase enzyme to maintain telomere length and slow cellular aging', frequency: '5-10mg daily for 10-20 days, every 6 months' },
+        { name: 'GHK-Cu', goal: 'Enhance skin repair and collagen production', mechanism: 'Copper peptide complex that activates regenerative genes', frequency: '2x daily topical' },
+        { name: 'BPC-157', goal: 'Accelerate tissue healing', mechanism: 'Body protection compound enhancing tissue repair', frequency: '250-500mcg daily' },
+        { name: 'Epithalon', goal: 'Support cellular longevity', mechanism: 'Activates telomerase enzyme', frequency: '5-10mg daily for 10-20 days' },
       ],
       ivOptimization: [
         { name: 'Glow Drip', benefit: 'Brightens skin and supports detoxification', ingredients: 'Glutathione 600mg, Vitamin C 2500mg, B-Complex', duration: '45-60 minutes, weekly for 4 weeks' },
       ],
       volumeAssessment: [
-        { zone: 'Temples', volumeLoss: 12, ageRelatedCause: 'Temporal fat pad atrophy', recommendation: 'Temple filler or Sculptra for structural support' },
-        { zone: 'Cheeks', volumeLoss: 15, ageRelatedCause: 'Natural fat pad descent with aging', recommendation: 'Sculptra or dermal filler for subtle volume restoration' },
-        { zone: 'Under Eyes', volumeLoss: 10, ageRelatedCause: 'Tear trough hollowing from collagen loss', recommendation: 'HA filler or PRP under-eye treatment' },
-        { zone: 'Nasolabial Folds', volumeLoss: 8, ageRelatedCause: 'Midface volume loss creating fold depth', recommendation: 'Cheek volumization to lift folds naturally' },
-        { zone: 'Jawline', volumeLoss: 5, ageRelatedCause: 'Early bone resorption and soft tissue laxity', recommendation: 'Jawline contouring with filler or Sculptra' },
-        { zone: 'Lips', volumeLoss: 7, ageRelatedCause: 'Collagen depletion and vermillion border thinning', recommendation: 'Lip filler for hydration and subtle enhancement' },
+        { zone: 'Temples', volumeLoss: 12, ageRelatedCause: 'Temporal fat pad atrophy', recommendation: 'Temple filler or Sculptra' },
+        { zone: 'Cheeks', volumeLoss: 15, ageRelatedCause: 'Natural fat pad descent', recommendation: 'Sculptra or dermal filler' },
+        { zone: 'Under Eyes', volumeLoss: 10, ageRelatedCause: 'Tear trough hollowing', recommendation: 'HA filler or PRP' },
+        { zone: 'Jawline', volumeLoss: 5, ageRelatedCause: 'Early bone resorption', recommendation: 'Jawline contouring' },
       ],
       fitzpatrickAssessment: {
         type: 'III',
@@ -445,6 +411,19 @@ Be honest and specific. A young person with good skin should get minimal recomme
       },
     };
   }, []);
+
+  const analyzeImageWithAI = useCallback(async (imageUri: string): Promise<AnalysisResult> => {
+    console.log('Starting AI clinical analysis...');
+    
+    const base64Image = await convertImageToBase64(imageUri);
+
+    try {
+      return await analyzeImageFast(base64Image);
+    } catch (error) {
+      console.log('Analysis failed, using fallback:', error);
+      return getFallbackAnalysis();
+    }
+  }, [convertImageToBase64, analyzeImageFast, getFallbackAnalysis]);
 
   const applyContraindicationChecks = useCallback((analysis: AnalysisResult): AnalysisResult => {
     const baseConditions = patientHealthProfile?.conditions || [];
