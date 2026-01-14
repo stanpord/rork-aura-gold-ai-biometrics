@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -545,17 +545,6 @@ Be honest and specific. A young person with good skin should get minimal recomme
       
       const safetyCheckedAnalysis = applyContraindicationChecks(aiAnalysisResult);
       setCurrentAnalysis(safetyCheckedAnalysis);
-      
-      generateTreatmentSimulation(capturedImage, ['Botox', 'Morpheus8', 'Sculptra'])
-        .then((simulatedResult) => {
-          if (simulatedResult) {
-            setSimulatedImage(simulatedResult);
-            console.log('Treatment simulation set successfully');
-          } else {
-            console.log('Using original image as fallback');
-          }
-        })
-        .catch((err) => console.log('Simulation generation failed:', err));
       console.log('AI analysis with safety checks:', JSON.stringify(safetyCheckedAnalysis, null, 2));
     } catch (error) {
       console.log('Analysis error:', error);
@@ -591,6 +580,22 @@ Be honest and specific. A young person with good skin should get minimal recomme
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
   };
+
+  useEffect(() => {
+    if (hasUnlockedResults && currentAnalysis && capturedImage && !simulatedImage) {
+      console.log('Results unlocked - starting simulation generation');
+      generateTreatmentSimulation(capturedImage, ['Botox', 'Morpheus8', 'Sculptra'])
+        .then((simulatedResult) => {
+          if (simulatedResult) {
+            setSimulatedImage(simulatedResult);
+            console.log('Treatment simulation set successfully');
+          } else {
+            console.log('Using original image as fallback');
+          }
+        })
+        .catch((err) => console.log('Simulation generation failed:', err));
+    }
+  }, [hasUnlockedResults, currentAnalysis, capturedImage, simulatedImage, generateTreatmentSimulation, setSimulatedImage]);
 
   const renderSafetyBadge = (safetyStatus: ClinicalProcedure['safetyStatus']) => {
     if (!safetyStatus) return null;
