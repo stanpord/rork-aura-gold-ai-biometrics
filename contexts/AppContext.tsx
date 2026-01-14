@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
 import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment } from '@/types';
+import { trpc } from '@/lib/trpc';
 
 const STORAGE_KEYS = {
   LEADS: 'aura_gold_leads',
@@ -25,22 +26,58 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const [patientConsent, setPatientConsent] = useState<PatientConsent | null>(null);
   const [tosAcknowledgment, setTosAcknowledgment] = useState<TermsOfServiceAcknowledgment | null>(null);
 
+  const leadsQuery = trpc.leads.getAll.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+    retry: 2,
+  });
+
+  const createLeadMutation = trpc.leads.create.useMutation({
+    onSuccess: () => {
+      console.log('Lead saved to backend successfully');
+      leadsQuery.refetch();
+    },
+    onError: (error) => {
+      console.log('Error saving lead to backend:', error);
+    },
+  });
+
+  const deleteLeadMutation = trpc.leads.delete.useMutation({
+    onSuccess: () => {
+      console.log('Lead deleted from backend successfully');
+      leadsQuery.refetch();
+    },
+    onError: (error) => {
+      console.log('Error deleting lead from backend:', error);
+    },
+  });
+
+  const updateLeadMutation = trpc.leads.update.useMutation({
+    onSuccess: () => {
+      console.log('Lead updated on backend successfully');
+      leadsQuery.refetch();
+    },
+    onError: (error) => {
+      console.log('Error updating lead on backend:', error);
+    },
+  });
+
+  useEffect(() => {
+    if (leadsQuery.data?.success && leadsQuery.data.leads) {
+      console.log('Loaded leads from backend:', leadsQuery.data.leads.length);
+      const parsedLeads = leadsQuery.data.leads.map((l: Record<string, unknown>) => ({
+        ...l,
+        createdAt: new Date(l.createdAt as string),
+      })) as Lead[];
+      setLeads(parsedLeads);
+    }
+  }, [leadsQuery.data]);
+
   useEffect(() => {
     loadStoredData();
   }, []);
 
   const loadStoredData = async () => {
     try {
-      const storedLeads = await AsyncStorage.getItem(STORAGE_KEYS.LEADS);
-
-      if (storedLeads) {
-        const parsed = JSON.parse(storedLeads);
-        setLeads(parsed.map((l: Lead) => ({
-          ...l,
-          createdAt: new Date(l.createdAt),
-        })));
-      }
-
       const introComplete = await AsyncStorage.getItem(STORAGE_KEYS.INTRO_COMPLETE);
       if (introComplete === 'true') {
         setHasCompletedIntro(true);
@@ -175,18 +212,19 @@ export const [AppProvider, useApp] = createContextHook(() => {
       return acc + parsePrice(proc.price);
     }, 0);
 
-    const peptideValue = currentAnalysis.peptideTherapy.reduce((acc, peptide) => {
+    const peptideValue = currentAnalysis.peptideTherapy.reduce((acc) => {
       return acc + 350;
     }, 0);
 
-    const ivValue = currentAnalysis.ivOptimization.reduce((acc, iv) => {
+    const ivValue = currentAnalysis.ivOptimization.reduce((acc) => {
       return acc + 275;
     }, 0);
 
     const estimatedValue = Math.round(roadmapValue + peptideValue + ivValue);
+    const leadId = Date.now().toString();
 
     const newLead: Lead = {
-      id: Date.now().toString(),
+      id: leadId,
       name,
       phone,
       auraScore: currentAnalysis.auraScore,
@@ -203,12 +241,21 @@ export const [AppProvider, useApp] = createContextHook(() => {
     setLeads(updatedLeads);
     setHasUnlockedResults(true);
 
-    try {
-      await AsyncStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(updatedLeads));
-    } catch (error) {
-      console.log('Error saving lead:', error);
-    }
-  }, [currentAnalysis, leads]);
+    console.log('Creating lead on backend:', newLead.name);
+    createLeadMutation.mutate({
+      id: leadId,
+      name,
+      phone,
+      auraScore: currentAnalysis.auraScore,
+      faceType: currentAnalysis.faceType,
+      estimatedValue,
+      roadmap: currentAnalysis.clinicalRoadmap,
+      peptides: currentAnalysis.peptideTherapy,
+      ivDrips: currentAnalysis.ivOptimization,
+      status: 'new',
+      createdAt: new Date().toISOString(),
+    });
+  }, [currentAnalysis, leads, createLeadMutation]);
 
   const resetScan = useCallback(() => {
     setCapturedImage(null);
@@ -220,13 +267,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const deleteLead = useCallback(async (leadId: string): Promise<void> => {
     const updatedLeads = leads.filter(lead => lead.id !== leadId);
     setLeads(updatedLeads);
-    try {
-      await AsyncStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(updatedLeads));
-      console.log('Lead deleted:', leadId);
-    } catch (error) {
-      console.log('Error deleting lead:', error);
-    }
-  }, [leads]);
+    
+    console.log('Deleting lead from backend:', leadId);
+    deleteLeadMutation.mutate({ id: leadId });
+  }, [leads, deleteLeadMutation]);
 
   const updateLeadTreatments = useCallback(async (leadId: string, selectedTreatments: SelectedTreatment[]): Promise<void> => {
     const updatedLeads = leads.map(lead => {
@@ -236,13 +280,26 @@ export const [AppProvider, useApp] = createContextHook(() => {
       return lead;
     });
     setLeads(updatedLeads);
-    try {
-      await AsyncStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(updatedLeads));
-      console.log('Lead treatments updated:', leadId, selectedTreatments);
-    } catch (error) {
-      console.log('Error updating lead treatments:', error);
-    }
-  }, [leads]);
+    
+    console.log('Updating lead treatments on backend:', leadId);
+    const serializedTreatments = selectedTreatments.map(t => ({
+      treatment: t.treatment,
+      treatmentType: t.treatmentType,
+      dosing: t.dosing,
+      selectedAt: t.selectedAt instanceof Date ? t.selectedAt.toISOString() : t.selectedAt,
+      selectedBy: t.selectedBy,
+      complianceSignOff: t.complianceSignOff ? {
+        ...t.complianceSignOff,
+        signedAt: t.complianceSignOff.signedAt instanceof Date 
+          ? t.complianceSignOff.signedAt.toISOString() 
+          : t.complianceSignOff.signedAt,
+      } : undefined,
+    }));
+    updateLeadMutation.mutate({
+      id: leadId,
+      data: { selectedTreatments: serializedTreatments },
+    });
+  }, [leads, updateLeadMutation]);
 
   const stats = isStaffAuthenticated ? {
     pipeline: leads.reduce((acc, lead) => acc + (lead.estimatedValue || 0), 0),
@@ -290,5 +347,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     tosAcknowledgment,
     saveTosAcknowledgment,
     clearTosAcknowledgment,
+    isLoadingLeads: leadsQuery.isLoading,
+    refetchLeads: leadsQuery.refetch,
   };
 });
