@@ -62,19 +62,19 @@ export default function BeforeAfterSlider({
       onPanResponderMove: (_, gestureState) => {
         const width = containerWidthRef.current;
         const newPosition = currentSliderPosition.current + gestureState.dx;
-        const clampedPosition = Math.max(20, Math.min(width - 20, newPosition));
+        const clampedPosition = Math.max(0, Math.min(width, newPosition));
         setSliderPosition(clampedPosition);
       },
       onPanResponderRelease: (_, gestureState) => {
         const width = containerWidthRef.current;
         const newPosition = currentSliderPosition.current + gestureState.dx;
-        const clampedPosition = Math.max(20, Math.min(width - 20, newPosition));
+        const clampedPosition = Math.max(0, Math.min(width, newPosition));
         currentSliderPosition.current = clampedPosition;
       },
     })
   ).current;
 
-  const clampedSliderPosition = Math.max(20, Math.min(containerWidth - 20, sliderPosition));
+  const clampedSliderPosition = Math.max(0, Math.min(containerWidth, sliderPosition));
 
   return (
     <View style={[styles.container, { height, maxWidth }]} onLayout={onLayout}>
@@ -85,31 +85,37 @@ export default function BeforeAfterSlider({
           style={styles.baseImage}
           resizeMode="cover"
         >
-          <View
-            style={[
-              styles.beforeImageContainer,
-              { width: clampedSliderPosition },
-            ]}
-          >
-            <ImageBackground
-              key={`before-${imageKey}`}
-              source={{ uri: beforeImage }}
-              style={[styles.beforeImage, { width: containerWidth, height }]}
-              resizeMode="cover"
-            />
-          </View>
+          {clampedSliderPosition > 0 && (
+            <View
+              style={[
+                styles.beforeImageContainer,
+                { width: clampedSliderPosition },
+              ]}
+            >
+              <ImageBackground
+                key={`before-${imageKey}`}
+                source={{ uri: beforeImage }}
+                style={[styles.beforeImage, { width: containerWidth, height }]}
+                resizeMode="cover"
+              />
+            </View>
+          )}
 
-          <View style={styles.labelBefore}>
-            <Text style={styles.labelText}>BEFORE</Text>
-          </View>
-          <View style={styles.labelAfter}>
-            <Text style={styles.labelTextGold}>AFTER</Text>
-          </View>
+          {clampedSliderPosition > 40 && (
+            <View style={styles.labelBefore}>
+              <Text style={styles.labelText}>BEFORE</Text>
+            </View>
+          )}
+          {clampedSliderPosition < containerWidth - 40 && (
+            <View style={styles.labelAfter}>
+              <Text style={styles.labelTextGold}>AFTER</Text>
+            </View>
+          )}
 
           <View
             style={[
               styles.sliderLine,
-              { left: clampedSliderPosition - 1 },
+              { left: Math.max(20, Math.min(containerWidth - 20, clampedSliderPosition)) - 1 },
             ]}
             {...panResponder.panHandlers}
           >
