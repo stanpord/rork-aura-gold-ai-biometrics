@@ -276,11 +276,11 @@ IMPORTANT:
         clinicalReason: z.string().describe('Specific clinical indication based on what was ACTUALLY detected in THIS patients face - reference specific observed features like wrinkle depth, volume loss areas, skin laxity zones, pigmentation issues'),
       })).min(2).max(6).describe('CRITICAL: Personalized treatment recommendations - DIVERSIFY your selections across categories. DO NOT default to Morpheus8, Botox, and HydraFacial for everyone. Match treatment intensity to concern severity: mild texture issues = DiamondGlow or Chemical Peels, pigmentation = IPL or Clear+Brilliant, moderate aging = MOXI or Microneedling, significant laxity ONLY = Morpheus8. Always include at least one surface/beauty treatment (DiamondGlow, Facials, Chemical Peels, Dermaplaning) when skin texture or pore concerns exist.'),
       peptideTherapy: z.array(z.object({
-        name: z.string().describe('Peptide name (e.g., BPC-157, GHK-Cu, Epithalon, TB-500, Thymosin Alpha-1)'),
+        name: z.string().describe('Peptide name - select from: GHK-Cu (copper peptide for skin repair/collagen), BPC-157 (tissue healing/gut health), Epithalon (telomere/anti-aging), TB-500 (recovery/wound healing), Thymosin Alpha-1 (immune modulation), AOD-9604 (fat metabolism/body composition), CJC-1295/Ipamorelin (growth hormone/recovery), PT-141 (sexual wellness), Selank (stress/cognitive), Semax (neuroprotection/focus), DSIP (sleep optimization), Melanotan II (skin pigmentation/protection), LL-37 (antimicrobial/immune), KPV (anti-inflammatory/gut), Pentosan Polysulfate (joint health)'),
         goal: z.string().describe('Specific goal for this patient based on detected concerns'),
         mechanism: z.string().describe('How this peptide addresses the detected issues'),
         frequency: z.string().describe('Recommended protocol dosing'),
-      })).min(1).max(3).describe('Peptide recommendations tailored to detected aging signs and skin condition'),
+      })).min(2).max(4).describe('DIVERSIFY peptide recommendations based on patient presentation. Consider: skin quality peptides (GHK-Cu), healing peptides (BPC-157, TB-500), longevity peptides (Epithalon), body composition (AOD-9604), cognitive/stress (Selank, Semax), immune (Thymosin Alpha-1, LL-37), sleep (DSIP), or growth hormone support (CJC-1295/Ipamorelin). Match peptides to observed aging patterns and lifestyle factors.'),
       ivOptimization: z.array(z.object({
         name: z.string().describe('IV therapy name (e.g., Glow Drip, NAD+ Infusion, Myers Cocktail, Glutathione Push, Vitamin C Drip)'),
         benefit: z.string().describe('Specific benefit for this patients detected skin concerns'),
@@ -423,7 +423,8 @@ Be honest and specific. A young person with good skin should get minimal recomme
       clinicalRoadmap: selectedTreatments,
       peptideTherapy: [
         { name: 'GHK-Cu', goal: 'Enhance skin repair and collagen production', mechanism: 'Copper peptide complex that activates regenerative genes and promotes wound healing', frequency: '2x daily topical application' },
-        { name: 'BPC-157', goal: 'Accelerate tissue healing and reduce inflammation', mechanism: 'Body protection compound that enhances angiogenesis and tissue repair', frequency: 'As directed by provider' },
+        { name: 'BPC-157', goal: 'Accelerate tissue healing and reduce inflammation', mechanism: 'Body protection compound that enhances angiogenesis and tissue repair', frequency: '250-500mcg daily, 4-6 week cycles' },
+        { name: 'Epithalon', goal: 'Support cellular longevity and telomere health', mechanism: 'Activates telomerase enzyme to maintain telomere length and slow cellular aging', frequency: '5-10mg daily for 10-20 days, every 6 months' },
       ],
       ivOptimization: [
         { name: 'Glow Drip', benefit: 'Brightens skin and supports detoxification', ingredients: 'Glutathione 600mg, Vitamin C 2500mg, B-Complex', duration: '45-60 minutes, weekly for 4 weeks' },
