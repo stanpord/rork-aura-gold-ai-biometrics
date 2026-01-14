@@ -44,19 +44,31 @@ export default function BeforeAfterSlider({
     }
   }, [containerWidth]);
 
+  const containerWidthRef = useRef(containerWidth);
+  containerWidthRef.current = containerWidth;
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 2;
+      },
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponderCapture: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+      },
+      onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => {},
       onPanResponderMove: (_, gestureState) => {
+        const width = containerWidthRef.current;
         const newPosition = currentSliderPosition.current + gestureState.dx;
-        const clampedPosition = Math.max(20, Math.min(containerWidth - 20, newPosition));
+        const clampedPosition = Math.max(20, Math.min(width - 20, newPosition));
         setSliderPosition(clampedPosition);
       },
       onPanResponderRelease: (_, gestureState) => {
+        const width = containerWidthRef.current;
         const newPosition = currentSliderPosition.current + gestureState.dx;
-        const clampedPosition = Math.max(20, Math.min(containerWidth - 20, newPosition));
+        const clampedPosition = Math.max(20, Math.min(width - 20, newPosition));
         currentSliderPosition.current = clampedPosition;
       },
     })
@@ -158,8 +170,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     bottom: 0,
-    width: 44,
-    marginLeft: -22,
+    width: 80,
+    marginLeft: -40,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
