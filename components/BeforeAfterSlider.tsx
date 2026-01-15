@@ -6,7 +6,7 @@ import {
   PanResponder,
   useWindowDimensions,
   LayoutChangeEvent,
-  ImageBackground,
+  Image,
 } from 'react-native';
 import { GripVertical, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import Colors from '@/constants/colors';
@@ -79,64 +79,66 @@ export default function BeforeAfterSlider({
   return (
     <View style={[styles.container, { height, maxWidth }]} onLayout={onLayout}>
       <View style={styles.imageContainer}>
-        <ImageBackground
+        {/* After image - full background */}
+        <Image
           key={`after-${imageKey}`}
           source={{ uri: afterImage }}
-          style={styles.baseImage}
+          style={[styles.baseImage, { width: containerWidth, height }]}
           resizeMode="cover"
-        >
-          {clampedSliderPosition > 0 && (
-            <View
-              style={[
-                styles.beforeImageContainer,
-                { width: clampedSliderPosition },
-              ]}
-            >
-              <ImageBackground
-                key={`before-${imageKey}`}
-                source={{ uri: beforeImage }}
-                style={[styles.beforeImage, { width: containerWidth, height }]}
-                resizeMode="cover"
-              />
-            </View>
-          )}
-
-          {clampedSliderPosition > 40 && (
-            <View style={styles.labelBefore}>
-              <Text style={styles.labelText}>BEFORE</Text>
-            </View>
-          )}
-          {clampedSliderPosition < containerWidth - 40 && (
-            <View style={styles.labelAfter}>
-              <Text style={styles.labelTextGold}>AFTER</Text>
-            </View>
-          )}
-
+        />
+        
+        {/* Before image - clipped overlay */}
+        {clampedSliderPosition > 0 && (
           <View
             style={[
-              styles.sliderLine,
-              { left: Math.max(20, Math.min(containerWidth - 20, clampedSliderPosition)) - 1 },
+              styles.beforeImageContainer,
+              { width: clampedSliderPosition, height },
             ]}
-            {...panResponder.panHandlers}
           >
-            <View style={styles.sliderLineInner} />
-            <View style={styles.sliderHandle}>
-              <View style={styles.sliderHandleInner}>
-                <ChevronLeft size={14} color={Colors.black} style={styles.chevronLeft} />
-                <View style={styles.gripContainer}>
-                  <GripVertical size={16} color={Colors.black} />
-                </View>
-                <ChevronRight size={14} color={Colors.black} style={styles.chevronRight} />
+            <Image
+              key={`before-${imageKey}`}
+              source={{ uri: beforeImage }}
+              style={[styles.beforeImage, { width: containerWidth, height }]}
+              resizeMode="cover"
+            />
+          </View>
+        )}
+
+        {clampedSliderPosition > 40 && (
+          <View style={styles.labelBefore}>
+            <Text style={styles.labelText}>BEFORE</Text>
+          </View>
+        )}
+        {clampedSliderPosition < containerWidth - 40 && (
+          <View style={styles.labelAfter}>
+            <Text style={styles.labelTextGold}>AFTER</Text>
+          </View>
+        )}
+
+        <View
+          style={[
+            styles.sliderLine,
+            { left: Math.max(20, Math.min(containerWidth - 20, clampedSliderPosition)) - 1 },
+          ]}
+          {...panResponder.panHandlers}
+        >
+          <View style={styles.sliderLineInner} />
+          <View style={styles.sliderHandle}>
+            <View style={styles.sliderHandleInner}>
+              <ChevronLeft size={14} color={Colors.black} style={styles.chevronLeft} />
+              <View style={styles.gripContainer}>
+                <GripVertical size={16} color={Colors.black} />
               </View>
+              <ChevronRight size={14} color={Colors.black} style={styles.chevronRight} />
             </View>
           </View>
-        </ImageBackground>
-      </View>
+        </View>
 
-      <View style={styles.instructionContainer}>
-        <Text style={styles.instructionText}>
-          ← Drag to compare →
-        </Text>
+        <View style={styles.instructionContainer}>
+          <Text style={styles.instructionText}>
+            ← Drag to compare →
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -156,9 +158,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   baseImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
   },
   beforeImageContainer: {
     position: 'absolute',
@@ -259,6 +261,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
+    zIndex: 5,
   },
   instructionText: {
     fontSize: 10,
