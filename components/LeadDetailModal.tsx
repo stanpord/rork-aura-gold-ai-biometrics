@@ -133,6 +133,51 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
     });
   }, [confirmedTreatments]);
 
+  const findRecurrenceMatch = useCallback((treatmentName: string) => {
+    const exactMatch = TREATMENT_RECURRENCE_MAP[treatmentName];
+    if (exactMatch) return exactMatch;
+    
+    const lowerName = treatmentName.toLowerCase();
+    for (const [key, value] of Object.entries(TREATMENT_RECURRENCE_MAP)) {
+      if (lowerName.includes(key.toLowerCase()) || key.toLowerCase().includes(lowerName)) {
+        return value;
+      }
+    }
+    
+    if (lowerName.includes('botox') || lowerName.includes('relaxer') || lowerName.includes('toxin')) {
+      return { intervalMonths: 3.5, description: 'Every 3-4 months' };
+    }
+    if (lowerName.includes('filler')) {
+      return { intervalMonths: 12, description: 'Every 12-18 months' };
+    }
+    if (lowerName.includes('peel')) {
+      return { intervalMonths: 1.5, description: 'Every 4-6 weeks' };
+    }
+    if (lowerName.includes('laser') || lowerName.includes('ipl')) {
+      return { intervalMonths: 4, description: 'Every 4-6 months' };
+    }
+    if (lowerName.includes('facial') || lowerName.includes('glow') || lowerName.includes('hydra')) {
+      return { intervalMonths: 1, description: 'Monthly' };
+    }
+    if (lowerName.includes('microneedling')) {
+      return { intervalMonths: 1.5, description: 'Every 4-6 weeks' };
+    }
+    if (lowerName.includes('thread') || lowerName.includes('lift')) {
+      return { intervalMonths: 18, description: 'Every 12-18 months' };
+    }
+    if (lowerName.includes('led') || lowerName.includes('light therapy')) {
+      return { intervalMonths: 0.5, description: 'Weekly-Biweekly' };
+    }
+    if (lowerName.includes('peptide') || lowerName.includes('bpc') || lowerName.includes('ghk') || lowerName.includes('tb-')) {
+      return { intervalMonths: 2, description: '6-8 week cycles' };
+    }
+    if (lowerName.includes('iv') || lowerName.includes('drip') || lowerName.includes('infusion') || lowerName.includes('nad')) {
+      return { intervalMonths: 0.5, description: 'Every 1-2 weeks' };
+    }
+    
+    return { intervalMonths: 3, description: 'Every 3 months (estimated)' };
+  }, []);
+
   const recurringRevenueData = useMemo(() => {
     if (!lead) return { treatments: [], totalAnnual: 0 };
 
@@ -146,16 +191,20 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
     }[] = [];
 
     const allTreatments = [
-      ...(lead.roadmap || []).map(t => ({ name: t.name, price: t.price })),
-      ...(lead.peptides || []).map(t => ({ name: t.name, price: '$150-300' })),
-      ...(lead.ivDrips || []).map(t => ({ name: t.name, price: '$200-400' })),
+      ...(lead.roadmap || []).map(t => ({ name: t.name, price: t.price, type: 'procedure' as const })),
+      ...(lead.peptides || []).map(t => ({ name: t.name, price: '$200', type: 'peptide' as const })),
+      ...(lead.ivDrips || []).map(t => ({ name: t.name, price: '$250', type: 'iv' as const })),
     ];
 
+    console.log('Calculating recurring revenue for', allTreatments.length, 'treatments');
+
     allTreatments.forEach(treatment => {
-      const recurrence = TREATMENT_RECURRENCE_MAP[treatment.name];
-      if (recurrence && recurrence.intervalMonths > 0) {
-        const priceMatch = treatment.price.match(/\$?([\d,]+)/);
-        const price = priceMatch ? parseFloat(priceMatch[1].replace(',', '')) : 0;
+      if (!treatment.name) return;
+      
+      const recurrence = findRecurrenceMatch(treatment.name);
+      if (recurrence.intervalMonths > 0) {
+        const priceMatch = treatment.price?.match(/\$?([\d,]+)/);
+        const price = priceMatch ? parseFloat(priceMatch[1].replace(',', '')) : (treatment.type === 'peptide' ? 200 : treatment.type === 'iv' ? 250 : 300);
         const annualSessions = Math.round(12 / recurrence.intervalMonths);
         const annualValue = price * annualSessions;
 
@@ -167,13 +216,16 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
           annualSessions,
           annualValue,
         });
+        
+        console.log('Added recurring treatment:', treatment.name, '- $' + annualValue + '/yr');
       }
     });
 
     const totalAnnual = treatments.reduce((sum, t) => sum + t.annualValue, 0);
+    console.log('Total recurring revenue:', totalAnnual, 'from', treatments.length, 'treatments');
 
     return { treatments, totalAnnual };
-  }, [lead]);
+  }, [lead, findRecurrenceMatch]);
 
   const isValidTreatment = useCallback((treatment: { name?: string; benefit?: string; goal?: string; clinicalReason?: string; price?: string }) => {
     if (!treatment || !treatment.name) return false;
@@ -194,7 +246,7 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
     const isInvalid = nameInvalid || benefitInvalid || reasonInvalid || priceInvalid;
     
     if (isInvalid) {
-      console.log('Filtering out invalid treatment:', treatment.name, '- nameInvalid:', nameInvalid, 'benefitInvalid:', benefitInvalid, 'reasonInvalid:', reasonInvalid, 'priceInvalid:', priceInvalid);
+      console.log('Filtering out invalid treatment:', treatment.name);
     }
     
     return !isInvalid;
@@ -203,10 +255,7 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
   const validRoadmap = useMemo(() => {
     const roadmap = lead?.roadmap || [];
     console.log('Filtering roadmap - total items:', roadmap.length);
-    const filtered = roadmap.filter(item => {
-      const valid = isValidTreatment(item);
-      return valid;
-    });
+    const filtered = roadmap.filter(item => isValidTreatment(item));
     console.log('Valid roadmap items after filter:', filtered.length);
     return filtered;
   }, [lead?.roadmap, isValidTreatment]);
@@ -732,7 +781,7 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
                       <View key={index} style={styles.recurringPrintItem}>
                         <Text style={styles.recurringPrintItemName}>{treatment.name}</Text>
                         <Text style={styles.recurringPrintItemDetail}>
-                          {treatment.description} • ~{treatment.annualSessions} sessions/yr
+                          {treatment.description} - ~{treatment.annualSessions} sessions/yr
                         </Text>
                       </View>
                     ))}
