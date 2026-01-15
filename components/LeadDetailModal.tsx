@@ -22,6 +22,10 @@ import {
   RefreshCcw,
   Clock,
   Info,
+  FileText,
+  Printer,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -41,6 +45,7 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
     treatment: ClinicalProcedure | PeptideTherapy | IVOptimization;
     type: 'procedure' | 'peptide' | 'iv';
   } | null>(null);
+  const [showClientSummary, setShowClientSummary] = useState(false);
 
   const confirmedTreatments = useMemo(() => lead?.selectedTreatments || [], [lead?.selectedTreatments]);
 
@@ -472,6 +477,166 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
               Contact within 24hrs for best patient engagement
             </Text>
           </View>
+
+          {confirmedTreatments.length > 0 && (
+            <View style={styles.clientSummarySection}>
+              <TouchableOpacity
+                style={styles.clientSummaryToggle}
+                onPress={() => {
+                  setShowClientSummary(!showClientSummary);
+                  if (Platform.OS !== 'web') {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={styles.clientSummaryToggleLeft}>
+                  <FileText size={18} color={Colors.gold} />
+                  <View>
+                    <Text style={styles.clientSummaryToggleTitle}>CLIENT TREATMENT SUMMARY</Text>
+                    <Text style={styles.clientSummaryToggleSubtitle}>
+                      {confirmedTreatments.length} treatment{confirmedTreatments.length !== 1 ? 's' : ''} selected for patient
+                    </Text>
+                  </View>
+                </View>
+                {showClientSummary ? (
+                  <ChevronUp size={20} color={Colors.textMuted} />
+                ) : (
+                  <ChevronDown size={20} color={Colors.textMuted} />
+                )}
+              </TouchableOpacity>
+
+              {showClientSummary && (
+                <View style={styles.clientSummaryContent}>
+                  <View style={styles.summaryHeader}>
+                    <View style={styles.summaryPatientInfo}>
+                      <Text style={styles.summaryPatientName}>{lead.name}</Text>
+                      <Text style={styles.summaryDate}>{formatDate(lead.createdAt)}</Text>
+                    </View>
+                    <View style={styles.summaryScoreBadge}>
+                      <Sparkles size={12} color={Colors.gold} />
+                      <Text style={styles.summaryScoreText}>AURA {lead.auraScore}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.summaryDivider} />
+
+                  <Text style={styles.summaryListTitle}>SELECTED TREATMENTS</Text>
+                  
+                  {confirmedTreatments.filter(ct => ct.treatmentType === 'procedure').length > 0 && (
+                    <View style={styles.summaryCategory}>
+                      <View style={styles.summaryCategoryHeader}>
+                        <Syringe size={14} color={Colors.gold} />
+                        <Text style={styles.summaryCategoryTitle}>Clinical Procedures</Text>
+                      </View>
+                      {confirmedTreatments
+                        .filter(ct => ct.treatmentType === 'procedure')
+                        .map((ct, index) => {
+                          const treatment = ct.treatment as ClinicalProcedure;
+                          return (
+                            <View key={index} style={styles.summaryTreatmentItem}>
+                              <View style={styles.summaryTreatmentRow}>
+                                <CheckCircle size={14} color={Colors.success} />
+                                <Text style={styles.summaryTreatmentName}>{treatment.name}</Text>
+                                <Text style={styles.summaryTreatmentPrice}>{treatment.price}</Text>
+                              </View>
+                              {ct.dosing && Object.keys(ct.dosing).some(k => ct.dosing[k as keyof typeof ct.dosing]) && (
+                                <View style={styles.summaryDosingBox}>
+                                  <Text style={styles.summaryDosingLabel}>Protocol Notes:</Text>
+                                  <Text style={styles.summaryDosingText}>
+                                    {ct.dosing.depth && `Depth: ${ct.dosing.depth}`}
+                                    {ct.dosing.energy && `${ct.dosing.depth ? ' • ' : ''}Energy: ${ct.dosing.energy}`}
+                                    {ct.dosing.passes && `${(ct.dosing.depth || ct.dosing.energy) ? ' • ' : ''}Passes: ${ct.dosing.passes}`}
+                                    {ct.dosing.units && `${(ct.dosing.depth || ct.dosing.energy || ct.dosing.passes) ? ' • ' : ''}Units: ${ct.dosing.units}`}
+                                    {ct.dosing.customNotes && `\n${ct.dosing.customNotes}`}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                          );
+                        })}
+                    </View>
+                  )}
+
+                  {confirmedTreatments.filter(ct => ct.treatmentType === 'peptide').length > 0 && (
+                    <View style={styles.summaryCategory}>
+                      <View style={styles.summaryCategoryHeader}>
+                        <FlaskConical size={14} color={Colors.success} />
+                        <Text style={styles.summaryCategoryTitle}>Peptide Therapies</Text>
+                      </View>
+                      {confirmedTreatments
+                        .filter(ct => ct.treatmentType === 'peptide')
+                        .map((ct, index) => {
+                          const treatment = ct.treatment as PeptideTherapy;
+                          return (
+                            <View key={index} style={styles.summaryTreatmentItem}>
+                              <View style={styles.summaryTreatmentRow}>
+                                <CheckCircle size={14} color={Colors.success} />
+                                <Text style={styles.summaryTreatmentName}>{treatment.name}</Text>
+                                <Text style={styles.summaryTreatmentFreq}>{treatment.frequency}</Text>
+                              </View>
+                              {ct.dosing && Object.keys(ct.dosing).some(k => ct.dosing[k as keyof typeof ct.dosing]) && (
+                                <View style={styles.summaryDosingBox}>
+                                  <Text style={styles.summaryDosingLabel}>Protocol Notes:</Text>
+                                  <Text style={styles.summaryDosingText}>
+                                    {ct.dosing.dilution && `Dilution: ${ct.dosing.dilution}`}
+                                    {ct.dosing.volume && `${ct.dosing.dilution ? ' • ' : ''}Volume: ${ct.dosing.volume}`}
+                                    {ct.dosing.customNotes && `\n${ct.dosing.customNotes}`}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                          );
+                        })}
+                    </View>
+                  )}
+
+                  {confirmedTreatments.filter(ct => ct.treatmentType === 'iv').length > 0 && (
+                    <View style={styles.summaryCategory}>
+                      <View style={styles.summaryCategoryHeader}>
+                        <Droplets size={14} color="#60a5fa" />
+                        <Text style={styles.summaryCategoryTitle}>IV Optimization</Text>
+                      </View>
+                      {confirmedTreatments
+                        .filter(ct => ct.treatmentType === 'iv')
+                        .map((ct, index) => {
+                          const treatment = ct.treatment as IVOptimization;
+                          return (
+                            <View key={index} style={styles.summaryTreatmentItem}>
+                              <View style={styles.summaryTreatmentRow}>
+                                <CheckCircle size={14} color={Colors.success} />
+                                <Text style={styles.summaryTreatmentName}>{treatment.name}</Text>
+                                <Text style={styles.summaryTreatmentDuration}>{treatment.duration}</Text>
+                              </View>
+                              {ct.dosing && Object.keys(ct.dosing).some(k => ct.dosing[k as keyof typeof ct.dosing]) && (
+                                <View style={styles.summaryDosingBox}>
+                                  <Text style={styles.summaryDosingLabel}>Protocol Notes:</Text>
+                                  <Text style={styles.summaryDosingText}>
+                                    {ct.dosing.customNotes || 'Standard protocol'}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                          );
+                        })}
+                    </View>
+                  )}
+
+                  <View style={styles.summaryTotalSection}>
+                    <Text style={styles.summaryTotalLabel}>TREATMENTS SELECTED</Text>
+                    <Text style={styles.summaryTotalCount}>{confirmedTreatments.length}</Text>
+                  </View>
+
+                  <View style={styles.summaryFooter}>
+                    <Printer size={12} color={Colors.textMuted} />
+                    <Text style={styles.summaryFooterText}>
+                      Present this summary to your patient for their treatment plan review
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
         </ScrollView>
       </View>
 
@@ -1040,5 +1205,187 @@ const styles = StyleSheet.create({
   emptySectionText: {
     fontSize: 13,
     color: Colors.textMuted,
+  },
+  clientSummarySection: {
+    marginTop: 24,
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    overflow: 'hidden',
+  },
+  clientSummaryToggle: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+  },
+  clientSummaryToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  clientSummaryToggleTitle: {
+    fontSize: 11,
+    fontWeight: '800' as const,
+    color: Colors.gold,
+    letterSpacing: 1,
+  },
+  clientSummaryToggleSubtitle: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  clientSummaryContent: {
+    padding: 16,
+    paddingTop: 0,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 16,
+    paddingBottom: 16,
+  },
+  summaryPatientInfo: {
+    flex: 1,
+  },
+  summaryPatientName: {
+    fontSize: 18,
+    fontWeight: '800' as const,
+    color: Colors.white,
+  },
+  summaryDate: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  summaryScoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  summaryScoreText: {
+    fontSize: 11,
+    fontWeight: '800' as const,
+    color: Colors.gold,
+    letterSpacing: 1,
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginBottom: 16,
+  },
+  summaryListTitle: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: Colors.textMuted,
+    letterSpacing: 1.5,
+    marginBottom: 12,
+  },
+  summaryCategory: {
+    marginBottom: 16,
+  },
+  summaryCategoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  summaryCategoryTitle: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.white,
+  },
+  summaryTreatmentItem: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+  },
+  summaryTreatmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  summaryTreatmentName: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.white,
+  },
+  summaryTreatmentPrice: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.gold,
+  },
+  summaryTreatmentFreq: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: Colors.success,
+  },
+  summaryTreatmentDuration: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: '#60a5fa',
+  },
+  summaryDosingBox: {
+    marginTop: 10,
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderRadius: 8,
+    padding: 10,
+  },
+  summaryDosingLabel: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    color: Colors.gold,
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  summaryDosingText: {
+    fontSize: 11,
+    color: Colors.text,
+    lineHeight: 16,
+  },
+  summaryTotalSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 8,
+  },
+  summaryTotalLabel: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: Colors.success,
+    letterSpacing: 1,
+  },
+  summaryTotalCount: {
+    fontSize: 20,
+    fontWeight: '900' as const,
+    color: Colors.success,
+  },
+  summaryFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  summaryFooterText: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    flex: 1,
+    lineHeight: 14,
   },
 });
