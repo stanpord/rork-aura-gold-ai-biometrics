@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
-import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment } from '@/types';
+import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment, TreatmentConfig, DEFAULT_TREATMENT_CONFIGS } from '@/types';
 
 const STORAGE_KEYS = {
   LEADS: 'aura_gold_leads',
@@ -9,6 +9,15 @@ const STORAGE_KEYS = {
   HEALTH_PROFILE: 'aura_gold_health_profile',
   PATIENT_CONSENT: 'aura_gold_patient_consent',
   TOS_ACKNOWLEDGMENT: 'aura_gold_tos_acknowledgment',
+  TREATMENT_CONFIGS: 'aura_gold_treatment_configs',
+};
+
+const getDefaultTreatmentConfigs = (): TreatmentConfig[] => {
+  return DEFAULT_TREATMENT_CONFIGS.map(t => ({
+    ...t,
+    enabled: true,
+    customPrice: undefined,
+  }));
 };
 
 export const [AppProvider, useApp] = createContextHook(() => {
@@ -24,6 +33,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const [patientHealthProfile, setPatientHealthProfile] = useState<PatientHealthProfile | null>(null);
   const [patientConsent, setPatientConsent] = useState<PatientConsent | null>(null);
   const [tosAcknowledgment, setTosAcknowledgment] = useState<TermsOfServiceAcknowledgment | null>(null);
+  const [treatmentConfigs, setTreatmentConfigs] = useState<TreatmentConfig[]>(getDefaultTreatmentConfigs());
 
   useEffect(() => {
     loadStoredData();
@@ -71,6 +81,18 @@ export const [AppProvider, useApp] = createContextHook(() => {
           ...parsed,
           acknowledgedAt: new Date(parsed.acknowledgedAt),
         });
+      }
+
+      const storedTreatmentConfigs = await AsyncStorage.getItem(STORAGE_KEYS.TREATMENT_CONFIGS);
+      if (storedTreatmentConfigs) {
+        const parsed = JSON.parse(storedTreatmentConfigs);
+        const defaultConfigs = getDefaultTreatmentConfigs();
+        const mergedConfigs = defaultConfigs.map(defaultConfig => {
+          const stored = parsed.find((p: TreatmentConfig) => p.id === defaultConfig.id);
+          return stored ? { ...defaultConfig, enabled: stored.enabled, customPrice: stored.customPrice } : defaultConfig;
+        });
+        setTreatmentConfigs(mergedConfigs);
+        console.log('Treatment configs loaded:', mergedConfigs.length);
       }
       setIsLoadingIntro(false);
     } catch (error) {
@@ -158,6 +180,67 @@ export const [AppProvider, useApp] = createContextHook(() => {
       console.log('Error clearing ToS acknowledgment:', error);
     }
   }, []);
+
+  const updateTreatmentConfig = useCallback(async (treatmentId: string, updates: Partial<Pick<TreatmentConfig, 'enabled' | 'customPrice'>>) => {
+    const updatedConfigs = treatmentConfigs.map(config => {
+      if (config.id === treatmentId) {
+        return { ...config, ...updates };
+      }
+      return config;
+    });
+    setTreatmentConfigs(updatedConfigs);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.TREATMENT_CONFIGS, JSON.stringify(updatedConfigs));
+      console.log('Treatment config updated:', treatmentId, updates);
+    } catch (error) {
+      console.log('Error saving treatment config:', error);
+    }
+  }, [treatmentConfigs]);
+
+  const toggleAllTreatments = useCallback(async (category: 'procedure' | 'peptide' | 'iv' | 'all', enabled: boolean) => {
+    const updatedConfigs = treatmentConfigs.map(config => {
+      if (category === 'all' || config.category === category) {
+        return { ...config, enabled };
+      }
+      return config;
+    });
+    setTreatmentConfigs(updatedConfigs);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.TREATMENT_CONFIGS, JSON.stringify(updatedConfigs));
+      console.log('All treatments toggled:', category, enabled);
+    } catch (error) {
+      console.log('Error saving treatment configs:', error);
+    }
+  }, [treatmentConfigs]);
+
+  const resetTreatmentConfigs = useCallback(async () => {
+    const defaultConfigs = getDefaultTreatmentConfigs();
+    setTreatmentConfigs(defaultConfigs);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.TREATMENT_CONFIGS, JSON.stringify(defaultConfigs));
+      console.log('Treatment configs reset to defaults');
+    } catch (error) {
+      console.log('Error resetting treatment configs:', error);
+    }
+  }, []);
+
+  const isTreatmentEnabled = useCallback((treatmentName: string): boolean => {
+    const normalizedName = treatmentName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const config = treatmentConfigs.find(c => {
+      const configNormalized = c.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return configNormalized === normalizedName || c.id.replace(/_/g, '') === normalizedName;
+    });
+    return config?.enabled ?? true;
+  }, [treatmentConfigs]);
+
+  const getTreatmentPrice = useCallback((treatmentName: string): string => {
+    const normalizedName = treatmentName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const config = treatmentConfigs.find(c => {
+      const configNormalized = c.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return configNormalized === normalizedName || c.id.replace(/_/g, '') === normalizedName;
+    });
+    return config?.customPrice || config?.defaultPrice || '';
+  }, [treatmentConfigs]);
 
   const parsePrice = (priceStr: string): number => {
     const cleanedPrice = priceStr.replace(/[^0-9,-]/g, '');
@@ -290,5 +373,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
     tosAcknowledgment,
     saveTosAcknowledgment,
     clearTosAcknowledgment,
+    treatmentConfigs,
+    updateTreatmentConfig,
+    toggleAllTreatments,
+    resetTreatmentConfigs,
+    isTreatmentEnabled,
+    getTreatmentPrice,
   };
 });

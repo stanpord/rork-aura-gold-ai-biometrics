@@ -23,6 +23,9 @@ import {
   Settings,
   RefreshCw,
   Trash2,
+  Sliders,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -31,6 +34,7 @@ import ClinicLoginModal from '@/components/ClinicLoginModal';
 import LeadDetailModal from '@/components/LeadDetailModal';
 import TermsOfServiceModal from '@/components/TermsOfServiceModal';
 import { Lead, TermsOfServiceAcknowledgment } from '@/types';
+import TreatmentSettingsPanel from '@/components/TreatmentSettingsPanel';
 
 interface ZenotiConfig {
   apiKey: string;
@@ -54,6 +58,7 @@ export default function ClinicScreen() {
   const [showLeadDetail, setShowLeadDetail] = useState(false);
   const [showTosModal, setShowTosModal] = useState(false);
   const [pendingAuth, setPendingAuth] = useState(false);
+  const [showTreatmentSettings, setShowTreatmentSettings] = useState(false);
 
   const handleLogin = (passcode: string): boolean => {
     const success = authenticateStaff(passcode);
@@ -298,6 +303,35 @@ export default function ClinicScreen() {
                 )}
               </TouchableOpacity>
             </View>
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={styles.crmToggle}
+          onPress={() => {
+            setShowTreatmentSettings(!showTreatmentSettings);
+            if (Platform.OS !== 'web') {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }
+          }}
+          activeOpacity={0.8}
+        >
+          <View style={styles.crmToggleLeft}>
+            <Sliders size={18} color={Colors.gold} />
+            <Text style={styles.crmToggleText}>Treatment & Pricing</Text>
+          </View>
+          <View style={styles.treatmentSettingsIndicator}>
+            {showTreatmentSettings ? (
+              <ChevronUp size={18} color={Colors.textMuted} />
+            ) : (
+              <ChevronDown size={18} color={Colors.textMuted} />
+            )}
+          </View>
+        </TouchableOpacity>
+
+        {showTreatmentSettings && (
+          <View style={styles.treatmentSettingsContainer}>
+            <TreatmentSettingsPanel />
           </View>
         )}
 
@@ -805,6 +839,19 @@ const styles = StyleSheet.create({
   emptyTableSubtext: {
     fontSize: 12,
     color: Colors.textMuted,
+  },
+  treatmentSettingsIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  treatmentSettingsContainer: {
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    maxHeight: 500,
+    overflow: 'hidden',
   },
   deleteButton: {
     width: 32,

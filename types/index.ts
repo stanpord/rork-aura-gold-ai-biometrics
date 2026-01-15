@@ -223,3 +223,54 @@ export interface TermsOfServiceAcknowledgment {
   clinicName?: string;
   stateJurisdiction: string;
 }
+
+export interface TreatmentConfig {
+  id: string;
+  name: string;
+  category: 'procedure' | 'peptide' | 'iv';
+  enabled: boolean;
+  customPrice?: string;
+  defaultPrice: string;
+}
+
+export const DEFAULT_TREATMENT_CONFIGS: Omit<TreatmentConfig, 'enabled' | 'customPrice'>[] = [
+  { id: 'morpheus8', name: 'Morpheus8', category: 'procedure', defaultPrice: '$800-1,200' },
+  { id: 'botox', name: 'Botox Cosmetic', category: 'procedure', defaultPrice: '$12-15/unit' },
+  { id: 'baby_botox', name: 'Baby Botox', category: 'procedure', defaultPrice: '$200-400' },
+  { id: 'lip_flip', name: 'Lip Flip', category: 'procedure', defaultPrice: '$150-200' },
+  { id: 'wrinkle_relaxers', name: 'Wrinkle Relaxers', category: 'procedure', defaultPrice: '$10-15/unit' },
+  { id: 'dermal_filler', name: 'Dermal Filler', category: 'procedure', defaultPrice: '$650-900/syringe' },
+  { id: 'lip_filler', name: 'Lip Filler', category: 'procedure', defaultPrice: '$500-800' },
+  { id: 'plasma_biofiller', name: 'Plasma BioFiller', category: 'procedure', defaultPrice: '$900-1,500' },
+  { id: 'sculptra', name: 'Sculptra', category: 'procedure', defaultPrice: '$900-1,200/vial' },
+  { id: 'radiesse', name: 'Radiesse', category: 'procedure', defaultPrice: '$700-1,000/syringe' },
+  { id: 'stellar_ipl', name: 'Stellar IPL', category: 'procedure', defaultPrice: '$300-500' },
+  { id: 'resurfx', name: 'ResurFX', category: 'procedure', defaultPrice: '$500-800' },
+  { id: 'rf_microneedling', name: 'RF Microneedling', category: 'procedure', defaultPrice: '$600-1,000' },
+  { id: 'endolift', name: 'Endolift', category: 'procedure', defaultPrice: '$2,000-4,000' },
+  { id: 'pdo_threads', name: 'PDO Thread Lift', category: 'procedure', defaultPrice: '$1,500-3,000' },
+  { id: 'kybella', name: 'Kybella', category: 'procedure', defaultPrice: '$600-1,200' },
+  { id: 'diamondglow', name: 'DiamondGlow', category: 'procedure', defaultPrice: '$150-250' },
+  { id: 'hydrafacial', name: 'HydraFacial', category: 'procedure', defaultPrice: '$150-300' },
+  { id: 'facials', name: 'Facials', category: 'procedure', defaultPrice: '$100-200' },
+  { id: 'chemical_peels', name: 'Chemical Peels', category: 'procedure', defaultPrice: '$150-400' },
+  { id: 'microneedling', name: 'Microneedling', category: 'procedure', defaultPrice: '$300-500' },
+  { id: 'microdermabrasion', name: 'Microdermabrasion', category: 'procedure', defaultPrice: '$100-200' },
+  { id: 'clear_brilliant', name: 'Clear + Brilliant', category: 'procedure', defaultPrice: '$400-600' },
+  { id: 'moxi_laser', name: 'MOXI Laser', category: 'procedure', defaultPrice: '$500-800' },
+  { id: 'red_light_therapy', name: 'Red Light Therapy', category: 'procedure', defaultPrice: '$50-100' },
+  { id: 'led_therapy', name: 'LED Therapy', category: 'procedure', defaultPrice: '$50-100' },
+  { id: 'exosome_therapy', name: 'Exosome Therapy', category: 'procedure', defaultPrice: '$500-1,000' },
+  { id: 'anti_aging', name: 'Anti-Aging Treatments', category: 'procedure', defaultPrice: '$200-500' },
+  { id: 'bpc157', name: 'BPC-157', category: 'peptide', defaultPrice: '$300-500/month' },
+  { id: 'ghkcu', name: 'GHK-Cu', category: 'peptide', defaultPrice: '$250-400/month' },
+  { id: 'epithalon', name: 'Epithalon', category: 'peptide', defaultPrice: '$400-600/cycle' },
+  { id: 'tb500', name: 'TB-500', category: 'peptide', defaultPrice: '$300-500/month' },
+  { id: 'thymosin_alpha1', name: 'Thymosin Alpha-1', category: 'peptide', defaultPrice: '$350-550/month' },
+  { id: 'ipamorelin', name: 'Ipamorelin', category: 'peptide', defaultPrice: '$400-600/month' },
+  { id: 'glow_drip', name: 'Glow Drip', category: 'iv', defaultPrice: '$200-350' },
+  { id: 'nad_infusion', name: 'NAD+ Infusion', category: 'iv', defaultPrice: '$400-800' },
+  { id: 'myers_cocktail', name: 'Myers Cocktail', category: 'iv', defaultPrice: '$150-275' },
+  { id: 'glutathione_push', name: 'Glutathione Push', category: 'iv', defaultPrice: '$50-100' },
+  { id: 'vitamin_c_drip', name: 'Vitamin C Drip', category: 'iv', defaultPrice: '$150-250' },
+];
