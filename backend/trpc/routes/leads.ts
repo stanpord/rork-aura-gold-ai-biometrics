@@ -78,6 +78,18 @@ function escapeString(value: unknown): string {
   return `'${String(value).replace(/'/g, "\\'")}'`;
 }
 
+function deduplicateByName<T extends { name: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter(item => {
+    if (seen.has(item.name)) {
+      console.log('Removing duplicate treatment:', item.name);
+      return false;
+    }
+    seen.add(item.name);
+    return true;
+  });
+}
+
 async function dbQuery(sql: string, bindings: Record<string, unknown> = {}) {
   if (!DB_ENDPOINT || !DB_NAMESPACE || !DB_TOKEN) {
     console.log('Database not configured - Endpoint:', !!DB_ENDPOINT, 'Namespace:', !!DB_NAMESPACE, 'Token:', !!DB_TOKEN);
@@ -149,7 +161,7 @@ export const leadsRouter = createTRPCRouter({
             }
           }
           
-          // Parse roadmap if it's a string
+          // Parse roadmap if it's a string and deduplicate
           let roadmap = row.roadmap || [];
           if (typeof roadmap === 'string') {
             try {
@@ -158,8 +170,11 @@ export const leadsRouter = createTRPCRouter({
               roadmap = [];
             }
           }
+          if (Array.isArray(roadmap)) {
+            roadmap = deduplicateByName(roadmap as { name: string }[]);
+          }
           
-          // Parse peptides if it's a string
+          // Parse peptides if it's a string and deduplicate
           let peptides = row.peptides || [];
           if (typeof peptides === 'string') {
             try {
@@ -168,8 +183,11 @@ export const leadsRouter = createTRPCRouter({
               peptides = [];
             }
           }
+          if (Array.isArray(peptides)) {
+            peptides = deduplicateByName(peptides as { name: string }[]);
+          }
           
-          // Parse ivDrips if it's a string
+          // Parse ivDrips if it's a string and deduplicate
           let ivDrips = row.ivDrips || [];
           if (typeof ivDrips === 'string') {
             try {
@@ -178,8 +196,11 @@ export const leadsRouter = createTRPCRouter({
               ivDrips = [];
             }
           }
+          if (Array.isArray(ivDrips)) {
+            ivDrips = deduplicateByName(ivDrips as { name: string }[]);
+          }
           
-          console.log('Lead', cleanId, 'selectedTreatments count:', Array.isArray(selectedTreatments) ? selectedTreatments.length : 0);
+          console.log('Lead', cleanId, 'roadmap count:', Array.isArray(roadmap) ? roadmap.length : 0, 'selectedTreatments count:', Array.isArray(selectedTreatments) ? selectedTreatments.length : 0);
           
           return {
             id: cleanId,
@@ -214,15 +235,22 @@ export const leadsRouter = createTRPCRouter({
       console.log('Creating lead:', input.name, 'ID:', input.id);
       
       try {
+        // Deduplicate treatments before saving
+        const deduplicatedRoadmap = deduplicateByName(input.roadmap);
+        const deduplicatedPeptides = deduplicateByName(input.peptides);
+        const deduplicatedIvDrips = deduplicateByName(input.ivDrips);
+        
+        console.log('Creating lead with deduplicated counts - roadmap:', deduplicatedRoadmap.length, 'peptides:', deduplicatedPeptides.length, 'iv:', deduplicatedIvDrips.length);
+        
         const leadData = {
           name: input.name,
           phone: input.phone,
           auraScore: input.auraScore,
           faceType: input.faceType,
           estimatedValue: input.estimatedValue,
-          roadmap: input.roadmap,
-          peptides: input.peptides,
-          ivDrips: input.ivDrips,
+          roadmap: deduplicatedRoadmap,
+          peptides: deduplicatedPeptides,
+          ivDrips: deduplicatedIvDrips,
           selectedTreatments: input.selectedTreatments || [],
           status: input.status,
           createdAt: input.createdAt,
