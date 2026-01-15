@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
-import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment, TreatmentConfig, DEFAULT_TREATMENT_CONFIGS } from '@/types';
+import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment, TreatmentConfig, DEFAULT_TREATMENT_CONFIGS, PatientBasicInfo } from '@/types';
 
 const APP_VERSION = '1.0.5';
 
@@ -13,6 +13,7 @@ const STORAGE_KEYS = {
   TOS_ACKNOWLEDGMENT: 'aura_gold_tos_acknowledgment',
   TREATMENT_CONFIGS: 'aura_gold_treatment_configs',
   APP_VERSION: 'aura_gold_app_version',
+  PATIENT_BASIC_INFO: 'aura_gold_patient_basic_info',
 };
 
 const getDefaultTreatmentConfigs = (): TreatmentConfig[] => {
@@ -38,6 +39,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const [tosAcknowledgment, setTosAcknowledgment] = useState<TermsOfServiceAcknowledgment | null>(null);
   const [treatmentConfigs, setTreatmentConfigs] = useState<TreatmentConfig[]>(getDefaultTreatmentConfigs());
   const [isDevMode, setIsDevMode] = useState(false);
+  const [patientBasicInfo, setPatientBasicInfo] = useState<PatientBasicInfo | null>(null);
 
   useEffect(() => {
     loadStoredData();
@@ -114,6 +116,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
         });
         setTreatmentConfigs(mergedConfigs);
         console.log('Treatment configs loaded:', mergedConfigs.length);
+      }
+
+      const storedBasicInfo = await AsyncStorage.getItem(STORAGE_KEYS.PATIENT_BASIC_INFO);
+      if (storedBasicInfo) {
+        const parsed = JSON.parse(storedBasicInfo);
+        setPatientBasicInfo(parsed);
+        console.log('Patient basic info loaded:', parsed.name);
       }
       setIsLoadingIntro(false);
     } catch (error) {
@@ -202,6 +211,38 @@ export const [AppProvider, useApp] = createContextHook(() => {
     }
   }, []);
 
+  const savePatientBasicInfo = useCallback(async (info: PatientBasicInfo) => {
+    setPatientBasicInfo(info);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.PATIENT_BASIC_INFO, JSON.stringify(info));
+      console.log('Patient basic info saved:', info.name);
+    } catch (error) {
+      console.log('Error saving patient basic info:', error);
+    }
+  }, []);
+
+  const updatePatientEmail = useCallback(async (email: string) => {
+    const updatedInfo = patientBasicInfo ? { ...patientBasicInfo, email } : null;
+    if (updatedInfo) {
+      setPatientBasicInfo(updatedInfo);
+      try {
+        await AsyncStorage.setItem(STORAGE_KEYS.PATIENT_BASIC_INFO, JSON.stringify(updatedInfo));
+        console.log('Patient email updated:', email);
+      } catch (error) {
+        console.log('Error updating patient email:', error);
+      }
+    }
+  }, [patientBasicInfo]);
+
+  const clearPatientBasicInfo = useCallback(async () => {
+    setPatientBasicInfo(null);
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEYS.PATIENT_BASIC_INFO);
+    } catch (error) {
+      console.log('Error clearing patient basic info:', error);
+    }
+  }, []);
+
   const updateTreatmentConfig = useCallback(async (treatmentId: string, updates: Partial<Pick<TreatmentConfig, 'enabled' | 'customPrice'>>) => {
     const updatedConfigs = treatmentConfigs.map(config => {
       if (config.id === treatmentId) {
@@ -273,6 +314,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
         STORAGE_KEYS.PATIENT_CONSENT,
         STORAGE_KEYS.TOS_ACKNOWLEDGMENT,
         STORAGE_KEYS.TREATMENT_CONFIGS,
+        STORAGE_KEYS.PATIENT_BASIC_INFO,
       ]);
       setLeads([]);
       setHasCompletedIntro(false);
@@ -280,6 +322,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       setPatientConsent(null);
       setTosAcknowledgment(null);
       setTreatmentConfigs(getDefaultTreatmentConfigs());
+      setPatientBasicInfo(null);
       setCurrentAnalysis(null);
       setCapturedImage(null);
       setSimulatedImage(null);
@@ -489,5 +532,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
     forceRefresh,
     isDevMode,
     setIsDevMode,
+    patientBasicInfo,
+    savePatientBasicInfo,
+    updatePatientEmail,
+    clearPatientBasicInfo,
   };
 });

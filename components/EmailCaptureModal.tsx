@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,42 +10,37 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Shield, ChevronRight, ShieldCheck } from 'lucide-react-native';
+import { Mail, ChevronRight, CheckCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
-interface LeadCaptureModalProps {
+interface EmailCaptureModalProps {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (name: string, phone: string) => Promise<void>;
+  onSubmit: (email: string) => Promise<void>;
+  onSkip: () => void;
   isSuccess: boolean;
-  initialName?: string;
-  initialPhone?: string;
 }
 
-export default function LeadCaptureModal({
+export default function EmailCaptureModal({
   visible,
   onClose,
   onSubmit,
+  onSkip,
   isSuccess,
-  initialName = '',
-  initialPhone = '',
-}: LeadCaptureModalProps) {
-  const [name, setName] = useState(initialName);
-  const [phone, setPhone] = useState(initialPhone);
+}: EmailCaptureModalProps) {
+  const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (visible) {
-      setName(initialName);
-      setPhone(initialPhone);
-    }
-  }, [visible, initialName, initialPhone]);
+  const isValidEmail = (emailStr: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(emailStr);
+  };
 
   const handleSubmit = async () => {
-    if (!name.trim() || !phone.trim()) return;
+    if (!email.trim() || !isValidEmail(email.trim())) return;
     setIsLoading(true);
     try {
-      await onSubmit(name.trim(), phone.trim());
+      await onSubmit(email.trim());
     } finally {
       setIsLoading(false);
     }
@@ -69,45 +64,42 @@ export default function LeadCaptureModal({
           {isSuccess ? (
             <View style={styles.successContainer}>
               <View style={styles.successIcon}>
-                <ShieldCheck size={40} color={Colors.black} />
+                <CheckCircle size={40} color={Colors.black} />
               </View>
-              <Text style={styles.successTitle}>DIAGNOSTIC UNLOCKED</Text>
+              <Text style={styles.successTitle}>EMAIL SAVED</Text>
               <Text style={styles.successSubtitle}>
-                Identity verified. Syncing records...
+                Proceeding to analysis...
               </Text>
             </View>
           ) : (
             <>
               <View style={styles.header}>
-                <Text style={styles.title}>SYNC YOUR{'\n'}AURA INDEX</Text>
+                <View style={styles.iconContainer}>
+                  <Mail size={28} color={Colors.gold} />
+                </View>
+                <Text style={styles.title}>ADD YOUR EMAIL</Text>
                 <Text style={styles.subtitle}>
-                  SECURE CLINICAL ROADMAP & PATIENT PROFILE
+                  RECEIVE YOUR PERSONALIZED ANALYSIS RESULTS
                 </Text>
               </View>
 
               <View style={styles.form}>
                 <TextInput
                   style={styles.input}
-                  placeholder="Full Name"
+                  placeholder="Email Address"
                   placeholderTextColor={Colors.textMuted}
-                  value={name}
-                  onChangeText={setName}
-                  autoCapitalize="words"
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Mobile Number"
-                  placeholderTextColor={Colors.textMuted}
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
               </View>
 
               <TouchableOpacity
-                style={[styles.submitButton, (!name || !phone) && styles.submitButtonDisabled]}
+                style={[styles.submitButton, (!email || !isValidEmail(email)) && styles.submitButtonDisabled]}
                 onPress={handleSubmit}
-                disabled={isLoading || !name || !phone}
+                disabled={isLoading || !email || !isValidEmail(email)}
                 activeOpacity={0.8}
               >
                 {isLoading ? (
@@ -115,15 +107,18 @@ export default function LeadCaptureModal({
                 ) : (
                   <>
                     <ChevronRight size={20} color={Colors.black} />
-                    <Text style={styles.submitButtonText}>SAVE DIAGNOSTIC</Text>
+                    <Text style={styles.submitButtonText}>CONTINUE</Text>
                   </>
                 )}
               </TouchableOpacity>
 
-              <View style={styles.securityBadge}>
-                <Shield size={12} color={Colors.textMuted} />
-                <Text style={styles.securityText}>SECURE ENCRYPTION</Text>
-              </View>
+              <TouchableOpacity
+                style={styles.skipButton}
+                onPress={onSkip}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.skipButtonText}>SKIP FOR NOW</Text>
+              </TouchableOpacity>
             </>
           )}
         </View>
@@ -168,24 +163,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
+  iconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '900' as const,
     color: Colors.white,
     textAlign: 'center',
-    letterSpacing: -1,
-    lineHeight: 32,
+    letterSpacing: -0.5,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 9,
     fontWeight: '700' as const,
     color: Colors.textMuted,
     letterSpacing: 2,
-    marginTop: 12,
     textAlign: 'center',
   },
   form: {
-    gap: 16,
     marginBottom: 24,
   },
   input: {
@@ -217,19 +219,15 @@ const styles = StyleSheet.create({
     color: Colors.black,
     letterSpacing: 2,
   },
-  securityBadge: {
-    flexDirection: 'row',
+  skipButton: {
+    paddingVertical: 16,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 16,
-    opacity: 0.5,
   },
-  securityText: {
-    fontSize: 8,
-    fontWeight: '800' as const,
+  skipButtonText: {
+    fontSize: 10,
+    fontWeight: '700' as const,
     color: Colors.textMuted,
-    letterSpacing: 2,
+    letterSpacing: 1,
   },
   successContainer: {
     alignItems: 'center',

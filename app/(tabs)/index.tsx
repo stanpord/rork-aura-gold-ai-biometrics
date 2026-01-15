@@ -47,6 +47,7 @@ import { useApp } from '@/contexts/AppContext';
 import AuraScoreGauge from '@/components/AuraScoreGauge';
 import BiometricScanOverlay from '@/components/BiometricScanOverlay';
 import LeadCaptureModal from '@/components/LeadCaptureModal';
+import EmailCaptureModal from '@/components/EmailCaptureModal';
 import BeforeAfterSlider from '@/components/BeforeAfterSlider';
 import BiometricIntroScan from '@/components/BiometricIntroScan';
 import HealthQuestionnaire from '@/components/HealthQuestionnaire';
@@ -84,6 +85,9 @@ export default function ScanScreen() {
     treatmentConfigs,
     isDevMode,
     setIsDevMode,
+    patientBasicInfo,
+    savePatientBasicInfo,
+    updatePatientEmail,
   } = useApp();
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -96,6 +100,8 @@ export default function ScanScreen() {
   const [showHealthQuestionnaire, setShowHealthQuestionnaire] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [isSimulationPending, setIsSimulationPending] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [isEmailSaved, setIsEmailSaved] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<'front' | 'back'>('front');
   const cameraRef = useRef<CameraView>(null);
   const DEV_CODE = '1234';
@@ -211,6 +217,9 @@ export default function ScanScreen() {
       if (!result.canceled && result.assets[0]) {
         setCapturedImage(result.assets[0].uri);
         console.log('Image selected from gallery:', result.assets[0].uri);
+        if (!patientBasicInfo?.email) {
+          setTimeout(() => setShowEmailModal(true), 500);
+        }
       }
     } catch (error) {
       console.log('Error picking image:', error);
@@ -248,6 +257,9 @@ export default function ScanScreen() {
       if (photo) {
         setCapturedImage(photo.uri);
         setIsCameraActive(false);
+        if (!patientBasicInfo?.email) {
+          setTimeout(() => setShowEmailModal(true), 500);
+        }
       }
     } catch (error) {
       console.log('Error capturing image:', error);
@@ -730,6 +742,13 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
   };
 
   const handleSaveLead = async (name: string, phone: string) => {
+    if (!patientBasicInfo || patientBasicInfo.name !== name || patientBasicInfo.phone !== phone) {
+      await savePatientBasicInfo({ 
+        name, 
+        phone, 
+        email: patientBasicInfo?.email 
+      });
+    }
     await addLead(name, phone);
     setIsLeadSaved(true);
     if (Platform.OS !== 'web') {
@@ -739,6 +758,22 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
       setShowLeadModal(false);
       setIsLeadSaved(false);
     }, 1500);
+  };
+
+  const handleEmailSubmit = async (email: string) => {
+    await updatePatientEmail(email);
+    setIsEmailSaved(true);
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    setTimeout(() => {
+      setShowEmailModal(false);
+      setIsEmailSaved(false);
+    }, 1000);
+  };
+
+  const handleEmailSkip = () => {
+    setShowEmailModal(false);
   };
 
   const handleNewScan = () => {
@@ -1041,6 +1076,16 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
           onClose={() => setShowLeadModal(false)}
           onSubmit={handleSaveLead}
           isSuccess={isLeadSaved}
+          initialName={patientBasicInfo?.name || ''}
+          initialPhone={patientBasicInfo?.phone || ''}
+        />
+
+        <EmailCaptureModal
+          visible={showEmailModal}
+          onClose={() => setShowEmailModal(false)}
+          onSubmit={handleEmailSubmit}
+          onSkip={handleEmailSkip}
+          isSuccess={isEmailSaved}
         />
 
         <HealthQuestionnaire

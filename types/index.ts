@@ -154,6 +154,12 @@ export interface PatientHealthProfile {
   completedAt: Date;
 }
 
+export interface PatientBasicInfo {
+  name: string;
+  phone: string;
+  email?: string;
+}
+
 export type ViewMode = 'client' | 'clinic';
 
 export interface TreatmentDosingSettings {
