@@ -68,33 +68,51 @@ const leadSchema = z.object({
 
 
 
+function escapeString(value: unknown): string {
+  if (value === null || value === undefined) return 'NULL';
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (Array.isArray(value) || typeof value === 'object') {
+    return JSON.stringify(value).replace(/'/g, "\\'");
+  }
+  return `'${String(value).replace(/'/g, "\\'")}'`;
+}
+
 async function dbQuery(sql: string, bindings: Record<string, unknown> = {}) {
   if (!DB_ENDPOINT || !DB_NAMESPACE || !DB_TOKEN) {
-    console.log('Database not configured');
+    console.log('Database not configured - Endpoint:', !!DB_ENDPOINT, 'Namespace:', !!DB_NAMESPACE, 'Token:', !!DB_TOKEN);
     throw new Error('Database not configured');
   }
 
-  console.log('DB Query:', sql);
+  let processedSql = sql;
+  for (const [key, value] of Object.entries(bindings)) {
+    const placeholder = `${key}`;
+    const escapedValue = escapeString(value);
+    processedSql = processedSql.split(placeholder).join(escapedValue);
+  }
+
+  console.log('DB Query (processed):', processedSql.substring(0, 500));
   
   const response = await fetch(`${DB_ENDPOINT}/sql`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'text/plain',
+      'Accept': 'application/json',
       'Authorization': `Bearer ${DB_TOKEN}`,
       'surreal-ns': DB_NAMESPACE,
       'surreal-db': 'main',
     },
-    body: JSON.stringify({ sql, bindings }),
+    body: processedSql,
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.log('DB Error:', errorText);
-    throw new Error(`Database error: ${response.status}`);
+    console.log('DB Error Response:', response.status, errorText);
+    throw new Error(`Database error: ${response.status} - ${errorText}`);
   }
 
   const result = await response.json();
-  console.log('DB Result:', JSON.stringify(result));
+  console.log('DB Result:', JSON.stringify(result).substring(0, 500));
   return result;
 }
 
@@ -103,27 +121,42 @@ export const leadsRouter = createTRPCRouter({
     console.log('Fetching all leads from database');
     
     try {
-      const result = await dbQuery('SELECT * FROM leads ORDER BY createdAt DESC');
+      const result = await dbQuery('SELECT * FROM leads ORDER BY createdAt DESC;');
       
-      if (result && result[0] && result[0].result) {
-        const leads = result[0].result.map((row: Record<string, unknown>) => ({
-          id: String(row.id).replace('leads:', ''),
-          name: row.name,
-          phone: row.phone,
-          auraScore: row.auraScore,
-          faceType: row.faceType,
-          estimatedValue: row.estimatedValue,
-          roadmap: row.roadmap || [],
-          peptides: row.peptides || [],
-          ivDrips: row.ivDrips || [],
-          selectedTreatments: row.selectedTreatments || [],
-          status: row.status,
-          createdAt: row.createdAt,
-        }));
-        console.log('Fetched leads:', leads.length);
+      console.log('Raw DB result structure:', result ? `Array of ${result.length} items` : 'null');
+      
+      if (result && result[0]) {
+        if (result[0].status === 'ERR') {
+          console.log('DB query returned error:', result[0].result);
+          return { success: false, leads: [], error: result[0].result };
+        }
+        
+        const rawLeads = result[0].result || [];
+        console.log('Raw leads count:', rawLeads.length);
+        
+        const leads = rawLeads.map((row: Record<string, unknown>) => {
+          const idStr = String(row.id || '');
+          const cleanId = idStr.replace(/^leads:⟨?/, '').replace(/⟩?$/, '');
+          return {
+            id: cleanId,
+            name: row.name || '',
+            phone: row.phone || '',
+            auraScore: row.auraScore || 0,
+            faceType: row.faceType || '',
+            estimatedValue: row.estimatedValue || 0,
+            roadmap: row.roadmap || [],
+            peptides: row.peptides || [],
+            ivDrips: row.ivDrips || [],
+            selectedTreatments: row.selectedTreatments || [],
+            status: row.status || 'new',
+            createdAt: row.createdAt || new Date().toISOString(),
+          };
+        });
+        console.log('Processed leads:', leads.length, leads.map((l: { name: string }) => l.name));
         return { success: true, leads };
       }
       
+      console.log('No result array from DB');
       return { success: true, leads: [] };
     } catch (error) {
       console.log('Error fetching leads:', error);
@@ -134,23 +167,10 @@ export const leadsRouter = createTRPCRouter({
   create: publicProcedure
     .input(leadSchema)
     .mutation(async ({ input }) => {
-      console.log('Creating lead:', input.name);
+      console.log('Creating lead:', input.name, 'ID:', input.id);
       
       try {
-        const sql = `CREATE leads:${input.id} SET 
-          name = $name,
-          phone = $phone,
-          auraScore = $auraScore,
-          faceType = $faceType,
-          estimatedValue = $estimatedValue,
-          roadmap = $roadmap,
-          peptides = $peptides,
-          ivDrips = $ivDrips,
-          selectedTreatments = $selectedTreatments,
-          status = $status,
-          createdAt = $createdAt`;
-
-        await dbQuery(sql, {
+        const leadData = {
           name: input.name,
           phone: input.phone,
           auraScore: input.auraScore,
@@ -162,7 +182,16 @@ export const leadsRouter = createTRPCRouter({
           selectedTreatments: input.selectedTreatments || [],
           status: input.status,
           createdAt: input.createdAt,
-        });
+        };
+
+        const sql = `CREATE leads:⟨${input.id}⟩ CONTENT ${JSON.stringify(leadData)};`;
+        
+        const result = await dbQuery(sql);
+        
+        if (result && result[0] && result[0].status === 'ERR') {
+          console.log('DB returned error:', result[0].result);
+          return { success: false, error: result[0].result };
+        }
 
         console.log('Lead created successfully:', input.id);
         return { success: true, id: input.id };
@@ -178,25 +207,29 @@ export const leadsRouter = createTRPCRouter({
       data: leadSchema.partial(),
     }))
     .mutation(async ({ input }) => {
-      console.log('Updating lead:', input.id);
+      console.log('Updating lead:', input.id, 'with data keys:', Object.keys(input.data));
       
       try {
-        const updates: string[] = [];
-        const bindings: Record<string, unknown> = {};
-
+        const updateData: Record<string, unknown> = {};
+        
         Object.entries(input.data).forEach(([key, value]) => {
           if (value !== undefined && key !== 'id') {
-            updates.push(`${key} = $${key}`);
-            bindings[key] = value;
+            updateData[key] = value;
           }
         });
 
-        if (updates.length === 0) {
+        if (Object.keys(updateData).length === 0) {
+          console.log('No updates to apply');
           return { success: true };
         }
 
-        const sql = `UPDATE leads:${input.id} SET ${updates.join(', ')}`;
-        await dbQuery(sql, bindings);
+        const sql = `UPDATE leads:⟨${input.id}⟩ MERGE ${JSON.stringify(updateData)};`;
+        const result = await dbQuery(sql);
+        
+        if (result && result[0] && result[0].status === 'ERR') {
+          console.log('DB returned error on update:', result[0].result);
+          return { success: false, error: result[0].result };
+        }
 
         console.log('Lead updated successfully:', input.id);
         return { success: true };
@@ -212,7 +245,14 @@ export const leadsRouter = createTRPCRouter({
       console.log('Deleting lead:', input.id);
       
       try {
-        await dbQuery(`DELETE leads:${input.id}`);
+        const sql = `DELETE leads:⟨${input.id}⟩;`;
+        const result = await dbQuery(sql);
+        
+        if (result && result[0] && result[0].status === 'ERR') {
+          console.log('DB returned error on delete:', result[0].result);
+          return { success: false, error: result[0].result };
+        }
+        
         console.log('Lead deleted successfully:', input.id);
         return { success: true };
       } catch (error) {
