@@ -17,6 +17,7 @@ interface BeforeAfterSliderProps {
   afterImage: string;
   height?: number;
   maxWidth?: number;
+  isSimulationPending?: boolean;
 }
 
 export default function BeforeAfterSlider({
@@ -24,7 +25,9 @@ export default function BeforeAfterSlider({
   afterImage,
   height = 400,
   maxWidth = 500,
+  isSimulationPending = false,
 }: BeforeAfterSliderProps) {
+  const isSameImage = beforeImage === afterImage;
   const { width: windowWidth } = useWindowDimensions();
   const [containerWidth, setContainerWidth] = useState(Math.min(windowWidth - 40, maxWidth));
   const [sliderPosition, setSliderPosition] = useState(containerWidth / 2);
@@ -99,6 +102,19 @@ export default function BeforeAfterSlider({
         <View style={styles.labelAfter}>
           <Text style={styles.labelTextGold}>AFTER</Text>
         </View>
+
+        {isSameImage && !isSimulationPending && (
+          <View style={styles.simulationUnavailable}>
+            <Text style={styles.simulationUnavailableText}>AI SIMULATION UNAVAILABLE</Text>
+            <Text style={styles.simulationUnavailableSubtext}>Original image shown</Text>
+          </View>
+        )}
+
+        {isSimulationPending && (
+          <View style={styles.simulationLoading}>
+            <Text style={styles.simulationLoadingText}>GENERATING SIMULATION...</Text>
+          </View>
+        )}
 
         <Animated.View
           style={[
@@ -264,5 +280,55 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     letterSpacing: 1,
+  },
+  simulationUnavailable: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -100 }, { translateY: -30 }],
+    width: 200,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  simulationUnavailableText: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: Colors.gold,
+    letterSpacing: 1,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  simulationUnavailableSubtext: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    textAlign: 'center',
+  },
+  simulationLoading: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -90 }, { translateY: -20 }],
+    width: 180,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  simulationLoadingText: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: Colors.gold,
+    letterSpacing: 1,
+    textAlign: 'center',
   },
 });

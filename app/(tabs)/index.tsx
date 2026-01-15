@@ -95,6 +95,7 @@ export default function ScanScreen() {
   const [isLeadSaved, setIsLeadSaved] = useState(false);
   const [showHealthQuestionnaire, setShowHealthQuestionnaire] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
+  const [isSimulationPending, setIsSimulationPending] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<'front' | 'back'>('front');
   const cameraRef = useRef<CameraView>(null);
   const DEV_CODE = '1234';
@@ -254,9 +255,10 @@ export default function ScanScreen() {
     }
   };
 
-  const generateTreatmentSimulation = useCallback(async (imageUri: string, treatments: string[]) => {
+  const generateTreatmentSimulation = useCallback(async (imageUri: string, treatments: string[], retryCount = 0): Promise<string | null> => {
+    const maxRetries = 2;
     try {
-      console.log('Starting AI treatment simulation...');
+      console.log(`Starting AI treatment simulation (attempt ${retryCount + 1}/${maxRetries + 1})...`);
       
       let base64Image = '';
       
@@ -323,7 +325,14 @@ IMPORTANT:
       
       return null;
     } catch (error) {
-      console.log('Error generating treatment simulation:', error);
+      console.log(`Error generating treatment simulation (attempt ${retryCount + 1}):`, error);
+      
+      if (retryCount < maxRetries) {
+        console.log(`Retrying simulation in 2 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return generateTreatmentSimulation(imageUri, treatments, retryCount + 1);
+      }
+      
       return null;
     }
   }, []);
@@ -682,19 +691,26 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
     }
 
     setIsAnalyzing(true);
+    setIsSimulationPending(true);
 
     try {
-      const [aiAnalysisResult, simulatedResult] = await Promise.all([
-        analyzeImageWithAI(capturedImage),
-        generateTreatmentSimulation(capturedImage, ['Botox', 'Morpheus8', 'Sculptra']),
-      ]);
+      const aiAnalysisPromise = analyzeImageWithAI(capturedImage);
+      const simulationPromise = generateTreatmentSimulation(capturedImage, ['Botox', 'Morpheus8', 'Sculptra']);
 
-      if (simulatedResult) {
-        setSimulatedImage(simulatedResult);
-        console.log('Treatment simulation set successfully');
-      } else {
-        console.log('Using original image as fallback');
-      }
+      const aiAnalysisResult = await aiAnalysisPromise;
+      
+      simulationPromise.then((simulatedResult) => {
+        setIsSimulationPending(false);
+        if (simulatedResult) {
+          setSimulatedImage(simulatedResult);
+          console.log('Treatment simulation set successfully');
+        } else {
+          console.log('Simulation failed after retries, using original image');
+        }
+      }).catch(() => {
+        setIsSimulationPending(false);
+        console.log('Simulation promise rejected');
+      });
 
       const safetyCheckedAnalysis = applyContraindicationChecks(aiAnalysisResult);
       setCurrentAnalysis(safetyCheckedAnalysis);
@@ -1057,6 +1073,7 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
             afterImage={simulatedImage || capturedImage}
             height={isTablet ? 500 : 420}
             maxWidth={MAX_SLIDER_WIDTH}
+            isSimulationPending={isSimulationPending}
           />
         </View>
 
