@@ -9,6 +9,8 @@ import {
   Platform,
   ActivityIndicator,
   useWindowDimensions,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { File } from 'expo-file-system';
 import { Image } from 'expo-image';
@@ -97,7 +99,19 @@ export default function ScanScreen() {
   const cameraRef = useRef<CameraView>(null);
   const DEV_CODE = '1234';
 
+  const [showDevPrompt, setShowDevPrompt] = useState(false);
+  const [devCodeInput, setDevCodeInput] = useState('');
+
   const handleDevModePress = useCallback(() => {
+    if (isDevMode) {
+      setIsDevMode(false);
+      console.log('Developer mode disabled');
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      }
+      return;
+    }
+
     if (Platform.OS === 'web') {
       const code = window.prompt('Enter developer code:');
       if (code === DEV_CODE) {
@@ -106,7 +120,7 @@ export default function ScanScreen() {
       } else if (code !== null) {
         Alert.alert('Invalid Code', 'The developer code is incorrect.');
       }
-    } else {
+    } else if (Platform.OS === 'ios') {
       Alert.prompt(
         'Developer Mode',
         'Enter the developer code to bypass questionnaires:',
@@ -127,8 +141,25 @@ export default function ScanScreen() {
         ],
         'secure-text'
       );
+    } else {
+      // Android - show custom prompt
+      setDevCodeInput('');
+      setShowDevPrompt(true);
     }
-  }, [setIsDevMode]);
+  }, [setIsDevMode, isDevMode]);
+
+  const handleDevCodeSubmit = useCallback(() => {
+    if (devCodeInput === DEV_CODE) {
+      setIsDevMode(true);
+      setShowDevPrompt(false);
+      setDevCodeInput('');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      console.log('Developer mode enabled - questionnaires bypassed');
+    } else {
+      Alert.alert('Invalid Code', 'The developer code is incorrect.');
+      setDevCodeInput('');
+    }
+  }, [devCodeInput, setIsDevMode]);
 
   const startCamera = async () => {
     if (!permission?.granted) {
@@ -865,6 +896,46 @@ ALWAYS include at least ONE of: DiamondGlow, Chemical Peels, Facials, or Dermapl
             </Text>
           </TouchableOpacity>
         </ScrollView>
+
+        <Modal
+          visible={showDevPrompt}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowDevPrompt(false)}
+        >
+          <View style={styles.devPromptOverlay}>
+            <View style={styles.devPromptContainer}>
+              <Text style={styles.devPromptTitle}>Developer Mode</Text>
+              <Text style={styles.devPromptSubtitle}>Enter the developer code to bypass questionnaires</Text>
+              <TextInput
+                style={styles.devPromptInput}
+                placeholder="Enter code"
+                placeholderTextColor={Colors.textMuted}
+                secureTextEntry
+                value={devCodeInput}
+                onChangeText={setDevCodeInput}
+                autoFocus
+              />
+              <View style={styles.devPromptButtons}>
+                <TouchableOpacity
+                  style={styles.devPromptCancelButton}
+                  onPress={() => {
+                    setShowDevPrompt(false);
+                    setDevCodeInput('');
+                  }}
+                >
+                  <Text style={styles.devPromptCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.devPromptSubmitButton}
+                  onPress={handleDevCodeSubmit}
+                >
+                  <Text style={styles.devPromptSubmitText}>Submit</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     );
   }
@@ -2047,5 +2118,75 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.text,
     lineHeight: 16,
+  },
+  devPromptOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  devPromptContainer: {
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 320,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  devPromptTitle: {
+    fontSize: 18,
+    fontWeight: '800' as const,
+    color: Colors.white,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  devPromptSubtitle: {
+    fontSize: 13,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  devPromptInput: {
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+    color: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  devPromptButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  devPromptCancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: Colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  devPromptCancelText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.textMuted,
+    textAlign: 'center',
+  },
+  devPromptSubmitButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: Colors.gold,
+  },
+  devPromptSubmitText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: Colors.black,
+    textAlign: 'center',
   },
 });
