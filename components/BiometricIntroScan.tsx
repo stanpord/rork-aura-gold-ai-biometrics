@@ -46,14 +46,14 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
   const startIntroSequence = () => {
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 400,
+      duration: 800,
       useNativeDriver: true,
     }).start();
 
     setTimeout(() => {
       setCurrentPhase(1);
       runPhase1();
-    }, 200);
+    }, 500);
   };
 
   const runPhase1 = () => {
@@ -64,18 +64,18 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
     Animated.parallel([
       Animated.timing(gridOpacity, {
         toValue: 1,
-        duration: 300,
+        duration: 600,
         useNativeDriver: true,
       }),
       Animated.spring(faceOutlineScale, {
         toValue: 1,
         friction: 8,
-        tension: 60,
+        tension: 40,
         useNativeDriver: true,
       }),
       Animated.timing(faceOutlineOpacity, {
         toValue: 1,
-        duration: 200,
+        duration: 400,
         useNativeDriver: true,
       }),
     ]).start();
@@ -84,12 +84,12 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.1,
-          duration: 400,
+          duration: 800,
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 400,
+          duration: 800,
           useNativeDriver: true,
         }),
       ])
@@ -98,7 +98,7 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
     setTimeout(() => {
       setCurrentPhase(2);
       runPhase2();
-    }, 400);
+    }, 1200);
   };
 
   const runPhase2 = () => {
@@ -107,7 +107,7 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
       Animated.sequence([
         Animated.timing(scanLineAnim, {
           toValue: 1,
-          duration: 1500,
+          duration: 3500,
           useNativeDriver: true,
         }),
         Animated.timing(scanLineAnim, {
@@ -120,22 +120,22 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
 
     let progress = 0;
     const progressInterval = setInterval(() => {
-      progress += 5;
+      progress += 3;
       if (progress >= 100) {
         progress = 100;
         clearInterval(progressInterval);
       }
       setProgressPercent(progress);
       
-      if (Platform.OS !== 'web' && progress % 20 === 0) {
+      if (Platform.OS !== 'web' && progress % 10 === 0) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
-    }, 50);
+    }, 100);
 
     setTimeout(() => {
       setCurrentPhase(3);
       runPhase3();
-    }, 1800);
+    }, 4200);
   };
 
   const runPhase3 = () => {
@@ -146,12 +146,12 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
     setTimeout(() => {
       Animated.timing(exitAnim, {
         toValue: 0,
-        duration: 400,
+        duration: 600,
         useNativeDriver: true,
       }).start(() => {
         onComplete();
       });
-    }, 400);
+    }, 1000);
   };
 
 

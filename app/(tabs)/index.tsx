@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -95,7 +95,7 @@ export default function ScanScreen() {
     if (!permission?.granted) {
       const result = await requestPermission();
       if (!result.granted) {
-        pickImage();
+        Alert.alert('Permission Required', 'Camera access is needed for facial analysis.');
         return;
       }
     }
@@ -115,7 +115,7 @@ export default function ScanScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [3, 4],
-        quality: 0.5,
+        quality: 0.8,
       });
 
       if (!result.canceled && result.assets[0]) {
@@ -153,7 +153,7 @@ export default function ScanScreen() {
       }
       const photo = await cameraRef.current.takePictureAsync({
         base64: true,
-        quality: 0.5,
+        quality: 0.8,
       });
       if (photo) {
         setCapturedImage(photo.uri);
@@ -276,11 +276,11 @@ IMPORTANT:
         clinicalReason: z.string().describe('Specific clinical indication based on what was ACTUALLY detected in THIS patients face - reference specific observed features like wrinkle depth, volume loss areas, skin laxity zones, pigmentation issues'),
       })).min(2).max(6).describe('CRITICAL: Personalized treatment recommendations - DIVERSIFY your selections across categories. DO NOT default to Morpheus8, Botox, and HydraFacial for everyone. Match treatment intensity to concern severity: mild texture issues = DiamondGlow or Chemical Peels, pigmentation = IPL or Clear+Brilliant, moderate aging = MOXI or Microneedling, significant laxity ONLY = Morpheus8. Always include at least one surface/beauty treatment (DiamondGlow, Facials, Chemical Peels, Dermaplaning) when skin texture or pore concerns exist.'),
       peptideTherapy: z.array(z.object({
-        name: z.string().describe('Peptide name - select from: GHK-Cu (copper peptide for skin repair/collagen), BPC-157 (tissue healing/gut health), Epithalon (telomere/anti-aging), TB-500 (recovery/wound healing), Thymosin Alpha-1 (immune modulation), AOD-9604 (fat metabolism/body composition), CJC-1295/Ipamorelin (growth hormone/recovery), PT-141 (sexual wellness), Selank (stress/cognitive), Semax (neuroprotection/focus), DSIP (sleep optimization), Melanotan II (skin pigmentation/protection), LL-37 (antimicrobial/immune), KPV (anti-inflammatory/gut), Pentosan Polysulfate (joint health)'),
+        name: z.string().describe('Peptide name (e.g., BPC-157, GHK-Cu, Epithalon, TB-500, Thymosin Alpha-1)'),
         goal: z.string().describe('Specific goal for this patient based on detected concerns'),
         mechanism: z.string().describe('How this peptide addresses the detected issues'),
         frequency: z.string().describe('Recommended protocol dosing'),
-      })).min(2).max(4).describe('DIVERSIFY peptide recommendations based on patient presentation. Consider: skin quality peptides (GHK-Cu), healing peptides (BPC-157, TB-500), longevity peptides (Epithalon), body composition (AOD-9604), cognitive/stress (Selank, Semax), immune (Thymosin Alpha-1, LL-37), sleep (DSIP), or growth hormone support (CJC-1295/Ipamorelin). Match peptides to observed aging patterns and lifestyle factors.'),
+      })).min(1).max(3).describe('Peptide recommendations tailored to detected aging signs and skin condition'),
       ivOptimization: z.array(z.object({
         name: z.string().describe('IV therapy name (e.g., Glow Drip, NAD+ Infusion, Myers Cocktail, Glutathione Push, Vitamin C Drip)'),
         benefit: z.string().describe('Specific benefit for this patients detected skin concerns'),
@@ -288,11 +288,11 @@ IMPORTANT:
         duration: z.string().describe('Session duration and frequency recommendation'),
       })).min(1).max(2).describe('IV therapy recommendations based on detected skin quality and aging concerns'),
       volumeAssessment: z.array(z.object({
-        zone: z.enum(['Forehead', 'Temples', 'Brows', 'Upper Eyelids', 'Under Eyes', 'Cheeks', 'Midface', 'Nasolabial Folds', 'Marionette Lines', 'Lips', 'Perioral Area', 'Chin', 'Jawline', 'Jowls', 'Neck']).describe('Specific facial zone being assessed'),
-        volumeLoss: z.number().min(0).max(60).describe('Estimated percentage of volume loss or concern level in this zone - 0 if zone looks healthy'),
-        ageRelatedCause: z.string().describe('Specific cause of the concern in this zone, or "No significant concerns" if healthy'),
-        recommendation: z.string().describe('Targeted treatment for this zone, or "Maintenance only" if healthy'),
-      })).min(4).max(8).describe('Comprehensive facial zone assessment - include ALL zones you can evaluate from the image, even if they appear healthy (use 0-5% for healthy zones). Must include at least: temples, cheeks, under eyes, and jawline areas.'),
+        zone: z.string().describe('Facial zone (Temples, Cheeks, Nasolabial Folds, Jawline, Under Eyes, Lips, Chin)'),
+        volumeLoss: z.number().min(0).max(60).describe('Estimated percentage of volume loss detected in this zone - base on visible hollowing, shadowing, and contour changes'),
+        ageRelatedCause: z.string().describe('Specific cause of volume loss in this zone'),
+        recommendation: z.string().describe('Targeted treatment for this zone'),
+      })).min(2).max(5).describe('Volume assessment ONLY for zones where actual volume loss is detected - do not include zones that appear full'),
       fitzpatrickAssessment: z.object({
         type: z.enum(['I', 'II', 'III', 'IV', 'V', 'VI']).describe('Fitzpatrick Skin Type classification based on skin tone analysis: I=Very fair/always burns, II=Fair/usually burns, III=Medium/sometimes burns, IV=Olive/rarely burns, V=Brown/very rarely burns, VI=Dark brown to black/never burns'),
         description: z.string().describe('Brief description of the detected skin phototype characteristics'),
@@ -301,7 +301,7 @@ IMPORTANT:
       }).describe('CRITICAL: Accurately assess the Fitzpatrick skin type from the image. This affects treatment safety for IPL, lasers, and other light-based therapies. Types V and VI have HIGH RISK for burns with IPL.'),
     });
 
-    const maxRetries = 1;
+    const maxRetries = 2;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
@@ -349,7 +349,7 @@ Analyze and provide personalized results for:
 - Clinical treatment roadmap with SPECIFIC reasons tied to observations
 - Peptide therapy recommendations based on detected aging patterns
 - IV optimization based on skin health indicators
-- Comprehensive volume assessment across ALL visible facial zones
+- Volume assessment ONLY for zones showing actual loss
 
 Be honest and specific. A young person with good skin should get minimal recommendations. An older person with visible concerns should get targeted recommendations addressing those specific issues.`
                 },
@@ -423,19 +423,14 @@ Be honest and specific. A young person with good skin should get minimal recomme
       clinicalRoadmap: selectedTreatments,
       peptideTherapy: [
         { name: 'GHK-Cu', goal: 'Enhance skin repair and collagen production', mechanism: 'Copper peptide complex that activates regenerative genes and promotes wound healing', frequency: '2x daily topical application' },
-        { name: 'BPC-157', goal: 'Accelerate tissue healing and reduce inflammation', mechanism: 'Body protection compound that enhances angiogenesis and tissue repair', frequency: '250-500mcg daily, 4-6 week cycles' },
-        { name: 'Epithalon', goal: 'Support cellular longevity and telomere health', mechanism: 'Activates telomerase enzyme to maintain telomere length and slow cellular aging', frequency: '5-10mg daily for 10-20 days, every 6 months' },
+        { name: 'BPC-157', goal: 'Accelerate tissue healing and reduce inflammation', mechanism: 'Body protection compound that enhances angiogenesis and tissue repair', frequency: 'As directed by provider' },
       ],
       ivOptimization: [
         { name: 'Glow Drip', benefit: 'Brightens skin and supports detoxification', ingredients: 'Glutathione 600mg, Vitamin C 2500mg, B-Complex', duration: '45-60 minutes, weekly for 4 weeks' },
       ],
       volumeAssessment: [
-        { zone: 'Temples', volumeLoss: 12, ageRelatedCause: 'Temporal fat pad atrophy', recommendation: 'Temple filler or Sculptra for structural support' },
         { zone: 'Cheeks', volumeLoss: 15, ageRelatedCause: 'Natural fat pad descent with aging', recommendation: 'Sculptra or dermal filler for subtle volume restoration' },
         { zone: 'Under Eyes', volumeLoss: 10, ageRelatedCause: 'Tear trough hollowing from collagen loss', recommendation: 'HA filler or PRP under-eye treatment' },
-        { zone: 'Nasolabial Folds', volumeLoss: 8, ageRelatedCause: 'Midface volume loss creating fold depth', recommendation: 'Cheek volumization to lift folds naturally' },
-        { zone: 'Jawline', volumeLoss: 5, ageRelatedCause: 'Early bone resorption and soft tissue laxity', recommendation: 'Jawline contouring with filler or Sculptra' },
-        { zone: 'Lips', volumeLoss: 7, ageRelatedCause: 'Collagen depletion and vermillion border thinning', recommendation: 'Lip filler for hydration and subtle enhancement' },
       ],
       fitzpatrickAssessment: {
         type: 'III',
@@ -541,8 +536,18 @@ Be honest and specific. A young person with good skin should get minimal recomme
     setIsAnalyzing(true);
 
     try {
-      const aiAnalysisResult = await analyzeImageWithAI(capturedImage);
-      
+      const [aiAnalysisResult, simulatedResult] = await Promise.all([
+        analyzeImageWithAI(capturedImage),
+        generateTreatmentSimulation(capturedImage, ['Botox', 'Morpheus8', 'Sculptra']),
+      ]);
+
+      if (simulatedResult) {
+        setSimulatedImage(simulatedResult);
+        console.log('Treatment simulation set successfully');
+      } else {
+        console.log('Using original image as fallback');
+      }
+
       const safetyCheckedAnalysis = applyContraindicationChecks(aiAnalysisResult);
       setCurrentAnalysis(safetyCheckedAnalysis);
       console.log('AI analysis with safety checks:', JSON.stringify(safetyCheckedAnalysis, null, 2));
@@ -580,22 +585,6 @@ Be honest and specific. A young person with good skin should get minimal recomme
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
   };
-
-  useEffect(() => {
-    if (hasUnlockedResults && currentAnalysis && capturedImage && !simulatedImage) {
-      console.log('Results unlocked - starting simulation generation');
-      generateTreatmentSimulation(capturedImage, ['Botox', 'Morpheus8', 'Sculptra'])
-        .then((simulatedResult) => {
-          if (simulatedResult) {
-            setSimulatedImage(simulatedResult);
-            console.log('Treatment simulation set successfully');
-          } else {
-            console.log('Using original image as fallback');
-          }
-        })
-        .catch((err) => console.log('Simulation generation failed:', err));
-    }
-  }, [hasUnlockedResults, currentAnalysis, capturedImage, simulatedImage, generateTreatmentSimulation, setSimulatedImage]);
 
   const renderSafetyBadge = (safetyStatus: ClinicalProcedure['safetyStatus']) => {
     if (!safetyStatus) return null;
@@ -858,6 +847,19 @@ Be honest and specific. A young person with good skin should get minimal recomme
         contentContainerStyle={styles.resultsScrollContent}
         showsVerticalScrollIndicator={false}
       >
+        <View style={[styles.sliderSection, isTablet && styles.tabletCentered]}>
+          <View style={styles.sliderHeader}>
+            <Wand2 size={14} color={Colors.gold} />
+            <Text style={styles.sliderTitle}>TREATMENT COMPARISON</Text>
+          </View>
+          <BeforeAfterSlider
+            beforeImage={capturedImage}
+            afterImage={simulatedImage || capturedImage}
+            height={isTablet ? 500 : 420}
+            maxWidth={MAX_SLIDER_WIDTH}
+          />
+        </View>
+
         {currentAnalysis.fitzpatrickAssessment && (currentAnalysis.fitzpatrickAssessment.riskLevel === 'high' || currentAnalysis.fitzpatrickAssessment.riskLevel === 'caution') && (
           <View style={[
             styles.fitzpatrickWarningBanner,
@@ -1037,42 +1039,6 @@ Be honest and specific. A young person with good skin should get minimal recomme
               </View>
             ))}
           </View>
-        </View>
-
-        <View style={[styles.sliderSection, isTablet && styles.tabletCentered]}>
-          <View style={styles.sliderHeader}>
-            <Wand2 size={14} color={Colors.gold} />
-            <Text style={styles.sliderTitle}>TREATMENT COMPARISON</Text>
-            {!simulatedImage && (
-              <View style={styles.simulationLoadingBadge}>
-                <ActivityIndicator size="small" color={Colors.gold} />
-                <Text style={styles.simulationLoadingText}>Generating preview...</Text>
-              </View>
-            )}
-          </View>
-          {simulatedImage ? (
-            <BeforeAfterSlider
-              beforeImage={capturedImage}
-              afterImage={simulatedImage}
-              height={isTablet ? 500 : 420}
-              maxWidth={MAX_SLIDER_WIDTH}
-            />
-          ) : (
-            <View style={[styles.sliderPlaceholder, { height: isTablet ? 500 : 420, maxWidth: MAX_SLIDER_WIDTH }]}>
-              <Image
-                source={{ uri: capturedImage }}
-                style={styles.placeholderImage}
-                contentFit="cover"
-              />
-              <View style={styles.placeholderOverlay}>
-                <View style={styles.placeholderContent}>
-                  <ActivityIndicator size="large" color={Colors.gold} />
-                  <Text style={styles.placeholderText}>AI SIMULATION IN PROGRESS</Text>
-                  <Text style={styles.placeholderSubtext}>Generating your treatment preview...</Text>
-                </View>
-              </View>
-            </View>
-          )}
         </View>
 
         <View style={styles.successBanner}>
@@ -1381,54 +1347,6 @@ const styles = StyleSheet.create({
     fontWeight: '900' as const,
     color: Colors.gold,
     letterSpacing: 3,
-  },
-  simulationLoadingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginLeft: 'auto',
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  simulationLoadingText: {
-    fontSize: 9,
-    fontWeight: '700' as const,
-    color: Colors.gold,
-    letterSpacing: 0.5,
-  },
-  sliderPlaceholder: {
-    width: '100%',
-    borderRadius: 28,
-    overflow: 'hidden',
-    backgroundColor: Colors.surface,
-    alignSelf: 'center',
-  },
-  placeholderImage: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.4,
-  },
-  placeholderOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  placeholderContent: {
-    alignItems: 'center',
-    gap: 12,
-  },
-  placeholderText: {
-    fontSize: 12,
-    fontWeight: '900' as const,
-    color: Colors.gold,
-    letterSpacing: 2,
-    marginTop: 8,
-  },
-  placeholderSubtext: {
-    fontSize: 11,
-    color: Colors.textMuted,
   },
   scoreCard: {
     backgroundColor: Colors.surfaceLight,

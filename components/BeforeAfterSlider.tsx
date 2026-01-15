@@ -1,13 +1,14 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   PanResponder,
+  Animated,
   useWindowDimensions,
   LayoutChangeEvent,
-  Image,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { GripVertical, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
@@ -27,12 +28,8 @@ export default function BeforeAfterSlider({
   const { width: windowWidth } = useWindowDimensions();
   const [containerWidth, setContainerWidth] = useState(Math.min(windowWidth - 40, maxWidth));
   const [sliderPosition, setSliderPosition] = useState(containerWidth / 2);
-  const currentSliderPosition = useRef(containerWidth / 2);
-  const [imageKey, setImageKey] = useState(0);
-
-  useEffect(() => {
-    setImageKey(prev => prev + 1);
-  }, [beforeImage, afterImage]);
+  const panX = useRef(new Animated.Value(containerWidth / 2)).current;
+  const currentSliderPosition = useRef(sliderPosition);
 
   const onLayout = useCallback((event: LayoutChangeEvent) => {
     const { width } = event.nativeEvent.layout;
@@ -41,84 +38,72 @@ export default function BeforeAfterSlider({
       const newPosition = width / 2;
       setSliderPosition(newPosition);
       currentSliderPosition.current = newPosition;
+      panX.setValue(newPosition);
     }
-  }, [containerWidth]);
-
-  const containerWidthRef = useRef(containerWidth);
-  containerWidthRef.current = containerWidth;
+  }, [containerWidth, panX]);
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 2;
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        panX.setOffset(currentSliderPosition.current);
+        panX.setValue(0);
       },
-      onStartShouldSetPanResponderCapture: () => true,
-      onMoveShouldSetPanResponderCapture: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
-      },
-      onPanResponderTerminationRequest: () => false,
-      onPanResponderGrant: () => {},
       onPanResponderMove: (_, gestureState) => {
-        const width = containerWidthRef.current;
         const newPosition = currentSliderPosition.current + gestureState.dx;
-        const clampedPosition = Math.max(0, Math.min(width, newPosition));
+        const clampedPosition = Math.max(20, Math.min(containerWidth - 20, newPosition));
+        panX.setValue(gestureState.dx);
         setSliderPosition(clampedPosition);
       },
-      onPanResponderRelease: (_, gestureState) => {
-        const width = containerWidthRef.current;
-        const newPosition = currentSliderPosition.current + gestureState.dx;
-        const clampedPosition = Math.max(0, Math.min(width, newPosition));
-        currentSliderPosition.current = clampedPosition;
+      onPanResponderRelease: () => {
+        panX.flattenOffset();
+        currentSliderPosition.current = sliderPosition;
       },
     })
   ).current;
 
-  const clampedSliderPosition = Math.max(0, Math.min(containerWidth, sliderPosition));
+  const clampedSliderPosition = Math.max(20, Math.min(containerWidth - 20, sliderPosition));
 
   return (
     <View style={[styles.container, { height, maxWidth }]} onLayout={onLayout}>
       <View style={styles.imageContainer}>
-        {/* After image - full background */}
         <Image
-          key={`after-${imageKey}`}
+          key={`after-${afterImage}`}
           source={{ uri: afterImage }}
-          style={[styles.baseImage, { width: containerWidth, height }]}
-          resizeMode="cover"
+          style={styles.baseImage}
+          contentFit="cover"
+          cachePolicy="none"
         />
         
-        {/* Before image - clipped overlay */}
-        {clampedSliderPosition > 0 && (
-          <View
-            style={[
-              styles.beforeImageContainer,
-              { width: clampedSliderPosition, height },
-            ]}
-          >
-            <Image
-              key={`before-${imageKey}`}
-              source={{ uri: beforeImage }}
-              style={[styles.beforeImage, { width: containerWidth, height }]}
-              resizeMode="cover"
-            />
-          </View>
-        )}
-
-        {clampedSliderPosition > 40 && (
-          <View style={styles.labelBefore}>
-            <Text style={styles.labelText}>BEFORE</Text>
-          </View>
-        )}
-        {clampedSliderPosition < containerWidth - 40 && (
-          <View style={styles.labelAfter}>
-            <Text style={styles.labelTextGold}>AFTER</Text>
-          </View>
-        )}
-
         <View
           style={[
+            styles.beforeImageContainer,
+            { width: clampedSliderPosition },
+          ]}
+        >
+          <View style={[styles.beforeImageWrapper, { width: containerWidth }]}>
+            <Image
+              key={`before-${beforeImage}`}
+              source={{ uri: beforeImage }}
+              style={styles.beforeImage}
+              contentFit="cover"
+              cachePolicy="none"
+            />
+          </View>
+        </View>
+
+        <View style={styles.labelBefore}>
+          <Text style={styles.labelText}>BEFORE</Text>
+        </View>
+        <View style={styles.labelAfter}>
+          <Text style={styles.labelTextGold}>AFTER</Text>
+        </View>
+
+        <Animated.View
+          style={[
             styles.sliderLine,
-            { left: Math.max(20, Math.min(containerWidth - 20, clampedSliderPosition)) - 1 },
+            { left: clampedSliderPosition - 1 },
           ]}
           {...panResponder.panHandlers}
         >
@@ -132,13 +117,13 @@ export default function BeforeAfterSlider({
               <ChevronRight size={14} color={Colors.black} style={styles.chevronRight} />
             </View>
           </View>
-        </View>
+        </Animated.View>
+      </View>
 
-        <View style={styles.instructionContainer}>
-          <Text style={styles.instructionText}>
-            ← Drag to compare →
-          </Text>
-        </View>
+      <View style={styles.instructionContainer}>
+        <Text style={styles.instructionText}>
+          ← Drag to compare →
+        </Text>
       </View>
     </View>
   );
@@ -158,9 +143,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   baseImage: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+    zIndex: 1,
   },
   beforeImageContainer: {
     position: 'absolute',
@@ -168,18 +154,24 @@ const styles = StyleSheet.create({
     left: 0,
     bottom: 0,
     overflow: 'hidden',
+    zIndex: 2,
   },
-  beforeImage: {
+  beforeImageWrapper: {
     position: 'absolute',
     top: 0,
     left: 0,
+    height: '100%',
+  },
+  beforeImage: {
+    width: '100%',
+    height: '100%',
   },
   sliderLine: {
     position: 'absolute',
     top: 0,
     bottom: 0,
-    width: 80,
-    marginLeft: -40,
+    width: 44,
+    marginLeft: -22,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
@@ -261,7 +253,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-    zIndex: 5,
   },
   instructionText: {
     fontSize: 10,

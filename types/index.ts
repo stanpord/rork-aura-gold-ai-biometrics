@@ -223,18 +223,3 @@ export interface TermsOfServiceAcknowledgment {
   clinicName?: string;
   stateJurisdiction: string;
 }
-
-export interface TreatmentPriceConfig {
-  treatmentName: string;
-  enabled: boolean;
-  customPrice: string;
-  defaultPrice: string;
-  category: 'procedure' | 'peptide' | 'iv';
-}
-
-export interface ClinicSettings {
-  treatmentConfigs: TreatmentPriceConfig[];
-  clinicName: string;
-  onboardingComplete: boolean;
-  updatedAt: Date;
-}
