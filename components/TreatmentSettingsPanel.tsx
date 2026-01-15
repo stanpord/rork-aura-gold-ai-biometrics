@@ -259,6 +259,7 @@ export default function TreatmentSettingsPanel({ onClose }: TreatmentSettingsPan
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
       >
         {(['procedure', 'peptide', 'iv'] as CategoryType[]).map(renderCategory)}
 
