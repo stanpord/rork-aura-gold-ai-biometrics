@@ -93,6 +93,22 @@ export const [AppProvider, useApp] = createContextHook(() => {
     },
   });
 
+  const filterValidTreatments = useCallback(<T extends { name?: string; benefit?: string; goal?: string; clinicalReason?: string; price?: string }>(treatments: T[]): T[] => {
+    if (!Array.isArray(treatments)) return [];
+    const invalidPatterns = ['loading', 'please wait', 'analyzing', '---', 'generating', 'processing', '...'];
+    return treatments.filter(t => {
+      if (!t || !t.name) return false;
+      const name = (t.name || '').toLowerCase().trim();
+      const benefit = (t.benefit || (t as { goal?: string }).goal || '').toLowerCase().trim();
+      const reason = ((t as { clinicalReason?: string }).clinicalReason || '').toLowerCase().trim();
+      const hasInvalidName = invalidPatterns.some(p => name.includes(p)) || name === '' || name === '...';
+      const hasInvalidBenefit = invalidPatterns.some(p => benefit.includes(p)) || benefit === '';
+      const hasInvalidReason = invalidPatterns.some(p => reason.includes(p));
+      const hasInvalidPrice = t.price === '---' || t.price === '';
+      return !(hasInvalidName || hasInvalidBenefit || hasInvalidReason || hasInvalidPrice);
+    });
+  }, []);
+
   useEffect(() => {
     console.log('leadsQuery state - isLoading:', leadsQuery.isLoading, 'isError:', leadsQuery.isError, 'hasData:', !!leadsQuery.data);
     if (leadsQuery.isError) {
@@ -105,7 +121,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
     if (leadsQuery.data?.success && leadsQuery.data.leads) {
       console.log('Loaded leads from backend:', leadsQuery.data.leads.length);
       const parsedLeads = leadsQuery.data.leads.map((l: Record<string, unknown>) => {
-        // Ensure roadmap is an array
         let roadmap = l.roadmap;
         if (!roadmap) roadmap = [];
         if (!Array.isArray(roadmap)) {
@@ -113,7 +128,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
           roadmap = [];
         }
         
-        // Ensure peptides is an array
         let peptides = l.peptides;
         if (!peptides) peptides = [];
         if (!Array.isArray(peptides)) {
@@ -121,7 +135,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
           peptides = [];
         }
         
-        // Ensure ivDrips is an array
         let ivDrips = l.ivDrips;
         if (!ivDrips) ivDrips = [];
         if (!Array.isArray(ivDrips)) {
@@ -129,7 +142,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
           ivDrips = [];
         }
         
-        // Ensure selectedTreatments is an array
         let selectedTreatments = l.selectedTreatments;
         if (!selectedTreatments) selectedTreatments = [];
         if (!Array.isArray(selectedTreatments)) {
@@ -137,29 +149,34 @@ export const [AppProvider, useApp] = createContextHook(() => {
           selectedTreatments = [];
         }
         
-        console.log('Lead', l.name, 'has roadmap:', (roadmap as unknown[]).length, 'peptides:', (peptides as unknown[]).length, 'ivDrips:', (ivDrips as unknown[]).length, 'selected treatments:', (selectedTreatments as unknown[]).length);
+        const filteredRoadmap = filterValidTreatments(roadmap as Lead['roadmap']);
+        const filteredPeptides = filterValidTreatments(peptides as Lead['peptides']);
+        const filteredIvDrips = filterValidTreatments(ivDrips as Lead['ivDrips']);
+        
+        console.log('Lead', l.name, '- raw roadmap:', (roadmap as unknown[]).length, 'filtered:', filteredRoadmap.length,
+          '| raw peptides:', (peptides as unknown[]).length, 'filtered:', filteredPeptides.length,
+          '| raw ivDrips:', (ivDrips as unknown[]).length, 'filtered:', filteredIvDrips.length);
         
         return {
           ...l,
           createdAt: new Date(l.createdAt as string),
-          roadmap: roadmap as Lead['roadmap'],
-          peptides: peptides as Lead['peptides'],
-          ivDrips: ivDrips as Lead['ivDrips'],
+          roadmap: filteredRoadmap,
+          peptides: filteredPeptides,
+          ivDrips: filteredIvDrips,
           selectedTreatments: selectedTreatments as Lead['selectedTreatments'],
         };
       }) as Lead[];
       
-      // Log total treatments selected
       const totalSelected = parsedLeads.reduce((acc, lead) => acc + (lead.selectedTreatments?.length || 0), 0);
       const totalRoadmap = parsedLeads.reduce((acc, lead) => acc + (lead.roadmap?.length || 0), 0);
-      console.log('Total roadmap items across all leads:', totalRoadmap);
+      console.log('Total valid roadmap items across all leads:', totalRoadmap);
       console.log('Total treatments selected across all leads:', totalSelected);
       
       setLeads(parsedLeads);
     } else if (leadsQuery.data && !leadsQuery.data.success) {
       console.log('Backend returned error:', leadsQuery.data.error);
     }
-  }, [leadsQuery.data, leadsQuery.isLoading, leadsQuery.isError, leadsQuery.error]);
+  }, [leadsQuery.data, leadsQuery.isLoading, leadsQuery.isError, leadsQuery.error, filterValidTreatments]);
 
   useEffect(() => {
     loadStoredData();
@@ -360,18 +377,49 @@ export const [AppProvider, useApp] = createContextHook(() => {
     return parts[0] || 0;
   };
 
+  const isValidTreatmentData = useCallback((treatment: { name?: string; benefit?: string; goal?: string; clinicalReason?: string; price?: string }): boolean => {
+    if (!treatment || !treatment.name) return false;
+    const invalidPatterns = ['loading', 'please wait', 'analyzing', '---', 'generating', 'processing', '...'];
+    const name = (treatment.name || '').toLowerCase().trim();
+    const benefit = (treatment.benefit || treatment.goal || '').toLowerCase().trim();
+    const reason = ((treatment as { clinicalReason?: string }).clinicalReason || '').toLowerCase().trim();
+    
+    const hasInvalidName = invalidPatterns.some(p => name.includes(p)) || name === '' || name === '...';
+    const hasInvalidBenefit = invalidPatterns.some(p => benefit.includes(p)) || benefit === '';
+    const hasInvalidReason = invalidPatterns.some(p => reason.includes(p));
+    const hasInvalidPrice = treatment.price === '---' || treatment.price === '' || !treatment.price;
+    
+    const isInvalid = hasInvalidName || hasInvalidBenefit || hasInvalidReason || hasInvalidPrice;
+    if (isInvalid) {
+      console.log('Filtering invalid treatment before save:', treatment.name);
+    }
+    return !isInvalid;
+  }, []);
+
   const addLead = useCallback(async (name: string, phone: string): Promise<void> => {
     if (!currentAnalysis) return;
 
-    const roadmapValue = currentAnalysis.clinicalRoadmap.reduce((acc, proc) => {
+    const validRoadmap = currentAnalysis.clinicalRoadmap.filter(t => isValidTreatmentData(t));
+    const validPeptides = currentAnalysis.peptideTherapy.filter(t => isValidTreatmentData(t));
+    const validIvDrips = currentAnalysis.ivOptimization.filter(t => isValidTreatmentData(t));
+
+    console.log('Filtered treatments - roadmap:', validRoadmap.length, '/', currentAnalysis.clinicalRoadmap.length,
+      'peptides:', validPeptides.length, '/', currentAnalysis.peptideTherapy.length,
+      'ivDrips:', validIvDrips.length, '/', currentAnalysis.ivOptimization.length);
+
+    if (validRoadmap.length === 0 && validPeptides.length === 0 && validIvDrips.length === 0) {
+      console.log('ERROR: No valid treatments to save - all treatments had invalid/placeholder data');
+    }
+
+    const roadmapValue = validRoadmap.reduce((acc, proc) => {
       return acc + parsePrice(proc.price);
     }, 0);
 
-    const peptideValue = currentAnalysis.peptideTherapy.reduce((acc) => {
+    const peptideValue = validPeptides.reduce((acc) => {
       return acc + 350;
     }, 0);
 
-    const ivValue = currentAnalysis.ivOptimization.reduce((acc) => {
+    const ivValue = validIvDrips.reduce((acc) => {
       return acc + 275;
     }, 0);
 
@@ -385,9 +433,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
       auraScore: currentAnalysis.auraScore,
       faceType: currentAnalysis.faceType,
       estimatedValue,
-      roadmap: currentAnalysis.clinicalRoadmap,
-      peptides: currentAnalysis.peptideTherapy,
-      ivDrips: currentAnalysis.ivOptimization,
+      roadmap: validRoadmap,
+      peptides: validPeptides,
+      ivDrips: validIvDrips,
       status: 'new',
       createdAt: new Date(),
     };
@@ -396,7 +444,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     setLeads(updatedLeads);
     setHasUnlockedResults(true);
 
-    console.log('Creating lead on backend:', newLead.name);
+    console.log('Creating lead on backend:', newLead.name, 'with', validRoadmap.length, 'roadmap,', validPeptides.length, 'peptides,', validIvDrips.length, 'ivDrips');
     createLeadMutation.mutate({
       id: leadId,
       name,
@@ -404,13 +452,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
       auraScore: currentAnalysis.auraScore,
       faceType: currentAnalysis.faceType,
       estimatedValue,
-      roadmap: currentAnalysis.clinicalRoadmap,
-      peptides: currentAnalysis.peptideTherapy,
-      ivDrips: currentAnalysis.ivOptimization,
+      roadmap: validRoadmap,
+      peptides: validPeptides,
+      ivDrips: validIvDrips,
       status: 'new',
       createdAt: new Date().toISOString(),
     });
-  }, [currentAnalysis, leads, createLeadMutation]);
+  }, [currentAnalysis, leads, createLeadMutation, isValidTreatmentData]);
 
   const resetScan = useCallback(() => {
     setCapturedImage(null);
