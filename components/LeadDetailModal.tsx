@@ -23,6 +23,7 @@ import {
   Clock,
   Info,
   Printer,
+  AlertCircle,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -160,12 +161,40 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
     return { treatments, totalAnnual };
   }, [lead]);
 
+  const isValidTreatment = useCallback((treatment: { name?: string; benefit?: string; goal?: string }) => {
+    if (!treatment || !treatment.name) return false;
+    const invalidPatterns = ['loading', 'please wait', 'analyzing', '---'];
+    const nameInvalid = invalidPatterns.some(pattern => 
+      treatment.name?.toLowerCase().includes(pattern)
+    );
+    const benefitInvalid = invalidPatterns.some(pattern => 
+      (treatment.benefit || treatment.goal || '').toLowerCase().includes(pattern)
+    );
+    return !nameInvalid && !benefitInvalid;
+  }, []);
+
+  const validRoadmap = useMemo(() => {
+    return (lead?.roadmap || []).filter(isValidTreatment);
+  }, [lead?.roadmap, isValidTreatment]);
+
+  const validPeptides = useMemo(() => {
+    return (lead?.peptides || []).filter(isValidTreatment);
+  }, [lead?.peptides, isValidTreatment]);
+
+  const validIvDrips = useMemo(() => {
+    return (lead?.ivDrips || []).filter(isValidTreatment);
+  }, [lead?.ivDrips, isValidTreatment]);
+
+  const hasNoValidTreatments = useMemo(() => {
+    return validRoadmap.length === 0 && validPeptides.length === 0 && validIvDrips.length === 0;
+  }, [validRoadmap, validPeptides, validIvDrips]);
+
   if (!lead) return null;
 
-  const roadmapTotal = lead.roadmap?.reduce((acc, proc) => {
+  const roadmapTotal = validRoadmap.reduce((acc, proc) => {
     const price = parseFloat(proc.price?.replace(/[^0-9.-]/g, '') || '0');
     return acc + price;
-  }, 0) || 0;
+  }, 0);
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -305,16 +334,29 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
             </View>
           )}
 
-          {lead.roadmap && lead.roadmap.length > 0 && (
+          {hasNoValidTreatments && (
+            <View style={styles.noDataContainer}>
+              <AlertCircle size={40} color={Colors.gold} />
+              <Text style={styles.noDataTitle}>Treatment Plan Unavailable</Text>
+              <Text style={styles.noDataText}>
+                The treatment plan for this patient could not be loaded. This may be due to incomplete analysis data.
+              </Text>
+              <Text style={styles.noDataHint}>
+                Please delete this record and perform a new scan to generate treatment recommendations.
+              </Text>
+            </View>
+          )}
+
+          {validRoadmap.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Syringe size={18} color={Colors.gold} />
                 <Text style={styles.sectionTitle}>Clinical Roadmap</Text>
                 <View style={styles.sectionBadge}>
-                  <Text style={styles.sectionBadgeText}>{lead.roadmap.length}</Text>
+                  <Text style={styles.sectionBadgeText}>{validRoadmap.length}</Text>
                 </View>
               </View>
-              {lead.roadmap.map((procedure, index) => (
+              {validRoadmap.map((procedure, index) => (
                 <View key={index} style={styles.recommendationCard}>
                   <View style={styles.recommendationHeader}>
                     <Text style={styles.recommendationName}>{procedure.name}</Text>
@@ -358,18 +400,18 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
             </View>
           )}
 
-          {lead.peptides && lead.peptides.length > 0 && (
+          {validPeptides.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <FlaskConical size={18} color={Colors.success} />
                 <Text style={styles.sectionTitle}>Peptide Therapies</Text>
                 <View style={[styles.sectionBadge, styles.sectionBadgeGreen]}>
                   <Text style={[styles.sectionBadgeText, styles.sectionBadgeTextGreen]}>
-                    {lead.peptides.length}
+                    {validPeptides.length}
                   </Text>
                 </View>
               </View>
-              {lead.peptides.map((peptide, index) => (
+              {validPeptides.map((peptide, index) => (
                 <View key={index} style={styles.peptideCard}>
                   <View style={styles.peptideHeader}>
                     <Text style={styles.peptideName}>{peptide.name}</Text>
@@ -410,18 +452,18 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
             </View>
           )}
 
-          {lead.ivDrips && lead.ivDrips.length > 0 && (
+          {validIvDrips.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Droplets size={18} color="#60a5fa" />
                 <Text style={styles.sectionTitle}>IV Optimization</Text>
                 <View style={[styles.sectionBadge, styles.sectionBadgeBlue]}>
                   <Text style={[styles.sectionBadgeText, styles.sectionBadgeTextBlue]}>
-                    {lead.ivDrips.length}
+                    {validIvDrips.length}
                   </Text>
                 </View>
               </View>
-              {lead.ivDrips.map((iv, index) => (
+              {validIvDrips.map((iv, index) => (
                 <View key={index} style={styles.ivCard}>
                   <View style={styles.ivHeader}>
                     <Text style={styles.ivName}>{iv.name}</Text>
@@ -1181,6 +1223,36 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: Colors.gold,
     flex: 1,
+  },
+  noDataContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  noDataTitle: {
+    fontSize: 18,
+    fontWeight: '800' as const,
+    color: Colors.white,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  noDataText: {
+    fontSize: 14,
+    color: Colors.text,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  noDataHint: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   headerRight: {
     flexDirection: 'row',
