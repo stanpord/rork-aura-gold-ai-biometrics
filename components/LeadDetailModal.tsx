@@ -41,7 +41,9 @@ interface LeadDetailModalProps {
 }
 
 export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailModalProps) {
-  const { updateLeadTreatments } = useApp();
+  const { updateLeadTreatments, getLeadById } = useApp();
+  
+  const currentLead = lead?.id ? getLeadById(lead.id) || lead : lead;
   const [selectedTreatmentForDosing, setSelectedTreatmentForDosing] = useState<{
     treatment: ClinicalProcedure | PeptideTherapy | IVOptimization;
     type: 'procedure' | 'peptide' | 'iv';
@@ -49,7 +51,7 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
   const [showClientSummary, setShowClientSummary] = useState(false);
   const [showPatientSummary, setShowPatientSummary] = useState(false);
 
-  const confirmedTreatments = useMemo(() => lead?.selectedTreatments || [], [lead?.selectedTreatments]);
+  const confirmedTreatments = useMemo(() => currentLead?.selectedTreatments || [], [currentLead?.selectedTreatments]);
 
   const handleClose = () => {
     if (Platform.OS !== 'web') {
@@ -66,7 +68,7 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
   }, []);
 
   const handleConfirmDosing = useCallback((dosing: TreatmentDosingSettings, signOff?: ComplianceSignOff) => {
-    if (!selectedTreatmentForDosing || !lead) return;
+    if (!selectedTreatmentForDosing || !currentLead) return;
     
     const newSelection: SelectedTreatment = {
       treatment: selectedTreatmentForDosing.treatment,
@@ -77,14 +79,16 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
     };
     
     const updatedTreatments = [...confirmedTreatments, newSelection];
-    updateLeadTreatments(lead.id, updatedTreatments);
+    updateLeadTreatments(currentLead.id, updatedTreatments);
     setSelectedTreatmentForDosing(null);
     
     if (Platform.OS !== 'web') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     console.log('Treatment confirmed with dosing and sign-off:', newSelection);
-  }, [selectedTreatmentForDosing, lead, confirmedTreatments, updateLeadTreatments]);
+    console.log('Total confirmed treatments:', updatedTreatments.length);
+    console.log('Has compliance sign-off:', signOff?.acknowledged ? 'YES' : 'NO');
+  }, [selectedTreatmentForDosing, currentLead, confirmedTreatments, updateLeadTreatments]);
 
   const isTreatmentConfirmed = useCallback((treatmentName: string) => {
     return confirmedTreatments.some(ct => {
@@ -135,9 +139,9 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
     return { treatments, totalAnnual };
   }, [lead]);
 
-  if (!lead) return null;
+  if (!currentLead) return null;
 
-  const roadmapTotal = lead.roadmap?.reduce((acc, proc) => {
+  const roadmapTotal = currentLead.roadmap?.reduce((acc, proc) => {
     const price = parseFloat(proc.price?.replace(/[^0-9.-]/g, '') || '0');
     return acc + price;
   }, 0) || 0;
@@ -161,10 +165,10 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{lead.name?.[0] || '?'}</Text>
+              <Text style={styles.avatarText}>{currentLead.name?.[0] || '?'}</Text>
             </View>
             <View>
-              <Text style={styles.headerTitle}>{lead.name}</Text>
+              <Text style={styles.headerTitle}>{currentLead.name}</Text>
               <Text style={styles.headerSubtitle}>Patient Report</Text>
             </View>
           </View>
@@ -201,39 +205,39 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
             <View style={styles.infoCard}>
               <Phone size={16} color={Colors.textMuted} />
               <Text style={styles.infoCardLabel}>Phone</Text>
-              <Text style={styles.infoCardValue}>{lead.phone}</Text>
+              <Text style={styles.infoCardValue}>{currentLead.phone}</Text>
             </View>
             <View style={styles.infoCard}>
               <Sparkles size={16} color={Colors.gold} />
               <Text style={styles.infoCardLabel}>Aura Score</Text>
-              <Text style={styles.infoCardValueGold}>{lead.auraScore}</Text>
+              <Text style={styles.infoCardValueGold}>{currentLead.auraScore}</Text>
             </View>
             <View style={styles.infoCard}>
               <Calendar size={16} color={Colors.textMuted} />
               <Text style={styles.infoCardLabel}>Captured</Text>
-              <Text style={styles.infoCardValue}>{formatDate(lead.createdAt)}</Text>
+              <Text style={styles.infoCardValue}>{formatDate(currentLead.createdAt)}</Text>
             </View>
           </View>
 
-          {lead.skinIQ && (
+          {currentLead.skinIQ && (
             <View style={styles.skinIQCard}>
               <Text style={styles.skinIQTitle}>SKIN IQ PROFILE</Text>
               <View style={styles.skinIQGrid}>
                 <View style={styles.skinIQItem}>
                   <Text style={styles.skinIQLabel}>Texture</Text>
-                  <Text style={styles.skinIQValue}>{lead.skinIQ.texture}</Text>
+                  <Text style={styles.skinIQValue}>{currentLead.skinIQ.texture}</Text>
                 </View>
                 <View style={styles.skinIQItem}>
                   <Text style={styles.skinIQLabel}>Pores</Text>
-                  <Text style={styles.skinIQValue}>{lead.skinIQ.pores}</Text>
+                  <Text style={styles.skinIQValue}>{currentLead.skinIQ.pores}</Text>
                 </View>
                 <View style={styles.skinIQItem}>
                   <Text style={styles.skinIQLabel}>Pigment</Text>
-                  <Text style={styles.skinIQValue}>{lead.skinIQ.pigment}</Text>
+                  <Text style={styles.skinIQValue}>{currentLead.skinIQ.pigment}</Text>
                 </View>
                 <View style={styles.skinIQItem}>
                   <Text style={styles.skinIQLabel}>Redness</Text>
-                  <Text style={styles.skinIQValue}>{lead.skinIQ.redness}</Text>
+                  <Text style={styles.skinIQValue}>{currentLead.skinIQ.redness}</Text>
                 </View>
               </View>
             </View>
@@ -246,7 +250,7 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
               </View>
               <View>
                 <Text style={styles.revenueLabel}>ESTIMATED TREATMENT VALUE</Text>
-                <Text style={styles.revenueValue}>${lead.estimatedValue?.toLocaleString() || '0'}</Text>
+                <Text style={styles.revenueValue}>${currentLead.estimatedValue?.toLocaleString() || '0'}</Text>
               </View>
             </View>
             <View style={styles.revenueDivider} />
@@ -315,16 +319,16 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
               <Syringe size={18} color={Colors.gold} />
               <Text style={styles.sectionTitle}>Clinical Roadmap</Text>
               <View style={styles.sectionBadge}>
-                <Text style={styles.sectionBadgeText}>{lead.roadmap?.length || 0}</Text>
+                <Text style={styles.sectionBadgeText}>{currentLead.roadmap?.length || 0}</Text>
               </View>
             </View>
-            {(!lead.roadmap || lead.roadmap.length === 0) ? (
+            {(!currentLead.roadmap || currentLead.roadmap.length === 0) ? (
               <View style={styles.emptySection}>
                 <Text style={styles.emptySectionText}>No procedures recommended</Text>
               </View>
             ) : (
               <>
-                {lead.roadmap.map((procedure, index) => (
+                {currentLead.roadmap.map((procedure, index) => (
                   <View key={index} style={styles.recommendationCard}>
                     <View style={styles.recommendationHeader}>
                       <Text style={styles.recommendationName}>{procedure.name}</Text>
@@ -375,17 +379,17 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
               <Text style={styles.sectionTitle}>Peptide Therapies</Text>
               <View style={[styles.sectionBadge, styles.sectionBadgeGreen]}>
                 <Text style={[styles.sectionBadgeText, styles.sectionBadgeTextGreen]}>
-                  {lead.peptides?.length || 0}
+                  {currentLead.peptides?.length || 0}
                 </Text>
               </View>
             </View>
-            {(!lead.peptides || lead.peptides.length === 0) ? (
+            {(!currentLead.peptides || currentLead.peptides.length === 0) ? (
               <View style={styles.emptySection}>
                 <Text style={styles.emptySectionText}>No peptide therapies recommended</Text>
               </View>
             ) : (
               <>
-                {lead.peptides.map((peptide, index) => (
+                {currentLead.peptides.map((peptide, index) => (
                 <View key={index} style={styles.peptideCard}>
                     <View style={styles.peptideHeader}>
                       <Text style={styles.peptideName}>{peptide.name}</Text>
@@ -433,17 +437,17 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
               <Text style={styles.sectionTitle}>IV Optimization</Text>
               <View style={[styles.sectionBadge, styles.sectionBadgeBlue]}>
                 <Text style={[styles.sectionBadgeText, styles.sectionBadgeTextBlue]}>
-                  {lead.ivDrips?.length || 0}
+                  {currentLead.ivDrips?.length || 0}
                 </Text>
               </View>
             </View>
-            {(!lead.ivDrips || lead.ivDrips.length === 0) ? (
+            {(!currentLead.ivDrips || currentLead.ivDrips.length === 0) ? (
               <View style={styles.emptySection}>
                 <Text style={styles.emptySectionText}>No IV therapies recommended</Text>
               </View>
             ) : (
               <>
-                {lead.ivDrips.map((iv, index) => (
+                {currentLead.ivDrips.map((iv, index) => (
                 <View key={index} style={styles.ivCard}>
                     <View style={styles.ivHeader}>
                       <Text style={styles.ivName}>{iv.name}</Text>
@@ -527,12 +531,12 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
                 <View style={styles.clientSummaryContent}>
                   <View style={styles.summaryHeader}>
                     <View style={styles.summaryPatientInfo}>
-                      <Text style={styles.summaryPatientName}>{lead.name}</Text>
-                      <Text style={styles.summaryDate}>{formatDate(lead.createdAt)}</Text>
+                      <Text style={styles.summaryPatientName}>{currentLead.name}</Text>
+                      <Text style={styles.summaryDate}>{formatDate(currentLead.createdAt)}</Text>
                     </View>
                     <View style={styles.summaryScoreBadge}>
                       <Sparkles size={12} color={Colors.gold} />
-                      <Text style={styles.summaryScoreText}>AURA {lead.auraScore}</Text>
+                      <Text style={styles.summaryScoreText}>AURA {currentLead.auraScore}</Text>
                     </View>
                   </View>
 
@@ -670,7 +674,7 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
       <PatientSummaryModal
         visible={showPatientSummary}
         onClose={() => setShowPatientSummary(false)}
-        lead={lead}
+        lead={currentLead}
       />
     </Modal>
   );

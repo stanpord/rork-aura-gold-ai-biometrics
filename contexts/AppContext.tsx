@@ -408,19 +408,28 @@ export const [AppProvider, useApp] = createContextHook(() => {
   }, [leads]);
 
   const updateLeadTreatments = useCallback(async (leadId: string, selectedTreatments: SelectedTreatment[]): Promise<void> => {
+    const hasSignedTreatments = selectedTreatments.some(t => t.complianceSignOff?.acknowledged);
     const updatedLeads = leads.map(lead => {
       if (lead.id === leadId) {
-        return { ...lead, selectedTreatments };
+        return { 
+          ...lead, 
+          selectedTreatments,
+          status: hasSignedTreatments ? 'contacted' as const : lead.status,
+        };
       }
       return lead;
     });
     setLeads(updatedLeads);
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(updatedLeads));
-      console.log('Lead treatments updated:', leadId, selectedTreatments);
+      console.log('Lead treatments updated:', leadId, 'treatments:', selectedTreatments.length, 'signed:', hasSignedTreatments);
     } catch (error) {
       console.log('Error updating lead treatments:', error);
     }
+  }, [leads]);
+
+  const getLeadById = useCallback((leadId: string): Lead | undefined => {
+    return leads.find(lead => lead.id === leadId);
   }, [leads]);
 
   const stats = isStaffAuthenticated ? {
@@ -455,6 +464,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     addLead,
     deleteLead,
     updateLeadTreatments,
+    getLeadById,
     resetScan,
     stats,
     hasCompletedIntro,
