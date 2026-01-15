@@ -377,11 +377,11 @@ IMPORTANT:
         duration: z.string().describe('Session duration and frequency recommendation'),
       })).min(1).max(2).describe('IV therapy recommendations based on detected skin quality and aging concerns'),
       volumeAssessment: z.array(z.object({
-        zone: z.string().describe('Facial zone (Temples, Cheeks, Nasolabial Folds, Jawline, Under Eyes, Lips, Chin)'),
-        volumeLoss: z.number().min(0).max(60).describe('Estimated percentage of volume loss detected in this zone - base on visible hollowing, shadowing, and contour changes'),
-        ageRelatedCause: z.string().describe('Specific cause of volume loss in this zone'),
-        recommendation: z.string().describe('Targeted treatment for this zone'),
-      })).min(2).max(5).describe('Volume assessment ONLY for zones where actual volume loss is detected - do not include zones that appear full'),
+        zone: z.string().describe('Facial zone - MUST assess ALL of these areas: Temples, Forehead, Brows, Periorbital/Tear Troughs, Upper Cheeks (Malar), Lower Cheeks (Submalar), Nasolabial Folds, Marionette Lines, Lips, Perioral Area, Chin/Mentum, Jawline/Pre-jowl, Neck'),
+        volumeLoss: z.number().min(0).max(60).describe('Estimated percentage of volume loss detected in this zone - base on visible hollowing, shadowing, and contour changes. 0 means no loss, 60 means severe loss.'),
+        ageRelatedCause: z.string().describe('Specific anatomical cause of volume loss in this zone (fat pad atrophy, bone resorption, muscle changes, etc.)'),
+        recommendation: z.string().describe('Targeted treatment recommendation for this specific zone'),
+      })).min(5).max(10).describe('COMPREHENSIVE volume assessment - analyze ALL facial zones listed above. Include zones even with minimal loss (5-10%) to give complete picture. Only omit zones that appear completely full with 0% loss.'),
       fitzpatrickAssessment: z.object({
         type: z.enum(['I', 'II', 'III', 'IV', 'V', 'VI']).describe('Fitzpatrick Skin Type classification based on skin tone analysis: I=Very fair/always burns, II=Fair/usually burns, III=Medium/sometimes burns, IV=Olive/rarely burns, V=Brown/very rarely burns, VI=Dark brown to black/never burns'),
         description: z.string().describe('Brief description of the detected skin phototype characteristics'),
@@ -410,7 +410,11 @@ Before ANY recommendations, identify:
 - WRINKLES: Where exactly? (forehead, glabella, periorbital, perioral) How deep? Static or dynamic?
 - TEXTURE: Pore size? Where? Roughness? Congestion?
 - PIGMENTATION: Sun spots? Melasma? Redness? Where specifically?
-- VOLUME: Hollowing in temples, cheeks, tear troughs, lips?
+- VOLUME: Systematically assess ALL facial zones for hollowing, deflation, or volume loss:
+  * UPPER FACE: Temples (temporal hollowing), Forehead (brow bone), Brows (lateral brow)
+  * MIDFACE: Periorbital/Tear Troughs, Upper Cheeks (malar fat pad), Lower Cheeks (submalar hollowing)
+  * LOWER FACE: Nasolabial Folds, Marionette Lines, Lips (volume/vermillion), Perioral area, Chin/Mentum, Jawline/Pre-jowl sulcus
+  * NECK: Platysmal bands, submental fullness
 - LAXITY: Any jowling, neck bands, brow ptosis? (MUST be visible for Morpheus8)
 
 ## STEP 2: TREATMENT MATCHING - STRICT RULES
@@ -448,10 +452,25 @@ EXAMPLE BAD: "Signs of aging around the eyes" (too vague)
 ## MANDATORY SURFACE TREATMENT
 ALWAYS include at least ONE of: DiamondGlow, Chemical Peels, Facials, or Dermaplaning.
 
+## VOLUME ASSESSMENT REQUIREMENTS
+You MUST analyze ALL facial zones for volume:
+1. TEMPLES - Look for temporal hollowing, shadow above cheekbone
+2. FOREHEAD/BROWS - Assess brow position, lateral brow volume
+3. PERIORBITAL - Tear trough depth, under-eye hollowing, orbital rim
+4. UPPER CHEEKS (MALAR) - Malar fat pad fullness, cheekbone projection
+5. LOWER CHEEKS (SUBMALAR) - Submalar hollowing, midface deflation
+6. NASOLABIAL FOLDS - Depth of fold, fat descent
+7. MARIONETTE LINES - Oral commissure to chin shadow
+8. LIPS - Vermillion volume, perioral lines, philtrum definition
+9. CHIN/MENTUM - Chin projection, pogonion volume
+10. JAWLINE - Pre-jowl sulcus, mandibular definition, jowl formation
+
+Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is completely full.
+
 ## OUTPUT
 - auraScore: Based on overall skin health and facial harmony
 - clinicalRoadmap: 2-4 treatments for young/healthy, 4-6 for significant concerns
-- volumeAssessment: ONLY zones with VISIBLE hollowing
+- volumeAssessment: COMPREHENSIVE assessment of ALL facial zones - minimum 5 zones
 - fitzpatrickAssessment: Accurate skin type for treatment safety`
                 },
                 {
@@ -530,8 +549,13 @@ ALWAYS include at least ONE of: DiamondGlow, Chemical Peels, Facials, or Dermapl
         { name: 'Glow Drip', benefit: 'Brightens skin and supports detoxification', ingredients: 'Glutathione 600mg, Vitamin C 2500mg, B-Complex', duration: '45-60 minutes, weekly for 4 weeks' },
       ],
       volumeAssessment: [
-        { zone: 'Cheeks', volumeLoss: 15, ageRelatedCause: 'Natural fat pad descent with aging', recommendation: 'Sculptra or dermal filler for subtle volume restoration' },
-        { zone: 'Under Eyes', volumeLoss: 10, ageRelatedCause: 'Tear trough hollowing from collagen loss', recommendation: 'HA filler or PRP under-eye treatment' },
+        { zone: 'Temples', volumeLoss: 12, ageRelatedCause: 'Temporal fat pad atrophy and bone resorption', recommendation: 'Temple filler with Sculptra or Radiesse for structural support' },
+        { zone: 'Periorbital/Tear Troughs', volumeLoss: 15, ageRelatedCause: 'Infraorbital fat descent and orbital rim hollowing', recommendation: 'HA filler or PRP under-eye rejuvenation' },
+        { zone: 'Upper Cheeks (Malar)', volumeLoss: 18, ageRelatedCause: 'Malar fat pad descent and volume deflation', recommendation: 'Voluma or Sculptra for malar augmentation' },
+        { zone: 'Lower Cheeks (Submalar)', volumeLoss: 10, ageRelatedCause: 'Buccal fat atrophy creating midface hollowing', recommendation: 'Dermal filler for submalar volume restoration' },
+        { zone: 'Nasolabial Folds', volumeLoss: 14, ageRelatedCause: 'Fat pad descent and loss of midface support', recommendation: 'HA filler to soften fold depth' },
+        { zone: 'Lips', volumeLoss: 8, ageRelatedCause: 'Vermillion thinning and perioral volume loss', recommendation: 'Lip filler for volume and definition' },
+        { zone: 'Jawline/Pre-jowl', volumeLoss: 12, ageRelatedCause: 'Mandibular bone resorption and pre-jowl sulcus formation', recommendation: 'Jawline filler or Radiesse for definition' },
       ],
       fitzpatrickAssessment: {
         type: 'III',
