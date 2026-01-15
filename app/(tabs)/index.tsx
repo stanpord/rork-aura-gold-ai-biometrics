@@ -9,7 +9,6 @@ import {
   Platform,
   ActivityIndicator,
   useWindowDimensions,
-  Linking,
 } from 'react-native';
 import { File } from 'expo-file-system';
 import { Image } from 'expo-image';
@@ -96,26 +95,7 @@ export default function ScanScreen() {
     if (!permission?.granted) {
       const result = await requestPermission();
       if (!result.granted) {
-        if (Platform.OS !== 'web' && !result.canAskAgain) {
-          Alert.alert(
-            'Camera Access Needed',
-            'Please enable camera access in your device settings to use the live scan feature, or use the Upload Photo option below.',
-            [
-              { text: 'Use Photo Library', onPress: pickImage },
-              { text: 'Open Settings', onPress: () => Linking.openSettings() },
-              { text: 'Cancel', style: 'cancel' },
-            ]
-          );
-        } else {
-          Alert.alert(
-            'Camera Access Needed',
-            'Camera access is needed for facial analysis. You can also upload a photo instead.',
-            [
-              { text: 'Use Photo Library', onPress: pickImage },
-              { text: 'OK', style: 'cancel' },
-            ]
-          );
-        }
+        pickImage();
         return;
       }
     }
