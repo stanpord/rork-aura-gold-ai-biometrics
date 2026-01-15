@@ -289,11 +289,11 @@ IMPORTANT:
         redness: z.enum(['Low', 'Moderate', 'High']).describe('Visible redness, erythema, or vascular concerns'),
       }),
       clinicalRoadmap: z.array(z.object({
-        name: z.string().describe('Treatment name - IMPORTANT: Select the MOST APPROPRIATE treatment for what you observe. Available options by category: SURFACE TREATMENTS (for texture, pores, dullness, mild concerns): DiamondGlow, Facials, Chemical Peels, Microdermabrasion, Dermaplaning. HYDRATION/GLOW: HydraFacial. PIGMENTATION/REDNESS: Stellar IPL, IPL, Clear + Brilliant. RESURFACING (for scars, deeper texture): MOXI Laser, ResurFX, Microneedling. WRINKLES: Botox Cosmetic, Baby Botox (subtle), Wrinkle Relaxers, Lip Flip (lip lines). VOLUME LOSS: Dermal Filler, Lip Filler, Sculptra, Radiesse, Plasma BioFiller. FAT REDUCTION: Kybella. SKIN TIGHTENING (laxity): RF Microneedling, Morpheus8 (only for significant laxity). LIFTING: PDO Thread Lift, Endolift. HEALING/REGENERATIVE: Exosome Therapy, Red Light Therapy, LED Therapy. Match treatment intensity to the severity of concerns - use gentle surface treatments for mild issues, reserve intense treatments like Morpheus8 for significant laxity.'),
-        benefit: z.string().describe('What this treatment achieves for this specific patient'),
-        price: z.string().describe('Typical price range (e.g., $450, $1,200)'),
-        clinicalReason: z.string().describe('Specific clinical indication based on what was ACTUALLY detected in THIS patients face - reference specific observed features like wrinkle depth, volume loss areas, skin laxity zones, pigmentation issues'),
-      })).min(2).max(6).describe('CRITICAL: Personalized treatment recommendations - DIVERSIFY your selections across categories. DO NOT default to Morpheus8, Botox, and HydraFacial for everyone. Match treatment intensity to concern severity: mild texture issues = DiamondGlow or Chemical Peels, pigmentation = IPL or Clear+Brilliant, moderate aging = MOXI or Microneedling, significant laxity ONLY = Morpheus8. Always include at least one surface/beauty treatment (DiamondGlow, Facials, Chemical Peels, Dermaplaning) when skin texture or pore concerns exist.'),
+        name: z.string().describe('Treatment name based on OBSERVED concerns. STRICT RULES: Morpheus8/RF Microneedling=ONLY for VISIBLE jowling/neck laxity/sagging. Botox=ONLY for VISIBLE forehead lines/crows feet/frown lines. For texture/pores: DiamondGlow, Chemical Peels, Facials, Dermaplaning. For pigmentation/redness: Stellar IPL, IPL, Clear+Brilliant. For fine lines: MOXI Laser, Microneedling. For volume loss: Dermal Filler, Sculptra. For hydration: HydraFacial.'),
+        benefit: z.string().describe('What this treatment achieves for the SPECIFIC concern you observed'),
+        price: z.string().describe('Price range (e.g., $150, $350, $800)'),
+        clinicalReason: z.string().describe('MUST name the EXACT area and describe what you SEE. Example: "Visible horizontal forehead lines at rest" or "Enlarged pores on nose and inner cheeks" or "Hyperpigmented macules on bilateral malar region". NO generic reasons.'),
+      })).min(2).max(6).describe('BANNED DEFAULTS: Never recommend Morpheus8+Botox+HydraFacial together unless each is justified by VISIBLE findings. Young/healthy skin (20s-30s): ONLY surface treatments. Pigmentation: IPL-based. Texture/pores: DiamondGlow/Peels. Wrinkles: Botox ONLY if visible. Laxity: Morpheus8 ONLY if jowls/sagging visible. MUST include at least one of: DiamondGlow, Chemical Peels, Facials, or Dermaplaning.'),
       peptideTherapy: z.array(z.object({
         name: z.string().describe('Peptide name (e.g., BPC-157, GHK-Cu, Epithalon, TB-500, Thymosin Alpha-1)'),
         goal: z.string().describe('Specific goal for this patient based on detected concerns'),
@@ -333,44 +333,56 @@ IMPORTANT:
               content: [
                 {
                   type: 'text',
-                  text: `You are an expert aesthetic medicine AI diagnostician. Analyze this facial photograph with clinical precision.
+                  text: `You are performing a REAL clinical skin assessment. Your recommendations MUST match what you ACTUALLY SEE.
 
-CRITICAL INSTRUCTIONS:
-1. ACTUALLY EXAMINE the image - do not give generic recommendations
-2. Only recommend treatments for issues you ACTUALLY SEE in the image
-3. Each clinical reason must reference SPECIFIC observations from THIS face
-4. If the skin looks healthy with minimal concerns, reflect that with fewer/milder recommendations
-5. If significant aging or skin issues are visible, provide comprehensive recommendations
-6. Volume loss percentages should reflect what you ACTUALLY observe - hollow temples, sunken cheeks, deep folds
-7. Do NOT recommend treatments for areas that appear healthy
-8. CRITICAL: Accurately assess Fitzpatrick skin type - this is essential for patient safety with light-based treatments
-9. When recommending high-intensity treatments (Morpheus8, Microneedling), also suggest Red Light Therapy or LED as post-care
-10. For skin puncture procedures (Microneedling), consider Exosome Therapy as mandatory post-care
-11. For subtle wrinkle concerns, consider Baby Botox over full Botox for natural results
-12. If lip enhancement without volume is noted, consider Lip Flip option
+## STEP 1: EXAMINE THE IMAGE FIRST
+Before ANY recommendations, identify:
+- WRINKLES: Where exactly? (forehead, glabella, periorbital, perioral) How deep? Static or dynamic?
+- TEXTURE: Pore size? Where? Roughness? Congestion?
+- PIGMENTATION: Sun spots? Melasma? Redness? Where specifically?
+- VOLUME: Hollowing in temples, cheeks, tear troughs, lips?
+- LAXITY: Any jowling, neck bands, brow ptosis? (MUST be visible for Morpheus8)
 
-TREATMENT SELECTION RULES - FOLLOW STRICTLY:
-- For TEXTURE/PORE concerns: Recommend DiamondGlow, Chemical Peels, Microdermabrasion, or Dermaplaning FIRST
-- For DULLNESS/HYDRATION: Recommend HydraFacial or Facials
-- For PIGMENTATION/SUN DAMAGE/REDNESS: Recommend Stellar IPL, IPL, or Clear + Brilliant
-- For FINE LINES (not deep wrinkles): Recommend MOXI Laser, Microneedling, or Chemical Peels
-- For DYNAMIC WRINKLES (forehead, crows feet, frown): Recommend Botox or Wrinkle Relaxers
-- For VOLUME LOSS: Recommend Dermal Filler, Sculptra, or Radiesse based on area
-- For SIGNIFICANT SKIN LAXITY ONLY: Recommend RF Microneedling or Morpheus8
-- DO NOT recommend Morpheus8 unless there is VISIBLE sagging or significant laxity
-- DO NOT recommend Botox unless there are VISIBLE dynamic wrinkles
-- ALWAYS include at least ONE surface treatment (DiamondGlow, Chemical Peels, Facials, Dermaplaning) for skin quality improvement
+## STEP 2: TREATMENT MATCHING - STRICT RULES
 
-Analyze and provide personalized results for:
-- Overall facial harmony and structure (auraScore)
-- Face shape classification
-- Skin quality assessment (texture, pores, pigment, redness)
-- Clinical treatment roadmap with SPECIFIC reasons tied to observations
-- Peptide therapy recommendations based on detected aging patterns
-- IV optimization based on skin health indicators
-- Volume assessment ONLY for zones showing actual loss
+**MORPHEUS8**: ONLY recommend if you see VISIBLE jowling, neck laxity, or significant skin sagging. NOT for "prevention" or "tightening" without visible laxity.
 
-Be honest and specific. A young person with good skin should get minimal recommendations. An older person with visible concerns should get targeted recommendations addressing those specific issues.`
+**BOTOX**: ONLY recommend if you see VISIBLE dynamic wrinkles - horizontal forehead lines, vertical frown lines (11s), or crow's feet. NOT for smooth foreheads.
+
+**DIAMONDGLOW/CHEMICAL PEELS/FACIALS**: Recommend for texture, pores, dullness, mild congestion. MOST patients benefit from these.
+
+**IPL/STELLAR IPL**: Recommend for visible pigmentation, sun spots, redness, broken capillaries.
+
+**CLEAR+BRILLIANT/MOXI**: For fine lines, early sun damage, overall skin quality.
+
+**DERMAL FILLER**: ONLY for VISIBLE volume loss in specific areas.
+
+## STEP 3: DIVERSIFY BY CONCERN TYPE
+
+- Young healthy skin (20s-30s, minimal concerns): DiamondGlow, Facials, Chemical Peels, LED Therapy
+- Pigmentation/redness: IPL, Stellar IPL, Clear+Brilliant
+- Texture/pores: DiamondGlow, Chemical Peels, Microdermabrasion, Dermaplaning
+- Fine lines: MOXI Laser, Light Peels, Microneedling
+- Deep wrinkles: Botox (if dynamic), Fillers (if static)
+- Volume loss: Dermal Filler, Sculptra, Radiesse
+- Visible sagging: RF Microneedling, Morpheus8, PDO Threads
+
+## CLINICAL REASON REQUIREMENTS
+Each clinicalReason MUST include:
+1. EXACT anatomical location (e.g., "lateral canthi", "glabellar region", "nasal sidewalls")
+2. SPECIFIC observation (e.g., "visible horizontal rhytids", "dilated pores", "hyperpigmented macules")
+
+EXAMPLE GOOD: "Visible periorbital rhytids (crow's feet) with fine lines extending 1cm laterally"
+EXAMPLE BAD: "Signs of aging around the eyes" (too vague)
+
+## MANDATORY SURFACE TREATMENT
+ALWAYS include at least ONE of: DiamondGlow, Chemical Peels, Facials, or Dermaplaning.
+
+## OUTPUT
+- auraScore: Based on overall skin health and facial harmony
+- clinicalRoadmap: 2-4 treatments for young/healthy, 4-6 for significant concerns
+- volumeAssessment: ONLY zones with VISIBLE hollowing
+- fitzpatrickAssessment: Accurate skin type for treatment safety`
                 },
                 {
                   type: 'image',
