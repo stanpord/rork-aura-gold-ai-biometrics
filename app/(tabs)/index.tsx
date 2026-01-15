@@ -862,6 +862,7 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
                   style={styles.camera}
                   facing={cameraFacing}
                   mirror={cameraFacing === 'front'}
+                  responsiveOrientationWhenOrientationLocked={true}
                 />
                 <View style={styles.cameraOverlay}>
                   <View style={styles.faceGuide} />
