@@ -93,9 +93,28 @@ export default function ScanScreen() {
 
   const startCamera = async () => {
     if (!permission?.granted) {
+      if (permission?.canAskAgain === false) {
+        Alert.alert(
+          'Camera Access Denied',
+          'Please enable camera access in your device settings to use facial analysis.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Open Settings', 
+              onPress: () => {
+                if (Platform.OS === 'web') {
+                  Alert.alert('Settings', 'Please allow camera access in your browser settings and refresh the page.');
+                }
+              }
+            },
+          ]
+        );
+        return;
+      }
+      
       const result = await requestPermission();
       if (!result.granted) {
-        Alert.alert('Permission Required', 'Camera access is needed for facial analysis.');
+        console.log('Camera permission denied:', result);
         return;
       }
     }
