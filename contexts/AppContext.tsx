@@ -96,10 +96,31 @@ export const [AppProvider, useApp] = createContextHook(() => {
   useEffect(() => {
     if (leadsQuery.data?.success && leadsQuery.data.leads) {
       console.log('Loaded leads from backend:', leadsQuery.data.leads.length);
-      const parsedLeads = leadsQuery.data.leads.map((l: Record<string, unknown>) => ({
-        ...l,
-        createdAt: new Date(l.createdAt as string),
-      })) as Lead[];
+      const parsedLeads = leadsQuery.data.leads.map((l: Record<string, unknown>) => {
+        // Ensure selectedTreatments is an array
+        let selectedTreatments = l.selectedTreatments || [];
+        if (typeof selectedTreatments === 'string') {
+          try {
+            selectedTreatments = JSON.parse(selectedTreatments);
+          } catch (e) {
+            console.log('Error parsing selectedTreatments in context:', e);
+            selectedTreatments = [];
+          }
+        }
+        
+        console.log('Lead', l.name, 'has', Array.isArray(selectedTreatments) ? selectedTreatments.length : 0, 'selected treatments');
+        
+        return {
+          ...l,
+          createdAt: new Date(l.createdAt as string),
+          selectedTreatments: Array.isArray(selectedTreatments) ? selectedTreatments : [],
+        };
+      }) as Lead[];
+      
+      // Log total treatments selected
+      const totalSelected = parsedLeads.reduce((acc, lead) => acc + (lead.selectedTreatments?.length || 0), 0);
+      console.log('Total treatments selected across all leads:', totalSelected);
+      
       setLeads(parsedLeads);
     }
   }, [leadsQuery.data]);

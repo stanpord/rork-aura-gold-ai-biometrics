@@ -137,6 +137,50 @@ export const leadsRouter = createTRPCRouter({
         const leads = rawLeads.map((row: Record<string, unknown>) => {
           const idStr = String(row.id || '');
           const cleanId = idStr.replace(/^leads:⟨?/, '').replace(/⟩?$/, '');
+          
+          // Parse selectedTreatments if it's a string
+          let selectedTreatments = row.selectedTreatments || [];
+          if (typeof selectedTreatments === 'string') {
+            try {
+              selectedTreatments = JSON.parse(selectedTreatments);
+            } catch (e) {
+              console.log('Error parsing selectedTreatments:', e);
+              selectedTreatments = [];
+            }
+          }
+          
+          // Parse roadmap if it's a string
+          let roadmap = row.roadmap || [];
+          if (typeof roadmap === 'string') {
+            try {
+              roadmap = JSON.parse(roadmap);
+            } catch {
+              roadmap = [];
+            }
+          }
+          
+          // Parse peptides if it's a string
+          let peptides = row.peptides || [];
+          if (typeof peptides === 'string') {
+            try {
+              peptides = JSON.parse(peptides);
+            } catch {
+              peptides = [];
+            }
+          }
+          
+          // Parse ivDrips if it's a string
+          let ivDrips = row.ivDrips || [];
+          if (typeof ivDrips === 'string') {
+            try {
+              ivDrips = JSON.parse(ivDrips);
+            } catch {
+              ivDrips = [];
+            }
+          }
+          
+          console.log('Lead', cleanId, 'selectedTreatments count:', Array.isArray(selectedTreatments) ? selectedTreatments.length : 0);
+          
           return {
             id: cleanId,
             name: row.name || '',
@@ -144,10 +188,10 @@ export const leadsRouter = createTRPCRouter({
             auraScore: row.auraScore || 0,
             faceType: row.faceType || '',
             estimatedValue: row.estimatedValue || 0,
-            roadmap: row.roadmap || [],
-            peptides: row.peptides || [],
-            ivDrips: row.ivDrips || [],
-            selectedTreatments: row.selectedTreatments || [],
+            roadmap,
+            peptides,
+            ivDrips,
+            selectedTreatments,
             status: row.status || 'new',
             createdAt: row.createdAt || new Date().toISOString(),
           };
