@@ -80,6 +80,8 @@ export default function ScanScreen() {
     isTreatmentEnabled,
     getTreatmentPrice,
     treatmentConfigs,
+    isDevMode,
+    setIsDevMode,
   } = useApp();
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -93,6 +95,27 @@ export default function ScanScreen() {
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<'front' | 'back'>('front');
   const cameraRef = useRef<CameraView>(null);
+  const devTapCount = useRef(0);
+  const devTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleDevTap = useCallback(() => {
+    devTapCount.current += 1;
+    if (devTapTimer.current) {
+      clearTimeout(devTapTimer.current);
+    }
+    if (devTapCount.current >= 5) {
+      setIsDevMode(true);
+      devTapCount.current = 0;
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      console.log('Developer mode enabled - questionnaires bypassed');
+    } else {
+      devTapTimer.current = setTimeout(() => {
+        devTapCount.current = 0;
+      }, 1500);
+    }
+  }, [setIsDevMode]);
 
   const startCamera = async () => {
     if (!permission?.granted) {
@@ -580,12 +603,12 @@ ALWAYS include at least ONE of: DiamondGlow, Chemical Peels, Facials, or Dermapl
   const runAnalysis = async () => {
     if (!capturedImage) return;
 
-    if (!patientHealthProfile) {
+    if (!isDevMode && !patientHealthProfile) {
       setShowHealthQuestionnaire(true);
       return;
     }
 
-    if (!patientConsent) {
+    if (!isDevMode && !patientConsent) {
       setShowConsentModal(true);
       return;
     }
@@ -734,10 +757,19 @@ ALWAYS include at least ONE of: DiamondGlow, Chemical Peels, Facials, or Dermapl
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.heroSection}>
-            <Text style={styles.heroTitle}>
-              REVEAL YOUR{'\n'}
-              <Text style={styles.heroTitleGold}>AURA INDEX</Text>
-            </Text>
+            <View style={styles.heroTitleContainer}>
+              <TouchableOpacity
+                style={styles.devModeButton}
+                onPress={handleDevTap}
+                activeOpacity={1}
+              >
+                <Lock size={14} color={isDevMode ? Colors.gold : 'rgba(255,255,255,0.1)'} />
+              </TouchableOpacity>
+              <Text style={styles.heroTitle}>
+                REVEAL YOUR{'\n'}
+                <Text style={styles.heroTitleGold}>AURA INDEX</Text>
+              </Text>
+            </View>
             <Text style={styles.heroSubtitle}>
               AI-Powered Biometric Analysis for Regenerative Aesthetics
             </Text>
@@ -1134,6 +1166,18 @@ const styles = StyleSheet.create({
   heroSection: {
     alignItems: 'center',
     marginBottom: 40,
+  },
+  heroTitleContainer: {
+    position: 'relative',
+    width: '100%',
+    alignItems: 'center',
+  },
+  devModeButton: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    padding: 8,
+    zIndex: 10,
   },
   heroTitle: {
     fontSize: 32,

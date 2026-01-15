@@ -37,6 +37,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const [patientConsent, setPatientConsent] = useState<PatientConsent | null>(null);
   const [tosAcknowledgment, setTosAcknowledgment] = useState<TermsOfServiceAcknowledgment | null>(null);
   const [treatmentConfigs, setTreatmentConfigs] = useState<TreatmentConfig[]>(getDefaultTreatmentConfigs());
+  const [isDevMode, setIsDevMode] = useState(false);
 
   useEffect(() => {
     loadStoredData();
@@ -476,5 +477,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     getTreatmentPrice,
     clearAllCache,
     forceRefresh,
+    isDevMode,
+    setIsDevMode,
   };
 });
