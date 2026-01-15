@@ -78,6 +78,9 @@ export interface Lead {
   roadmap: ClinicalProcedure[];
   peptides: PeptideTherapy[];
   ivDrips: IVOptimization[];
+  skinIQ?: SkinIQ;
+  volumeAssessment?: VolumeZoneAnalysis[];
+  fitzpatrickAssessment?: FitzpatrickAssessment;
   status: 'new' | 'contacted' | 'converted';
   createdAt: Date;
   selectedTreatments?: SelectedTreatment[];

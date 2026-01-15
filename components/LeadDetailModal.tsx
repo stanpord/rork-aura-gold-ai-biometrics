@@ -193,6 +193,30 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
             </View>
           </View>
 
+          {lead.skinIQ && (
+            <View style={styles.skinIQCard}>
+              <Text style={styles.skinIQTitle}>SKIN IQ PROFILE</Text>
+              <View style={styles.skinIQGrid}>
+                <View style={styles.skinIQItem}>
+                  <Text style={styles.skinIQLabel}>Texture</Text>
+                  <Text style={styles.skinIQValue}>{lead.skinIQ.texture}</Text>
+                </View>
+                <View style={styles.skinIQItem}>
+                  <Text style={styles.skinIQLabel}>Pores</Text>
+                  <Text style={styles.skinIQValue}>{lead.skinIQ.pores}</Text>
+                </View>
+                <View style={styles.skinIQItem}>
+                  <Text style={styles.skinIQLabel}>Pigment</Text>
+                  <Text style={styles.skinIQValue}>{lead.skinIQ.pigment}</Text>
+                </View>
+                <View style={styles.skinIQItem}>
+                  <Text style={styles.skinIQLabel}>Redness</Text>
+                  <Text style={styles.skinIQValue}>{lead.skinIQ.redness}</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
           <View style={styles.revenueCard}>
             <View style={styles.revenueHeader}>
               <View style={styles.revenueIconContainer}>
@@ -264,165 +288,183 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
             </View>
           )}
 
-          {lead.roadmap && lead.roadmap.length > 0 && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Syringe size={18} color={Colors.gold} />
-                <Text style={styles.sectionTitle}>Clinical Roadmap</Text>
-                <View style={styles.sectionBadge}>
-                  <Text style={styles.sectionBadgeText}>{lead.roadmap.length}</Text>
-                </View>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Syringe size={18} color={Colors.gold} />
+              <Text style={styles.sectionTitle}>Clinical Roadmap</Text>
+              <View style={styles.sectionBadge}>
+                <Text style={styles.sectionBadgeText}>{lead.roadmap?.length || 0}</Text>
               </View>
-              {lead.roadmap.map((procedure, index) => (
-                <View key={index} style={styles.recommendationCard}>
-                  <View style={styles.recommendationHeader}>
-                    <Text style={styles.recommendationName}>{procedure.name}</Text>
-                    <Text style={styles.recommendationPrice}>{procedure.price}</Text>
-                  </View>
-                  <Text style={styles.recommendationBenefit}>{procedure.benefit}</Text>
-                  {procedure.clinicalReason && (
-                    <View style={styles.clinicalReasonBox}>
-                      <Text style={styles.clinicalReasonLabel}>Clinical Reason</Text>
-                      <Text style={styles.clinicalReasonText}>{procedure.clinicalReason}</Text>
-                    </View>
-                  )}
-                  {TREATMENT_RECURRENCE_MAP[procedure.name] && (
-                    <View style={styles.maintenanceBadge}>
-                      <RefreshCcw size={10} color="#10b981" />
-                      <Text style={styles.maintenanceBadgeText}>
-                        Maintenance: {TREATMENT_RECURRENCE_MAP[procedure.name].description}
-                      </Text>
-                    </View>
-                  )}
-                  <TouchableOpacity
-                    style={[
-                      styles.selectTreatmentButton,
-                      isTreatmentConfirmed(procedure.name) && styles.selectTreatmentButtonConfirmed
-                    ]}
-                    onPress={() => handleSelectTreatment(procedure, 'procedure')}
-                    activeOpacity={0.8}
-                    disabled={isTreatmentConfirmed(procedure.name)}
-                  >
-                    {isTreatmentConfirmed(procedure.name) ? (
-                      <>
-                        <CheckCircle size={14} color={Colors.success} />
-                        <Text style={styles.selectTreatmentButtonTextConfirmed}>TREATMENT SELECTED</Text>
-                      </>
-                    ) : (
-                      <Text style={styles.selectTreatmentButtonText}>SELECT TREATMENT</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              ))}
             </View>
-          )}
-
-          {lead.peptides && lead.peptides.length > 0 && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <FlaskConical size={18} color={Colors.success} />
-                <Text style={styles.sectionTitle}>Peptide Therapies</Text>
-                <View style={[styles.sectionBadge, styles.sectionBadgeGreen]}>
-                  <Text style={[styles.sectionBadgeText, styles.sectionBadgeTextGreen]}>
-                    {lead.peptides.length}
-                  </Text>
-                </View>
+            {(!lead.roadmap || lead.roadmap.length === 0) ? (
+              <View style={styles.emptySection}>
+                <Text style={styles.emptySectionText}>No procedures recommended</Text>
               </View>
-              {lead.peptides.map((peptide, index) => (
+            ) : (
+              <>
+                {lead.roadmap.map((procedure, index) => (
+                  <View key={index} style={styles.recommendationCard}>
+                    <View style={styles.recommendationHeader}>
+                      <Text style={styles.recommendationName}>{procedure.name}</Text>
+                      <Text style={styles.recommendationPrice}>{procedure.price}</Text>
+                    </View>
+                    <Text style={styles.recommendationBenefit}>{procedure.benefit}</Text>
+                    {procedure.clinicalReason && (
+                      <View style={styles.clinicalReasonBox}>
+                        <Text style={styles.clinicalReasonLabel}>Clinical Reason</Text>
+                        <Text style={styles.clinicalReasonText}>{procedure.clinicalReason}</Text>
+                      </View>
+                    )}
+                    {TREATMENT_RECURRENCE_MAP[procedure.name] && (
+                      <View style={styles.maintenanceBadge}>
+                        <RefreshCcw size={10} color="#10b981" />
+                        <Text style={styles.maintenanceBadgeText}>
+                          Maintenance: {TREATMENT_RECURRENCE_MAP[procedure.name].description}
+                        </Text>
+                      </View>
+                    )}
+                    <TouchableOpacity
+                      style={[
+                        styles.selectTreatmentButton,
+                        isTreatmentConfirmed(procedure.name) && styles.selectTreatmentButtonConfirmed
+                      ]}
+                      onPress={() => handleSelectTreatment(procedure, 'procedure')}
+                      activeOpacity={0.8}
+                      disabled={isTreatmentConfirmed(procedure.name)}
+                    >
+                      {isTreatmentConfirmed(procedure.name) ? (
+                        <>
+                          <CheckCircle size={14} color={Colors.success} />
+                          <Text style={styles.selectTreatmentButtonTextConfirmed}>TREATMENT SELECTED</Text>
+                        </>
+                      ) : (
+                        <Text style={styles.selectTreatmentButtonText}>SELECT TREATMENT</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </>
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <FlaskConical size={18} color={Colors.success} />
+              <Text style={styles.sectionTitle}>Peptide Therapies</Text>
+              <View style={[styles.sectionBadge, styles.sectionBadgeGreen]}>
+                <Text style={[styles.sectionBadgeText, styles.sectionBadgeTextGreen]}>
+                  {lead.peptides?.length || 0}
+                </Text>
+              </View>
+            </View>
+            {(!lead.peptides || lead.peptides.length === 0) ? (
+              <View style={styles.emptySection}>
+                <Text style={styles.emptySectionText}>No peptide therapies recommended</Text>
+              </View>
+            ) : (
+              <>
+                {lead.peptides.map((peptide, index) => (
                 <View key={index} style={styles.peptideCard}>
-                  <View style={styles.peptideHeader}>
-                    <Text style={styles.peptideName}>{peptide.name}</Text>
-                    <Text style={styles.peptideFrequency}>{peptide.frequency}</Text>
-                  </View>
-                  <Text style={styles.peptideGoal}>{peptide.goal}</Text>
-                  {peptide.mechanism && (
-                    <Text style={styles.peptideMechanism}>{peptide.mechanism}</Text>
-                  )}
-                  {TREATMENT_RECURRENCE_MAP[peptide.name] && (
-                    <View style={styles.maintenanceBadge}>
-                      <RefreshCcw size={10} color="#10b981" />
-                      <Text style={styles.maintenanceBadgeText}>
-                        Cycle: {TREATMENT_RECURRENCE_MAP[peptide.name].description}
-                      </Text>
+                    <View style={styles.peptideHeader}>
+                      <Text style={styles.peptideName}>{peptide.name}</Text>
+                      <Text style={styles.peptideFrequency}>{peptide.frequency}</Text>
                     </View>
-                  )}
-                  <TouchableOpacity
-                    style={[
-                      styles.selectTreatmentButton,
-                      isTreatmentConfirmed(peptide.name) && styles.selectTreatmentButtonConfirmed
-                    ]}
-                    onPress={() => handleSelectTreatment(peptide, 'peptide')}
-                    activeOpacity={0.8}
-                    disabled={isTreatmentConfirmed(peptide.name)}
-                  >
-                    {isTreatmentConfirmed(peptide.name) ? (
-                      <>
-                        <CheckCircle size={14} color={Colors.success} />
-                        <Text style={styles.selectTreatmentButtonTextConfirmed}>TREATMENT SELECTED</Text>
-                      </>
-                    ) : (
-                      <Text style={styles.selectTreatmentButtonText}>SELECT TREATMENT</Text>
+                    <Text style={styles.peptideGoal}>{peptide.goal}</Text>
+                    {peptide.mechanism && (
+                      <Text style={styles.peptideMechanism}>{peptide.mechanism}</Text>
                     )}
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-          )}
+                    {TREATMENT_RECURRENCE_MAP[peptide.name] && (
+                      <View style={styles.maintenanceBadge}>
+                        <RefreshCcw size={10} color="#10b981" />
+                        <Text style={styles.maintenanceBadgeText}>
+                          Cycle: {TREATMENT_RECURRENCE_MAP[peptide.name].description}
+                        </Text>
+                      </View>
+                    )}
+                    <TouchableOpacity
+                      style={[
+                        styles.selectTreatmentButton,
+                        isTreatmentConfirmed(peptide.name) && styles.selectTreatmentButtonConfirmed
+                      ]}
+                      onPress={() => handleSelectTreatment(peptide, 'peptide')}
+                      activeOpacity={0.8}
+                      disabled={isTreatmentConfirmed(peptide.name)}
+                    >
+                      {isTreatmentConfirmed(peptide.name) ? (
+                        <>
+                          <CheckCircle size={14} color={Colors.success} />
+                          <Text style={styles.selectTreatmentButtonTextConfirmed}>TREATMENT SELECTED</Text>
+                        </>
+                      ) : (
+                        <Text style={styles.selectTreatmentButtonText}>SELECT TREATMENT</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </>
+            )}
+          </View>
 
-          {lead.ivDrips && lead.ivDrips.length > 0 && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Droplets size={18} color="#60a5fa" />
-                <Text style={styles.sectionTitle}>IV Optimization</Text>
-                <View style={[styles.sectionBadge, styles.sectionBadgeBlue]}>
-                  <Text style={[styles.sectionBadgeText, styles.sectionBadgeTextBlue]}>
-                    {lead.ivDrips.length}
-                  </Text>
-                </View>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Droplets size={18} color="#60a5fa" />
+              <Text style={styles.sectionTitle}>IV Optimization</Text>
+              <View style={[styles.sectionBadge, styles.sectionBadgeBlue]}>
+                <Text style={[styles.sectionBadgeText, styles.sectionBadgeTextBlue]}>
+                  {lead.ivDrips?.length || 0}
+                </Text>
               </View>
-              {lead.ivDrips.map((iv, index) => (
-                <View key={index} style={styles.ivCard}>
-                  <View style={styles.ivHeader}>
-                    <Text style={styles.ivName}>{iv.name}</Text>
-                    <Text style={styles.ivDuration}>{iv.duration}</Text>
-                  </View>
-                  <Text style={styles.ivBenefit}>{iv.benefit}</Text>
-                  {iv.ingredients && (
-                    <View style={styles.ingredientsBox}>
-                      <Text style={styles.ingredientsLabel}>Ingredients</Text>
-                      <Text style={styles.ingredientsText}>{iv.ingredients}</Text>
-                    </View>
-                  )}
-                  {TREATMENT_RECURRENCE_MAP[iv.name] && (
-                    <View style={styles.maintenanceBadge}>
-                      <RefreshCcw size={10} color="#10b981" />
-                      <Text style={styles.maintenanceBadgeText}>
-                        Schedule: {TREATMENT_RECURRENCE_MAP[iv.name].description}
-                      </Text>
-                    </View>
-                  )}
-                  <TouchableOpacity
-                    style={[
-                      styles.selectTreatmentButton,
-                      isTreatmentConfirmed(iv.name) && styles.selectTreatmentButtonConfirmed
-                    ]}
-                    onPress={() => handleSelectTreatment(iv, 'iv')}
-                    activeOpacity={0.8}
-                    disabled={isTreatmentConfirmed(iv.name)}
-                  >
-                    {isTreatmentConfirmed(iv.name) ? (
-                      <>
-                        <CheckCircle size={14} color={Colors.success} />
-                        <Text style={styles.selectTreatmentButtonTextConfirmed}>TREATMENT SELECTED</Text>
-                      </>
-                    ) : (
-                      <Text style={styles.selectTreatmentButtonText}>SELECT TREATMENT</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              ))}
             </View>
-          )}
+            {(!lead.ivDrips || lead.ivDrips.length === 0) ? (
+              <View style={styles.emptySection}>
+                <Text style={styles.emptySectionText}>No IV therapies recommended</Text>
+              </View>
+            ) : (
+              <>
+                {lead.ivDrips.map((iv, index) => (
+                <View key={index} style={styles.ivCard}>
+                    <View style={styles.ivHeader}>
+                      <Text style={styles.ivName}>{iv.name}</Text>
+                      <Text style={styles.ivDuration}>{iv.duration}</Text>
+                    </View>
+                    <Text style={styles.ivBenefit}>{iv.benefit}</Text>
+                    {iv.ingredients && (
+                      <View style={styles.ingredientsBox}>
+                        <Text style={styles.ingredientsLabel}>Ingredients</Text>
+                        <Text style={styles.ingredientsText}>{iv.ingredients}</Text>
+                      </View>
+                    )}
+                    {TREATMENT_RECURRENCE_MAP[iv.name] && (
+                      <View style={styles.maintenanceBadge}>
+                        <RefreshCcw size={10} color="#10b981" />
+                        <Text style={styles.maintenanceBadgeText}>
+                          Schedule: {TREATMENT_RECURRENCE_MAP[iv.name].description}
+                        </Text>
+                      </View>
+                    )}
+                    <TouchableOpacity
+                      style={[
+                        styles.selectTreatmentButton,
+                        isTreatmentConfirmed(iv.name) && styles.selectTreatmentButtonConfirmed
+                      ]}
+                      onPress={() => handleSelectTreatment(iv, 'iv')}
+                      activeOpacity={0.8}
+                      disabled={isTreatmentConfirmed(iv.name)}
+                    >
+                      {isTreatmentConfirmed(iv.name) ? (
+                        <>
+                          <CheckCircle size={14} color={Colors.success} />
+                          <Text style={styles.selectTreatmentButtonTextConfirmed}>TREATMENT SELECTED</Text>
+                        </>
+                      ) : (
+                        <Text style={styles.selectTreatmentButtonText}>SELECT TREATMENT</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </>
+            )}
+          </View>
 
           <View style={styles.conversionTip}>
             <TrendingUp size={16} color={Colors.gold} />
@@ -947,5 +989,56 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: Colors.gold,
     flex: 1,
+  },
+  skinIQCard: {
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  skinIQTitle: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: Colors.gold,
+    letterSpacing: 1.5,
+    marginBottom: 12,
+  },
+  skinIQGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  skinIQItem: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 10,
+    padding: 10,
+  },
+  skinIQLabel: {
+    fontSize: 9,
+    fontWeight: '700' as const,
+    color: Colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  skinIQValue: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.white,
+  },
+  emptySection: {
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  emptySectionText: {
+    fontSize: 13,
+    color: Colors.textMuted,
   },
 });

@@ -45,10 +45,18 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
       if (storedLeads) {
         const parsed = JSON.parse(storedLeads);
-        setLeads(parsed.map((l: Lead) => ({
+        const restoredLeads = parsed.map((l: Lead) => ({
           ...l,
           createdAt: new Date(l.createdAt),
-        })));
+          roadmap: l.roadmap || [],
+          peptides: l.peptides || [],
+          ivDrips: l.ivDrips || [],
+        }));
+        setLeads(restoredLeads);
+        console.log('Leads restored from storage:', restoredLeads.length, 'leads');
+        restoredLeads.forEach((lead: Lead) => {
+          console.log(`Lead ${lead.name}: roadmap=${lead.roadmap?.length || 0}, peptides=${lead.peptides?.length || 0}, ivDrips=${lead.ivDrips?.length || 0}`);
+        });
       }
 
       const introComplete = await AsyncStorage.getItem(STORAGE_KEYS.INTRO_COMPLETE);
@@ -252,17 +260,30 @@ export const [AppProvider, useApp] = createContextHook(() => {
   };
 
   const addLead = useCallback(async (name: string, phone: string): Promise<void> => {
-    if (!currentAnalysis) return;
+    if (!currentAnalysis) {
+      console.log('Cannot add lead: No current analysis available');
+      return;
+    }
 
-    const roadmapValue = currentAnalysis.clinicalRoadmap.reduce((acc, proc) => {
-      return acc + parsePrice(proc.price);
+    console.log('Adding lead with analysis data:', {
+      roadmapCount: currentAnalysis.clinicalRoadmap?.length || 0,
+      peptidesCount: currentAnalysis.peptideTherapy?.length || 0,
+      ivCount: currentAnalysis.ivOptimization?.length || 0,
+    });
+
+    const roadmapData = currentAnalysis.clinicalRoadmap || [];
+    const peptideData = currentAnalysis.peptideTherapy || [];
+    const ivData = currentAnalysis.ivOptimization || [];
+
+    const roadmapValue = roadmapData.reduce((acc, proc) => {
+      return acc + parsePrice(proc.price || '0');
     }, 0);
 
-    const peptideValue = currentAnalysis.peptideTherapy.reduce((acc, peptide) => {
+    const peptideValue = peptideData.reduce((acc, peptide) => {
       return acc + 350;
     }, 0);
 
-    const ivValue = currentAnalysis.ivOptimization.reduce((acc, iv) => {
+    const ivValue = ivData.reduce((acc, iv) => {
       return acc + 275;
     }, 0);
 
@@ -275,12 +296,41 @@ export const [AppProvider, useApp] = createContextHook(() => {
       auraScore: currentAnalysis.auraScore,
       faceType: currentAnalysis.faceType,
       estimatedValue,
-      roadmap: currentAnalysis.clinicalRoadmap,
-      peptides: currentAnalysis.peptideTherapy,
-      ivDrips: currentAnalysis.ivOptimization,
+      roadmap: roadmapData.map(proc => ({
+        name: proc.name,
+        benefit: proc.benefit,
+        price: proc.price,
+        clinicalReason: proc.clinicalReason,
+        safetyStatus: proc.safetyStatus,
+      })),
+      peptides: peptideData.map(p => ({
+        name: p.name,
+        goal: p.goal,
+        mechanism: p.mechanism,
+        frequency: p.frequency,
+        safetyStatus: p.safetyStatus,
+      })),
+      ivDrips: ivData.map(iv => ({
+        name: iv.name,
+        benefit: iv.benefit,
+        ingredients: iv.ingredients,
+        duration: iv.duration,
+        safetyStatus: iv.safetyStatus,
+      })),
+      skinIQ: currentAnalysis.skinIQ,
+      volumeAssessment: currentAnalysis.volumeAssessment,
+      fitzpatrickAssessment: currentAnalysis.fitzpatrickAssessment,
       status: 'new',
       createdAt: new Date(),
     };
+
+    console.log('New lead created:', {
+      id: newLead.id,
+      name: newLead.name,
+      roadmapItems: newLead.roadmap?.length || 0,
+      peptideItems: newLead.peptides?.length || 0,
+      ivItems: newLead.ivDrips?.length || 0,
+    });
 
     const updatedLeads = [newLead, ...leads];
     setLeads(updatedLeads);
@@ -288,6 +338,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(updatedLeads));
+      console.log('Lead saved to storage successfully');
     } catch (error) {
       console.log('Error saving lead:', error);
     }
