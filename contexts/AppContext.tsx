@@ -3,6 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
 import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment, TreatmentConfig, DEFAULT_TREATMENT_CONFIGS } from '@/types';
 
+const APP_VERSION = '1.0.5';
+
 const STORAGE_KEYS = {
   LEADS: 'aura_gold_leads',
   INTRO_COMPLETE: 'aura_gold_intro_complete',
@@ -10,6 +12,7 @@ const STORAGE_KEYS = {
   PATIENT_CONSENT: 'aura_gold_patient_consent',
   TOS_ACKNOWLEDGMENT: 'aura_gold_tos_acknowledgment',
   TREATMENT_CONFIGS: 'aura_gold_treatment_configs',
+  APP_VERSION: 'aura_gold_app_version',
 };
 
 const getDefaultTreatmentConfigs = (): TreatmentConfig[] => {
@@ -41,6 +44,15 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const loadStoredData = async () => {
     try {
+      console.log('[AppContext] Loading stored data, current version:', APP_VERSION);
+      
+      const storedVersion = await AsyncStorage.getItem(STORAGE_KEYS.APP_VERSION);
+      if (storedVersion !== APP_VERSION) {
+        console.log('[AppContext] Version mismatch, clearing treatment configs cache');
+        await AsyncStorage.removeItem(STORAGE_KEYS.TREATMENT_CONFIGS);
+        await AsyncStorage.setItem(STORAGE_KEYS.APP_VERSION, APP_VERSION);
+      }
+      
       const storedLeads = await AsyncStorage.getItem(STORAGE_KEYS.LEADS);
 
       if (storedLeads) {
@@ -250,6 +262,38 @@ export const [AppProvider, useApp] = createContextHook(() => {
     return config?.customPrice || config?.defaultPrice || '';
   }, [treatmentConfigs]);
 
+  const clearAllCache = useCallback(async () => {
+    console.log('[AppContext] Clearing all cache...');
+    try {
+      await AsyncStorage.multiRemove([
+        STORAGE_KEYS.LEADS,
+        STORAGE_KEYS.INTRO_COMPLETE,
+        STORAGE_KEYS.HEALTH_PROFILE,
+        STORAGE_KEYS.PATIENT_CONSENT,
+        STORAGE_KEYS.TOS_ACKNOWLEDGMENT,
+        STORAGE_KEYS.TREATMENT_CONFIGS,
+      ]);
+      setLeads([]);
+      setHasCompletedIntro(false);
+      setPatientHealthProfile(null);
+      setPatientConsent(null);
+      setTosAcknowledgment(null);
+      setTreatmentConfigs(getDefaultTreatmentConfigs());
+      setCurrentAnalysis(null);
+      setCapturedImage(null);
+      setSimulatedImage(null);
+      setHasUnlockedResults(false);
+      console.log('[AppContext] Cache cleared successfully');
+    } catch (error) {
+      console.log('[AppContext] Error clearing cache:', error);
+    }
+  }, []);
+
+  const forceRefresh = useCallback(async () => {
+    console.log('[AppContext] Force refreshing data...');
+    await loadStoredData();
+  }, []);
+
   const parsePrice = (priceStr: string): number => {
     const cleanedPrice = priceStr.replace(/[^0-9,-]/g, '');
     const parts = cleanedPrice.split('-').map(p => parseFloat(p.replace(/,/g, '')) || 0);
@@ -430,5 +474,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     resetTreatmentConfigs,
     isTreatmentEnabled,
     getTreatmentPrice,
+    clearAllCache,
+    forceRefresh,
   };
 });
