@@ -97,7 +97,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     if (leadsQuery.data?.success && leadsQuery.data.leads) {
       console.log('Loaded leads from backend:', leadsQuery.data.leads.length);
       const parsedLeads = leadsQuery.data.leads.map((l: Record<string, unknown>) => {
-        // Ensure selectedTreatments is an array
+        // Parse selectedTreatments
         let selectedTreatments = l.selectedTreatments || [];
         if (typeof selectedTreatments === 'string') {
           try {
@@ -108,17 +108,55 @@ export const [AppProvider, useApp] = createContextHook(() => {
           }
         }
         
-        console.log('Lead', l.name, 'has', Array.isArray(selectedTreatments) ? selectedTreatments.length : 0, 'selected treatments');
+        // Parse roadmap (treatment plan)
+        let roadmap = l.roadmap || [];
+        if (typeof roadmap === 'string') {
+          try {
+            roadmap = JSON.parse(roadmap);
+          } catch (e) {
+            console.log('Error parsing roadmap in context:', e);
+            roadmap = [];
+          }
+        }
+        
+        // Parse peptides
+        let peptides = l.peptides || [];
+        if (typeof peptides === 'string') {
+          try {
+            peptides = JSON.parse(peptides);
+          } catch (e) {
+            console.log('Error parsing peptides in context:', e);
+            peptides = [];
+          }
+        }
+        
+        // Parse ivDrips
+        let ivDrips = l.ivDrips || [];
+        if (typeof ivDrips === 'string') {
+          try {
+            ivDrips = JSON.parse(ivDrips);
+          } catch (e) {
+            console.log('Error parsing ivDrips in context:', e);
+            ivDrips = [];
+          }
+        }
+        
+        console.log('Lead', l.name, 'has roadmap:', Array.isArray(roadmap) ? roadmap.length : 0, 'peptides:', Array.isArray(peptides) ? peptides.length : 0, 'ivDrips:', Array.isArray(ivDrips) ? ivDrips.length : 0, 'selected treatments:', Array.isArray(selectedTreatments) ? selectedTreatments.length : 0);
         
         return {
           ...l,
           createdAt: new Date(l.createdAt as string),
+          roadmap: Array.isArray(roadmap) ? roadmap : [],
+          peptides: Array.isArray(peptides) ? peptides : [],
+          ivDrips: Array.isArray(ivDrips) ? ivDrips : [],
           selectedTreatments: Array.isArray(selectedTreatments) ? selectedTreatments : [],
         };
       }) as Lead[];
       
       // Log total treatments selected
       const totalSelected = parsedLeads.reduce((acc, lead) => acc + (lead.selectedTreatments?.length || 0), 0);
+      const totalRoadmap = parsedLeads.reduce((acc, lead) => acc + (lead.roadmap?.length || 0), 0);
+      console.log('Total roadmap items across all leads:', totalRoadmap);
       console.log('Total treatments selected across all leads:', totalSelected);
       
       setLeads(parsedLeads);
