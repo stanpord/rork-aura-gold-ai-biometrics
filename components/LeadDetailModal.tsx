@@ -32,6 +32,7 @@ import Colors from '@/constants/colors';
 import { Lead, ClinicalProcedure, PeptideTherapy, IVOptimization, SelectedTreatment, TreatmentDosingSettings, ComplianceSignOff, TREATMENT_RECURRENCE_MAP } from '@/types';
 import { useApp } from '@/contexts/AppContext';
 import TreatmentDosingModal from '@/components/TreatmentDosingModal';
+import PatientSummaryModal from '@/components/PatientSummaryModal';
 
 interface LeadDetailModalProps {
   visible: boolean;
@@ -46,6 +47,7 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
     type: 'procedure' | 'peptide' | 'iv';
   } | null>(null);
   const [showClientSummary, setShowClientSummary] = useState(false);
+  const [showPatientSummary, setShowPatientSummary] = useState(false);
 
   const confirmedTreatments = useMemo(() => lead?.selectedTreatments || [], [lead?.selectedTreatments]);
 
@@ -166,13 +168,28 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
               <Text style={styles.headerSubtitle}>Patient Report</Text>
             </View>
           </View>
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={handleClose}
-            activeOpacity={0.7}
-          >
-            <X size={20} color={Colors.white} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.printSummaryButton}
+              onPress={() => {
+                setShowPatientSummary(true);
+                if (Platform.OS !== 'web') {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <Printer size={16} color={Colors.black} />
+              <Text style={styles.printSummaryButtonText}>SUMMARY</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={handleClose}
+              activeOpacity={0.7}
+            >
+              <X size={20} color={Colors.white} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView
@@ -649,6 +666,12 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
         patientConditions={[]}
         skinIQData={undefined}
       />
+
+      <PatientSummaryModal
+        visible={showPatientSummary}
+        onClose={() => setShowPatientSummary(false)}
+        lead={lead}
+      />
     </Modal>
   );
 }
@@ -697,6 +720,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textMuted,
     marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  printSummaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.gold,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  printSummaryButtonText: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: Colors.black,
+    letterSpacing: 1,
   },
   closeButton: {
     width: 40,
