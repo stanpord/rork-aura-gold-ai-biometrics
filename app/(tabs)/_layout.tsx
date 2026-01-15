@@ -37,12 +37,12 @@ export default function TabLayout() {
             title: 'Scan',
             headerTitle: 'AURA AI BIOMETRICS',
             tabBarIcon: ({ color, size }) => <Sparkles size={size} color={color} />,
-            headerRight: () => (
+            headerLeft: () => (
               <TouchableOpacity
-                style={styles.headerButton}
+                style={styles.headerButtonLeft}
                 onPress={() => setShowLoginModal(true)}
               >
-                <Lock size={16} color={Colors.textMuted} />
+                <Lock size={18} color={isStaffAuthenticated ? Colors.gold : Colors.textMuted} />
               </TouchableOpacity>
             ),
           }}
@@ -91,8 +91,8 @@ const styles = StyleSheet.create({
     color: Colors.white,
     letterSpacing: 2,
   },
-  headerButton: {
-    marginRight: 16,
+  headerButtonLeft: {
+    marginLeft: 16,
     padding: 8,
   },
 });
