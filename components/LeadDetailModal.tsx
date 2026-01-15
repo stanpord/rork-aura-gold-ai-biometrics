@@ -72,14 +72,28 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
   const getPatientRecommendedTreatments = useCallback(() => {
     if (!lead) return [];
     const recommended: { treatmentName: string; type: string; price: string }[] = [];
+    const invalidPatterns = ['loading', 'please wait', 'analyzing', '---', 'generating', 'processing'];
+    
+    const isValidName = (name: string | undefined): boolean => {
+      if (!name) return false;
+      const lower = name.toLowerCase().trim();
+      return !invalidPatterns.some(pattern => lower.includes(pattern)) && lower !== '' && lower !== '...';
+    };
+    
     lead.roadmap?.forEach(t => {
-      recommended.push({ treatmentName: t.name, type: 'Procedure', price: t.price });
+      if (isValidName(t.name)) {
+        recommended.push({ treatmentName: t.name, type: 'Procedure', price: t.price });
+      }
     });
     lead.peptides?.forEach(t => {
-      recommended.push({ treatmentName: t.name, type: 'Peptide', price: '-' });
+      if (isValidName(t.name)) {
+        recommended.push({ treatmentName: t.name, type: 'Peptide', price: '-' });
+      }
     });
     lead.ivDrips?.forEach(t => {
-      recommended.push({ treatmentName: t.name, type: 'IV Therapy', price: '-' });
+      if (isValidName(t.name)) {
+        recommended.push({ treatmentName: t.name, type: 'IV Therapy', price: '-' });
+      }
     });
     return recommended;
   }, [lead]);
@@ -161,28 +175,56 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
     return { treatments, totalAnnual };
   }, [lead]);
 
-  const isValidTreatment = useCallback((treatment: { name?: string; benefit?: string; goal?: string }) => {
+  const isValidTreatment = useCallback((treatment: { name?: string; benefit?: string; goal?: string; clinicalReason?: string; price?: string }) => {
     if (!treatment || !treatment.name) return false;
-    const invalidPatterns = ['loading', 'please wait', 'analyzing', '---'];
-    const nameInvalid = invalidPatterns.some(pattern => 
-      treatment.name?.toLowerCase().includes(pattern)
-    );
-    const benefitInvalid = invalidPatterns.some(pattern => 
-      (treatment.benefit || treatment.goal || '').toLowerCase().includes(pattern)
-    );
-    return !nameInvalid && !benefitInvalid;
+    
+    const invalidPatterns = ['loading', 'please wait', 'analyzing', '---', 'generating', 'processing'];
+    
+    const checkField = (field: string | undefined): boolean => {
+      if (!field) return false;
+      const lower = field.toLowerCase().trim();
+      return invalidPatterns.some(pattern => lower.includes(pattern)) || lower === '' || lower === '...';
+    };
+    
+    const nameInvalid = checkField(treatment.name);
+    const benefitInvalid = checkField(treatment.benefit) || checkField(treatment.goal);
+    const reasonInvalid = checkField((treatment as { clinicalReason?: string }).clinicalReason);
+    const priceInvalid = treatment.price === '---' || treatment.price === '' || treatment.price === undefined;
+    
+    const isInvalid = nameInvalid || benefitInvalid || reasonInvalid || priceInvalid;
+    
+    if (isInvalid) {
+      console.log('Filtering out invalid treatment:', treatment.name, '- nameInvalid:', nameInvalid, 'benefitInvalid:', benefitInvalid, 'reasonInvalid:', reasonInvalid, 'priceInvalid:', priceInvalid);
+    }
+    
+    return !isInvalid;
   }, []);
 
   const validRoadmap = useMemo(() => {
-    return (lead?.roadmap || []).filter(isValidTreatment);
+    const roadmap = lead?.roadmap || [];
+    console.log('Filtering roadmap - total items:', roadmap.length);
+    const filtered = roadmap.filter(item => {
+      const valid = isValidTreatment(item);
+      return valid;
+    });
+    console.log('Valid roadmap items after filter:', filtered.length);
+    return filtered;
   }, [lead?.roadmap, isValidTreatment]);
 
   const validPeptides = useMemo(() => {
-    return (lead?.peptides || []).filter(isValidTreatment);
+    const peptides = lead?.peptides || [];
+    console.log('Filtering peptides - total items:', peptides.length);
+    const filtered = peptides.filter(item => isValidTreatment(item));
+    console.log('Valid peptides after filter:', filtered.length);
+    return filtered;
   }, [lead?.peptides, isValidTreatment]);
 
   const validIvDrips = useMemo(() => {
-    return (lead?.ivDrips || []).filter(isValidTreatment);
+    const ivDrips = lead?.ivDrips || [];
+    console.log('Filtering IV drips - total items:', ivDrips.length);
+    const filtered = ivDrips.filter(item => isValidTreatment(item));
+    console.log('Valid IV drips after filter:', filtered.length);
+    return filtered;
   }, [lead?.ivDrips, isValidTreatment]);
 
   const hasNoValidTreatments = useMemo(() => {
