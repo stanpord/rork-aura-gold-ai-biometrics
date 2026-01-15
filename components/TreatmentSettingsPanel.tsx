@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   scrollView: {
-    flex: 1,
+    maxHeight: 400,
   },
   scrollContent: {
     padding: 16,

@@ -850,8 +850,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: Colors.border,
-    maxHeight: 500,
-    overflow: 'hidden',
   },
   deleteButton: {
     width: 32,
