@@ -145,6 +145,11 @@ export const leadsRouter = createTRPCRouter({
         
         const rawLeads = result[0].result || [];
         console.log('Raw leads count:', rawLeads.length);
+        if (rawLeads.length > 0) {
+          console.log('First raw lead keys:', Object.keys(rawLeads[0]));
+          console.log('First raw lead roadmap type:', typeof rawLeads[0].roadmap);
+          console.log('First raw lead roadmap value:', JSON.stringify(rawLeads[0].roadmap).substring(0, 200));
+        }
         
         const leads = rawLeads.map((row: Record<string, unknown>) => {
           const idStr = String(row.id || '');
@@ -163,15 +168,24 @@ export const leadsRouter = createTRPCRouter({
           
           // Parse roadmap if it's a string and deduplicate
           let roadmap = row.roadmap || [];
+          console.log('Raw roadmap for', row.name, '- type:', typeof roadmap, 'isArray:', Array.isArray(roadmap));
           if (typeof roadmap === 'string') {
             try {
               roadmap = JSON.parse(roadmap);
-            } catch {
+              // Handle double-encoded JSON
+              if (typeof roadmap === 'string') {
+                roadmap = JSON.parse(roadmap);
+              }
+            } catch (e) {
+              console.log('Error parsing roadmap:', e);
               roadmap = [];
             }
           }
           if (Array.isArray(roadmap)) {
             roadmap = deduplicateByName(roadmap as { name: string }[]);
+          } else {
+            console.log('Roadmap is not array after parsing:', typeof roadmap);
+            roadmap = [];
           }
           
           // Parse peptides if it's a string and deduplicate
@@ -179,12 +193,17 @@ export const leadsRouter = createTRPCRouter({
           if (typeof peptides === 'string') {
             try {
               peptides = JSON.parse(peptides);
+              if (typeof peptides === 'string') {
+                peptides = JSON.parse(peptides);
+              }
             } catch {
               peptides = [];
             }
           }
           if (Array.isArray(peptides)) {
             peptides = deduplicateByName(peptides as { name: string }[]);
+          } else {
+            peptides = [];
           }
           
           // Parse ivDrips if it's a string and deduplicate
@@ -192,15 +211,20 @@ export const leadsRouter = createTRPCRouter({
           if (typeof ivDrips === 'string') {
             try {
               ivDrips = JSON.parse(ivDrips);
+              if (typeof ivDrips === 'string') {
+                ivDrips = JSON.parse(ivDrips);
+              }
             } catch {
               ivDrips = [];
             }
           }
           if (Array.isArray(ivDrips)) {
             ivDrips = deduplicateByName(ivDrips as { name: string }[]);
+          } else {
+            ivDrips = [];
           }
           
-          console.log('Lead', cleanId, 'roadmap count:', Array.isArray(roadmap) ? roadmap.length : 0, 'selectedTreatments count:', Array.isArray(selectedTreatments) ? selectedTreatments.length : 0);
+          console.log('Lead', cleanId, 'final counts - roadmap:', Array.isArray(roadmap) ? roadmap.length : 0, 'peptides:', Array.isArray(peptides) ? peptides.length : 0, 'ivDrips:', Array.isArray(ivDrips) ? ivDrips.length : 0, 'selectedTreatments:', Array.isArray(selectedTreatments) ? selectedTreatments.length : 0);
           
           return {
             id: cleanId,
