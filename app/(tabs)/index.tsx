@@ -77,6 +77,9 @@ export default function ScanScreen() {
     patientConsent,
     savePatientConsent,
     clearPatientConsent,
+    isTreatmentEnabled,
+    getTreatmentPrice,
+    treatmentConfigs,
   } = useApp();
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -490,45 +493,68 @@ ALWAYS include at least ONE of: DiamondGlow, Chemical Peels, Facials, or Dermapl
 
     const conditions = [...baseConditions, ...fitzpatrickConditions];
     console.log('Applying contraindication checks with conditions:', conditions);
+    console.log('Filtering treatments by enabled configs. Total configs:', treatmentConfigs.length);
 
-    const checkedRoadmap: ClinicalProcedure[] = analysis.clinicalRoadmap.map((proc) => {
-      const safety = checkTreatmentSafety(proc.name, conditions, hasLabWork);
-      return {
-        ...proc,
-        safetyStatus: {
-          ...safety,
-          explainableReason: safety.isBlocked
-            ? getExplainableReason(proc.name, safety.blockedReasons)
-            : undefined,
-        },
-      };
-    });
+    const checkedRoadmap: ClinicalProcedure[] = analysis.clinicalRoadmap
+      .filter((proc) => {
+        const enabled = isTreatmentEnabled(proc.name);
+        console.log(`Treatment ${proc.name}: enabled=${enabled}`);
+        return enabled;
+      })
+      .map((proc) => {
+        const safety = checkTreatmentSafety(proc.name, conditions, hasLabWork);
+        const customPrice = getTreatmentPrice(proc.name);
+        return {
+          ...proc,
+          price: customPrice || proc.price,
+          safetyStatus: {
+            ...safety,
+            explainableReason: safety.isBlocked
+              ? getExplainableReason(proc.name, safety.blockedReasons)
+              : undefined,
+          },
+        };
+      });
 
-    const checkedPeptides: PeptideTherapy[] = analysis.peptideTherapy.map((peptide) => {
-      const safety = checkTreatmentSafety(peptide.name, conditions, hasLabWork);
-      return {
-        ...peptide,
-        safetyStatus: {
-          ...safety,
-          explainableReason: safety.isBlocked
-            ? getExplainableReason(peptide.name, safety.blockedReasons)
-            : undefined,
-        },
-      };
-    });
+    const checkedPeptides: PeptideTherapy[] = analysis.peptideTherapy
+      .filter((peptide) => {
+        const enabled = isTreatmentEnabled(peptide.name);
+        console.log(`Peptide ${peptide.name}: enabled=${enabled}`);
+        return enabled;
+      })
+      .map((peptide) => {
+        const safety = checkTreatmentSafety(peptide.name, conditions, hasLabWork);
+        return {
+          ...peptide,
+          safetyStatus: {
+            ...safety,
+            explainableReason: safety.isBlocked
+              ? getExplainableReason(peptide.name, safety.blockedReasons)
+              : undefined,
+          },
+        };
+      });
 
-    const checkedIV: IVOptimization[] = analysis.ivOptimization.map((iv) => {
-      const safety = checkTreatmentSafety(iv.name, conditions, hasLabWork);
-      return {
-        ...iv,
-        safetyStatus: {
-          ...safety,
-          explainableReason: safety.isBlocked
-            ? getExplainableReason(iv.name, safety.blockedReasons)
-            : undefined,
-        },
-      };
-    });
+    const checkedIV: IVOptimization[] = analysis.ivOptimization
+      .filter((iv) => {
+        const enabled = isTreatmentEnabled(iv.name);
+        console.log(`IV ${iv.name}: enabled=${enabled}`);
+        return enabled;
+      })
+      .map((iv) => {
+        const safety = checkTreatmentSafety(iv.name, conditions, hasLabWork);
+        return {
+          ...iv,
+          safetyStatus: {
+            ...safety,
+            explainableReason: safety.isBlocked
+              ? getExplainableReason(iv.name, safety.blockedReasons)
+              : undefined,
+          },
+        };
+      });
+
+    console.log(`Filtered roadmap: ${checkedRoadmap.length} treatments, ${checkedPeptides.length} peptides, ${checkedIV.length} IVs`);
 
     return {
       ...analysis,
@@ -536,7 +562,7 @@ ALWAYS include at least ONE of: DiamondGlow, Chemical Peels, Facials, or Dermapl
       peptideTherapy: checkedPeptides,
       ivOptimization: checkedIV,
     };
-  }, [patientHealthProfile]);
+  }, [patientHealthProfile, treatmentConfigs, isTreatmentEnabled, getTreatmentPrice]);
 
   const handleHealthQuestionnaireComplete = useCallback((profile: PatientHealthProfile) => {
     saveHealthProfile(profile);
