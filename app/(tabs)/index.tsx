@@ -95,25 +95,38 @@ export default function ScanScreen() {
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<'front' | 'back'>('front');
   const cameraRef = useRef<CameraView>(null);
-  const devTapCount = useRef(0);
-  const devTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const DEV_CODE = '1234';
 
-  const handleDevTap = useCallback(() => {
-    devTapCount.current += 1;
-    if (devTapTimer.current) {
-      clearTimeout(devTapTimer.current);
-    }
-    if (devTapCount.current >= 5) {
-      setIsDevMode(true);
-      devTapCount.current = 0;
-      if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  const handleDevModePress = useCallback(() => {
+    if (Platform.OS === 'web') {
+      const code = window.prompt('Enter developer code:');
+      if (code === DEV_CODE) {
+        setIsDevMode(true);
+        console.log('Developer mode enabled - questionnaires bypassed');
+      } else if (code !== null) {
+        Alert.alert('Invalid Code', 'The developer code is incorrect.');
       }
-      console.log('Developer mode enabled - questionnaires bypassed');
     } else {
-      devTapTimer.current = setTimeout(() => {
-        devTapCount.current = 0;
-      }, 1500);
+      Alert.prompt(
+        'Developer Mode',
+        'Enter the developer code to bypass questionnaires:',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Submit',
+            onPress: (code?: string) => {
+              if (code === DEV_CODE) {
+                setIsDevMode(true);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                console.log('Developer mode enabled - questionnaires bypassed');
+              } else {
+                Alert.alert('Invalid Code', 'The developer code is incorrect.');
+              }
+            },
+          },
+        ],
+        'secure-text'
+      );
     }
   }, [setIsDevMode]);
 
@@ -758,13 +771,6 @@ ALWAYS include at least ONE of: DiamondGlow, Chemical Peels, Facials, or Dermapl
         >
           <View style={styles.heroSection}>
             <View style={styles.heroTitleContainer}>
-              <TouchableOpacity
-                style={styles.devModeButton}
-                onPress={handleDevTap}
-                activeOpacity={1}
-              >
-                <Lock size={14} color={isDevMode ? Colors.gold : 'rgba(255,255,255,0.1)'} />
-              </TouchableOpacity>
               <Text style={styles.heroTitle}>
                 REVEAL YOUR{'\n'}
                 <Text style={styles.heroTitleGold}>AURA INDEX</Text>
@@ -848,6 +854,16 @@ ALWAYS include at least ONE of: DiamondGlow, Chemical Peels, Facials, or Dermapl
               </View>
             )}
           </View>
+        <TouchableOpacity
+            style={styles.devModeBottomButton}
+            onPress={handleDevModePress}
+            activeOpacity={0.7}
+          >
+            <Lock size={14} color={isDevMode ? Colors.gold : Colors.textMuted} />
+            <Text style={[styles.devModeBottomText, isDevMode && styles.devModeActiveText]}>
+              {isDevMode ? 'DEV MODE ON' : 'Developer'}
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
       </View>
     );
@@ -1172,12 +1188,28 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
   },
-  devModeButton: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    padding: 8,
-    zIndex: 10,
+  devModeBottomButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginTop: 24,
+    alignSelf: 'center',
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  devModeBottomText: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: Colors.textMuted,
+    letterSpacing: 0.5,
+  },
+  devModeActiveText: {
+    color: Colors.gold,
   },
   heroTitle: {
     fontSize: 32,
