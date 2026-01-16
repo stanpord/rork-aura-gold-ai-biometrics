@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
-import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment, TreatmentConfig, DEFAULT_TREATMENT_CONFIGS, PatientBasicInfo } from '@/types';
+import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment, TreatmentConfig, DEFAULT_TREATMENT_CONFIGS, PatientBasicInfo, ClinicalProcedure } from '@/types';
 
 const APP_VERSION = '1.0.5';
 
@@ -451,13 +451,30 @@ export const [AppProvider, useApp] = createContextHook(() => {
   }, [leads]);
 
   const updateLeadTreatments = useCallback(async (leadId: string, selectedTreatments: SelectedTreatment[]): Promise<void> => {
-    const hasSignedTreatments = selectedTreatments.some(t => t.complianceSignOff?.acknowledged);
+    const signedTreatments = selectedTreatments.filter(t => t.complianceSignOff?.acknowledged);
+    const hasSignedTreatments = signedTreatments.length > 0;
+    
+    let newEstimatedValue = 0;
+    if (hasSignedTreatments) {
+      signedTreatments.forEach(st => {
+        if (st.treatmentType === 'procedure') {
+          const proc = st.treatment as ClinicalProcedure;
+          newEstimatedValue += parsePrice(proc.price || '0');
+        } else if (st.treatmentType === 'peptide') {
+          newEstimatedValue += 350;
+        } else if (st.treatmentType === 'iv') {
+          newEstimatedValue += 275;
+        }
+      });
+    }
+    
     const updatedLeads = leads.map(lead => {
       if (lead.id === leadId) {
         return { 
           ...lead, 
           selectedTreatments,
           status: hasSignedTreatments ? 'contacted' as const : lead.status,
+          estimatedValue: hasSignedTreatments ? Math.round(newEstimatedValue) : lead.estimatedValue,
         };
       }
       return lead;
@@ -465,7 +482,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     setLeads(updatedLeads);
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(updatedLeads));
-      console.log('Lead treatments updated:', leadId, 'treatments:', selectedTreatments.length, 'signed:', hasSignedTreatments);
+      console.log('Lead treatments updated:', leadId, 'treatments:', selectedTreatments.length, 'signed:', hasSignedTreatments, 'newValue:', hasSignedTreatments ? Math.round(newEstimatedValue) : 'unchanged');
     } catch (error) {
       console.log('Error updating lead treatments:', error);
     }
