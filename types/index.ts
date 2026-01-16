@@ -68,10 +68,20 @@ export interface AnalysisResult {
   volumeAssessment: VolumeZoneAnalysis[];
 }
 
+export interface SignatureRecord {
+  type: 'patient_consent' | 'treatment_signoff';
+  patientSignature?: string;
+  practitionerSignature: string;
+  treatmentName?: string;
+  signedAt: Date;
+  timestamp: string;
+}
+
 export interface Lead {
   id: string;
   name: string;
   phone: string;
+  email?: string;
   auraScore: number;
   faceType: string;
   estimatedValue: number;
@@ -84,6 +94,8 @@ export interface Lead {
   status: 'new' | 'contacted' | 'converted';
   createdAt: Date;
   selectedTreatments?: SelectedTreatment[];
+  patientConsent?: PatientConsent;
+  signatureLog?: SignatureRecord[];
 }
 
 export interface TreatmentRecurrence {

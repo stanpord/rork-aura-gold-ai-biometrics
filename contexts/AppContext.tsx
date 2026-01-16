@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
-import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment, TreatmentConfig, DEFAULT_TREATMENT_CONFIGS, PatientBasicInfo, ClinicalProcedure } from '@/types';
+import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment, TreatmentConfig, DEFAULT_TREATMENT_CONFIGS, PatientBasicInfo, ClinicalProcedure, SignatureRecord } from '@/types';
 
 const APP_VERSION = '1.0.5';
 
@@ -467,14 +467,34 @@ export const [AppProvider, useApp] = createContextHook(() => {
         }
       });
     }
+
+    const newSignatureRecords: SignatureRecord[] = signedTreatments
+      .filter(st => st.complianceSignOff)
+      .map(st => ({
+        type: 'treatment_signoff' as const,
+        practitionerSignature: st.complianceSignOff!.practitionerSignature,
+        treatmentName: 'name' in st.treatment ? st.treatment.name : '',
+        signedAt: new Date(st.complianceSignOff!.signedAt),
+        timestamp: st.complianceSignOff!.timestamp,
+      }));
     
     const updatedLeads = leads.map(lead => {
       if (lead.id === leadId) {
+        const existingSignatures = lead.signatureLog || [];
+        const existingTreatmentNames = existingSignatures
+          .filter(s => s.type === 'treatment_signoff')
+          .map(s => s.treatmentName);
+        const uniqueNewSignatures = newSignatureRecords.filter(
+          s => !existingTreatmentNames.includes(s.treatmentName)
+        );
+        
         return { 
           ...lead, 
           selectedTreatments,
           status: hasSignedTreatments ? 'contacted' as const : lead.status,
           estimatedValue: hasSignedTreatments ? Math.round(newEstimatedValue) : lead.estimatedValue,
+          patientConsent: lead.patientConsent || patientConsent || undefined,
+          signatureLog: [...existingSignatures, ...uniqueNewSignatures],
         };
       }
       return lead;
@@ -483,13 +503,62 @@ export const [AppProvider, useApp] = createContextHook(() => {
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(updatedLeads));
       console.log('Lead treatments updated:', leadId, 'treatments:', selectedTreatments.length, 'signed:', hasSignedTreatments, 'newValue:', hasSignedTreatments ? Math.round(newEstimatedValue) : 'unchanged');
+      console.log('Signature log entries:', updatedLeads.find(l => l.id === leadId)?.signatureLog?.length || 0);
     } catch (error) {
       console.log('Error updating lead treatments:', error);
     }
-  }, [leads]);
+  }, [leads, patientConsent]);
 
   const getLeadById = useCallback((leadId: string): Lead | undefined => {
     return leads.find(lead => lead.id === leadId);
+  }, [leads]);
+
+  const attachConsentToLead = useCallback(async (leadId: string, consent: PatientConsent): Promise<void> => {
+    const consentSignature: SignatureRecord = {
+      type: 'patient_consent',
+      patientSignature: consent.patientSignature,
+      practitionerSignature: consent.providerSignature,
+      signedAt: new Date(consent.consentedAt),
+      timestamp: consent.timestamp,
+    };
+
+    const updatedLeads = leads.map(lead => {
+      if (lead.id === leadId) {
+        const existingSignatures = lead.signatureLog || [];
+        const hasConsentSignature = existingSignatures.some(s => s.type === 'patient_consent');
+        
+        return {
+          ...lead,
+          patientConsent: consent,
+          signatureLog: hasConsentSignature ? existingSignatures : [consentSignature, ...existingSignatures],
+        };
+      }
+      return lead;
+    });
+    setLeads(updatedLeads);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(updatedLeads));
+      console.log('Patient consent attached to lead:', leadId);
+      console.log('Consent signatures - Patient:', consent.patientSignature, 'Provider:', consent.providerSignature);
+    } catch (error) {
+      console.log('Error attaching consent to lead:', error);
+    }
+  }, [leads]);
+
+  const updateLeadEmail = useCallback(async (leadId: string, email: string): Promise<void> => {
+    const updatedLeads = leads.map(lead => {
+      if (lead.id === leadId) {
+        return { ...lead, email };
+      }
+      return lead;
+    });
+    setLeads(updatedLeads);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(updatedLeads));
+      console.log('Lead email updated:', leadId, email);
+    } catch (error) {
+      console.log('Error updating lead email:', error);
+    }
   }, [leads]);
 
   const stats = isStaffAuthenticated ? {
@@ -525,6 +594,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
     deleteLead,
     updateLeadTreatments,
     getLeadById,
+    attachConsentToLead,
+    updateLeadEmail,
     resetScan,
     stats,
     hasCompletedIntro,

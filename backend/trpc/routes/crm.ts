@@ -1,10 +1,36 @@
 import { z } from "zod";
 import { publicProcedure, createTRPCRouter } from "../create-context";
 
+const signatureRecordSchema = z.object({
+  type: z.enum(['patient_consent', 'treatment_signoff']),
+  patientSignature: z.string().optional(),
+  practitionerSignature: z.string(),
+  treatmentName: z.string().optional(),
+  signedAt: z.date(),
+  timestamp: z.string(),
+});
+
+const patientConsentSchema = z.object({
+  patientName: z.string(),
+  patientSignature: z.string(),
+  providerSignature: z.string(),
+  consentedAt: z.date(),
+  timestamp: z.string(),
+  acknowledgedSections: z.object({
+    aiDisclosure: z.boolean(),
+    aiRole: z.boolean(),
+    dataPrivacy: z.boolean(),
+    risksLimitations: z.boolean(),
+    humanOnlyRight: z.boolean(),
+  }),
+  optedOutOfAI: z.boolean(),
+});
+
 const leadSchema = z.object({
   id: z.string(),
   name: z.string(),
   phone: z.string(),
+  email: z.string().optional(),
   auraScore: z.number(),
   faceType: z.string(),
   estimatedValue: z.number(),
@@ -28,6 +54,8 @@ const leadSchema = z.object({
   })),
   status: z.enum(['new', 'contacted', 'converted']),
   createdAt: z.date(),
+  patientConsent: patientConsentSchema.optional(),
+  signatureLog: z.array(signatureRecordSchema).optional(),
 });
 
 interface ZenotiGuest {
@@ -81,9 +109,12 @@ export const crmRouter = createTRPCRouter({
         custom_fields: [
           { name: 'aura_score', value: lead.auraScore.toString() },
           { name: 'face_type', value: lead.faceType },
-          { name: 'estimated_value', value: `$${lead.estimatedValue}` },
+          { name: 'estimated_value', value: `${lead.estimatedValue}` },
           { name: 'recommended_treatments', value: lead.roadmap.map(t => t.name).join(', ') },
           { name: 'source', value: 'Aura AI Biometrics' },
+          { name: 'has_consent', value: lead.patientConsent ? 'Yes' : 'No' },
+          { name: 'consent_timestamp', value: lead.patientConsent?.timestamp || 'N/A' },
+          { name: 'signatures_count', value: (lead.signatureLog?.length || 0).toString() },
         ],
       };
 
@@ -106,10 +137,16 @@ export const crmRouter = createTRPCRouter({
         const result = await response.json();
         console.log('Successfully synced to Zenoti:', result);
         
+        console.log('Signature data synced:', {
+          hasConsent: !!lead.patientConsent,
+          signatureCount: lead.signatureLog?.length || 0,
+        });
+
         return {
           success: true,
           zenotiGuestId: result.guest_id || result.id,
           message: 'Lead synced to Zenoti successfully',
+          signaturesSynced: lead.signatureLog?.length || 0,
         };
       } catch (error) {
         console.log('Error syncing to Zenoti:', error);
@@ -246,6 +283,47 @@ export const crmRouter = createTRPCRouter({
         newLeads: leads.filter(l => l.status === 'new').length,
         contactedLeads: leads.filter(l => l.status === 'contacted').length,
         convertedLeads: leads.filter(l => l.status === 'converted').length,
+      };
+    }),
+
+  syncSignatures: publicProcedure
+    .input(z.object({
+      leadId: z.string(),
+      signatureLog: z.array(signatureRecordSchema),
+      patientConsent: patientConsentSchema.optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { leadId, signatureLog, patientConsent } = input;
+      
+      console.log('Syncing signatures for lead:', leadId);
+      console.log('Patient consent:', patientConsent ? 'Present' : 'Not present');
+      console.log('Signature log entries:', signatureLog.length);
+
+      const consentRecord = patientConsent ? {
+        patientName: patientConsent.patientName,
+        patientSignature: patientConsent.patientSignature,
+        providerSignature: patientConsent.providerSignature,
+        consentedAt: patientConsent.consentedAt,
+        timestamp: patientConsent.timestamp,
+        optedOutOfAI: patientConsent.optedOutOfAI,
+      } : null;
+
+      const treatmentSignoffs = signatureLog
+        .filter(s => s.type === 'treatment_signoff')
+        .map(s => ({
+          treatmentName: s.treatmentName,
+          practitionerSignature: s.practitionerSignature,
+          signedAt: s.signedAt,
+          timestamp: s.timestamp,
+        }));
+
+      return {
+        success: true,
+        leadId,
+        consentRecord,
+        treatmentSignoffs,
+        totalSignatures: signatureLog.length,
+        message: 'Signatures synced successfully',
       };
     }),
 

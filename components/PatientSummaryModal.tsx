@@ -23,6 +23,11 @@ import {
   Phone,
   FileText,
   Activity,
+  FileSignature,
+  User,
+  Stethoscope,
+  Clock,
+  Shield,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -634,6 +639,77 @@ export default function PatientSummaryModal({ visible, onClose, lead }: PatientS
             <Text style={styles.totalValue}>${lead.estimatedValue?.toLocaleString() || '0'}</Text>
           </View>
 
+          {(lead.signatureLog && lead.signatureLog.length > 0) || lead.patientConsent ? (
+            <View style={styles.signatureLogSection}>
+              <View style={styles.signatureLogHeader}>
+                <FileSignature size={18} color={Colors.gold} />
+                <Text style={styles.signatureLogTitle}>SIGNATURE LOG</Text>
+                <View style={styles.signatureCountBadge}>
+                  <Text style={styles.signatureCountText}>
+                    {(lead.signatureLog?.length || 0) + (lead.patientConsent && !lead.signatureLog?.some(s => s.type === 'patient_consent') ? 1 : 0)}
+                  </Text>
+                </View>
+              </View>
+
+              {lead.patientConsent && (
+                <View style={styles.consentCard}>
+                  <View style={styles.consentHeader}>
+                    <Shield size={16} color={Colors.success} />
+                    <Text style={styles.consentTitle}>AI Consent Form</Text>
+                    <Text style={styles.consentStatus}>
+                      {lead.patientConsent.optedOutOfAI ? 'OPTED OUT' : 'CONSENTED'}
+                    </Text>
+                  </View>
+                  <View style={styles.consentDetails}>
+                    <View style={styles.signatureRow}>
+                      <User size={12} color={Colors.textMuted} />
+                      <Text style={styles.signatureLabel}>Patient:</Text>
+                      <Text style={styles.signatureValue}>{lead.patientConsent.patientSignature}</Text>
+                    </View>
+                    <View style={styles.signatureRow}>
+                      <Stethoscope size={12} color={Colors.textMuted} />
+                      <Text style={styles.signatureLabel}>Provider:</Text>
+                      <Text style={styles.signatureValue}>{lead.patientConsent.providerSignature}</Text>
+                    </View>
+                    <View style={styles.signatureRow}>
+                      <Clock size={12} color={Colors.textMuted} />
+                      <Text style={styles.signatureLabel}>Signed:</Text>
+                      <Text style={styles.signatureTimestamp}>{lead.patientConsent.timestamp}</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {lead.signatureLog && lead.signatureLog.filter(s => s.type === 'treatment_signoff').length > 0 && (
+                <View style={styles.treatmentSignoffsSection}>
+                  <Text style={styles.treatmentSignoffsTitle}>Treatment Sign-offs</Text>
+                  {lead.signatureLog
+                    .filter(s => s.type === 'treatment_signoff')
+                    .map((sig, index) => (
+                      <View key={index} style={styles.treatmentSignoffCard}>
+                        <View style={styles.treatmentSignoffHeader}>
+                          <CheckCircle size={14} color={Colors.success} />
+                          <Text style={styles.treatmentSignoffName}>{sig.treatmentName}</Text>
+                        </View>
+                        <View style={styles.treatmentSignoffDetails}>
+                          <View style={styles.signatureRow}>
+                            <Stethoscope size={12} color={Colors.textMuted} />
+                            <Text style={styles.signatureLabel}>Practitioner:</Text>
+                            <Text style={styles.signatureValue}>{sig.practitionerSignature}</Text>
+                          </View>
+                          <View style={styles.signatureRow}>
+                            <Clock size={12} color={Colors.textMuted} />
+                            <Text style={styles.signatureLabel}>Signed:</Text>
+                            <Text style={styles.signatureTimestamp}>{sig.timestamp}</Text>
+                          </View>
+                        </View>
+                      </View>
+                    ))}
+                </View>
+              )}
+            </View>
+          ) : null}
+
           <View style={styles.disclaimer}>
             <Text style={styles.disclaimerText}>
               This summary is for informational purposes only. Please consult with your provider for final treatment plans and pricing.
@@ -978,5 +1054,127 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  signatureLogSection: {
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  signatureLogHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  signatureLogTitle: {
+    fontSize: 12,
+    fontWeight: '800' as const,
+    color: Colors.gold,
+    letterSpacing: 1,
+    flex: 1,
+  },
+  signatureCountBadge: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  signatureCountText: {
+    fontSize: 12,
+    fontWeight: '800' as const,
+    color: Colors.gold,
+  },
+  consentCard: {
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.success,
+  },
+  consentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  consentTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: Colors.white,
+  },
+  consentStatus: {
+    fontSize: 9,
+    fontWeight: '800' as const,
+    color: Colors.success,
+    letterSpacing: 1,
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  consentDetails: {
+    gap: 8,
+  },
+  signatureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  signatureLabel: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: Colors.textMuted,
+    width: 75,
+  },
+  signatureValue: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.white,
+    fontStyle: 'italic',
+  },
+  signatureTimestamp: {
+    flex: 1,
+    fontSize: 11,
+    color: Colors.text,
+  },
+  treatmentSignoffsSection: {
+    marginTop: 4,
+  },
+  treatmentSignoffsTitle: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: Colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
+  treatmentSignoffCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.gold,
+  },
+  treatmentSignoffHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  treatmentSignoffName: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.white,
+  },
+  treatmentSignoffDetails: {
+    gap: 6,
+    paddingLeft: 22,
   },
 });
