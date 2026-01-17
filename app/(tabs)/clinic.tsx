@@ -36,6 +36,7 @@ import LeadDetailModal from '@/components/LeadDetailModal';
 import TermsOfServiceModal from '@/components/TermsOfServiceModal';
 import { Lead, TermsOfServiceAcknowledgment } from '@/types';
 import TreatmentSettingsPanel from '@/components/TreatmentSettingsPanel';
+import SessionWarningBanner from '@/components/SessionWarningBanner';
 
 interface ZenotiConfig {
   apiKey: string;
@@ -44,7 +45,7 @@ interface ZenotiConfig {
 }
 
 export default function ClinicScreen() {
-  const { leads, stats, logoutStaff, isStaffAuthenticated, authenticateStaff, tosAcknowledgment, saveTosAcknowledgment, deleteLead } = useApp();
+  const { leads, stats, logoutStaff, isStaffAuthenticated, authenticateStaff, tosAcknowledgment, saveTosAcknowledgment, deleteLead, sessionTimeRemaining, showSessionWarning, extendSession, recordActivity } = useApp();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showCrmSetup, setShowCrmSetup] = useState(false);
   const [zenotiConfig, setZenotiConfig] = useState<ZenotiConfig>({
@@ -63,8 +64,8 @@ export default function ClinicScreen() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  const handleLogin = (passcode: string): boolean => {
-    const success = authenticateStaff(passcode);
+  const handleLogin = async (passcode: string): Promise<boolean> => {
+    const success = await authenticateStaff(passcode);
     if (success) {
       setIsTransitioning(true);
       fadeAnim.setValue(0);
@@ -193,6 +194,7 @@ export default function ClinicScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScrollBeginDrag={recordActivity}
       >
         <View style={styles.header}>
           <View>
@@ -213,6 +215,12 @@ export default function ClinicScreen() {
             <Text style={styles.logoutText}>Exit</Text>
           </TouchableOpacity>
         </View>
+
+        <SessionWarningBanner
+          timeRemaining={sessionTimeRemaining}
+          showWarning={showSessionWarning}
+          onExtendSession={extendSession}
+        />
 
         <View style={styles.statsGrid}>
           <View style={styles.statCardLarge}>

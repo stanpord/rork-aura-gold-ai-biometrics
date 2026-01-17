@@ -1,10 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState, AppStateStatus } from 'react-native';
 import createContextHook from '@nkzw/create-context-hook';
 import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment, TreatmentConfig, DEFAULT_TREATMENT_CONFIGS, PatientBasicInfo, ClinicalProcedure, SignatureRecord } from '@/types';
 import { encryptObject, decryptObject, isEncryptedData, getEncryptionStatus, EncryptionStatus } from '@/utils/encryption';
+import { initializeAuditLog, logAuditEvent, logAuthEvent, logPHIAccess, logConsentEvent, getAuditSummary } from '@/utils/auditLog';
 
-const APP_VERSION = '1.0.6';
+const APP_VERSION = '1.0.7';
+
+const SESSION_TIMEOUT_MS = 15 * 60 * 1000;
+const SESSION_WARNING_MS = 2 * 60 * 1000;
+const ACTIVITY_CHECK_INTERVAL_MS = 30 * 1000;
 
 const STORAGE_KEYS = {
   LEADS: 'aura_gold_leads_encrypted',
@@ -49,11 +55,103 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const [isDevMode, setIsDevMode] = useState(false);
   const [patientBasicInfo, setPatientBasicInfo] = useState<PatientBasicInfo | null>(null);
   const [encryptionStatus, setEncryptionStatus] = useState<EncryptionStatus | null>(null);
+  const [sessionTimeRemaining, setSessionTimeRemaining] = useState<number | null>(null);
+  const [showSessionWarning, setShowSessionWarning] = useState(false);
+  
+  const lastActivityRef = useRef<number>(Date.now());
+  const sessionTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   useEffect(() => {
+    initializeAuditLog();
     loadStoredData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!isStaffAuthenticated) {
+      if (sessionTimerRef.current) {
+        clearInterval(sessionTimerRef.current);
+        sessionTimerRef.current = null;
+      }
+      setSessionTimeRemaining(null);
+      setShowSessionWarning(false);
+      return;
+    }
+
+    lastActivityRef.current = Date.now();
+
+    const checkSession = () => {
+      const now = Date.now();
+      const timeSinceActivity = now - lastActivityRef.current;
+      const timeRemaining = SESSION_TIMEOUT_MS - timeSinceActivity;
+
+      if (timeRemaining <= 0) {
+        handleSessionTimeout();
+        return;
+      }
+
+      setSessionTimeRemaining(Math.ceil(timeRemaining / 1000));
+      setShowSessionWarning(timeRemaining <= SESSION_WARNING_MS);
+    };
+
+    sessionTimerRef.current = setInterval(checkSession, ACTIVITY_CHECK_INTERVAL_MS);
+    checkSession();
+
+    return () => {
+      if (sessionTimerRef.current) {
+        clearInterval(sessionTimerRef.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStaffAuthenticated]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (
+        appStateRef.current.match(/inactive|background/) &&
+        nextAppState === 'active' &&
+        isStaffAuthenticated
+      ) {
+        const now = Date.now();
+        const timeSinceActivity = now - lastActivityRef.current;
+        if (timeSinceActivity >= SESSION_TIMEOUT_MS) {
+          handleSessionTimeout();
+        }
+      }
+      appStateRef.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStaffAuthenticated]);
+
+  const recordActivity = useCallback(() => {
+    lastActivityRef.current = Date.now();
+    if (showSessionWarning) {
+      setShowSessionWarning(false);
+    }
+  }, [showSessionWarning]);
+
+  const handleSessionTimeout = useCallback(async () => {
+    console.log('[HIPAA] Session timeout - auto-logout triggered');
+    await logAuthEvent('SESSION_TIMEOUT', 'staff');
+    setIsStaffAuthenticated(false);
+    setViewMode('client');
+    setSessionTimeRemaining(null);
+    setShowSessionWarning(false);
+    if (sessionTimerRef.current) {
+      clearInterval(sessionTimerRef.current);
+      sessionTimerRef.current = null;
+    }
+  }, []);
+
+  const extendSession = useCallback(() => {
+    recordActivity();
+    console.log('[HIPAA] Session extended by user action');
+  }, [recordActivity]);
 
   const loadStoredData = async () => {
     try {
@@ -223,18 +321,31 @@ export const [AppProvider, useApp] = createContextHook(() => {
     }
   };
 
-  const authenticateStaff = useCallback((passcode: string): boolean => {
+  const authenticateStaff = useCallback(async (passcode: string): Promise<boolean> => {
     if (passcode === '2026') {
       setIsStaffAuthenticated(true);
       setViewMode('clinic');
+      lastActivityRef.current = Date.now();
+      await logAuthEvent('LOGIN_SUCCESS', 'staff');
+      console.log('[HIPAA] Staff login successful');
       return true;
     }
+    await logAuthEvent('LOGIN_FAILURE', 'staff', { reason: 'Invalid passcode' });
+    console.log('[HIPAA] Staff login failed - invalid passcode');
     return false;
   }, []);
 
-  const logoutStaff = useCallback(() => {
+  const logoutStaff = useCallback(async () => {
+    await logAuthEvent('LOGOUT', 'staff');
+    console.log('[HIPAA] Staff logout');
     setIsStaffAuthenticated(false);
     setViewMode('client');
+    setSessionTimeRemaining(null);
+    setShowSessionWarning(false);
+    if (sessionTimerRef.current) {
+      clearInterval(sessionTimerRef.current);
+      sessionTimerRef.current = null;
+    }
   }, []);
 
   const completeIntro = useCallback(async () => {
@@ -271,7 +382,12 @@ export const [AppProvider, useApp] = createContextHook(() => {
     try {
       const encrypted = await encryptObject(consent);
       await AsyncStorage.setItem(STORAGE_KEYS.PATIENT_CONSENT, encrypted);
-      console.log('[AppContext] Patient consent encrypted and saved');
+      await logConsentEvent(
+        consent.optedOutOfAI ? 'signed' : 'signed',
+        undefined,
+        consent.optedOutOfAI ? 'Opted out of AI' : 'AI-assisted treatment'
+      );
+      console.log('[HIPAA] Patient consent encrypted and saved with audit trail');
     } catch (error) {
       console.log('[AppContext] Error saving patient consent:', error);
     }
@@ -609,8 +725,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
   }, [leads, patientConsent]);
 
   const getLeadById = useCallback((leadId: string): Lead | undefined => {
-    return leads.find(lead => lead.id === leadId);
-  }, [leads]);
+    const lead = leads.find(lead => lead.id === leadId);
+    if (lead && isStaffAuthenticated) {
+      logPHIAccess('View patient record', 'lead', leadId, 'staff');
+      recordActivity();
+    }
+    return lead;
+  }, [leads, isStaffAuthenticated, recordActivity]);
 
   const attachConsentToLead = useCallback(async (leadId: string, consent: PatientConsent): Promise<void> => {
     const consentSignature: SignatureRecord = {
@@ -638,7 +759,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
     try {
       const encrypted = await encryptObject(updatedLeads);
       await AsyncStorage.setItem(STORAGE_KEYS.LEADS, encrypted);
-      console.log('[AppContext] Patient consent encrypted and attached to lead:', leadId);
+      await logAuditEvent('PHI_UPDATE', 'Patient consent attached to record', {
+        userRole: 'staff',
+        resourceType: 'lead',
+        resourceId: leadId,
+        phiAccessed: true,
+      });
+      console.log('[HIPAA] Patient consent encrypted and attached to lead with audit trail');
     } catch (error) {
       console.log('[AppContext] Error attaching consent to lead:', error);
     }
@@ -725,5 +852,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
     updatePatientEmail,
     clearPatientBasicInfo,
     encryptionStatus,
+    sessionTimeRemaining,
+    showSessionWarning,
+    extendSession,
+    recordActivity,
+    getAuditSummary,
   };
 });

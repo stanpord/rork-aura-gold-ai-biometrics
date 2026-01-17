@@ -10,8 +10,8 @@ export default function TabLayout() {
   const { isStaffAuthenticated, authenticateStaff } = useApp();
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  const handleLogin = (passcode: string): boolean => {
-    const success = authenticateStaff(passcode);
+  const handleLogin = async (passcode: string): Promise<boolean> => {
+    const success = await authenticateStaff(passcode);
     if (success) {
       setShowLoginModal(false);
     }

@@ -15,7 +15,7 @@ import Colors from '@/constants/colors';
 interface ClinicLoginModalProps {
   visible: boolean;
   onClose: () => void;
-  onLogin: (passcode: string) => boolean;
+  onLogin: (passcode: string) => Promise<boolean>;
 }
 
 export default function ClinicLoginModal({
@@ -25,13 +25,19 @@ export default function ClinicLoginModal({
 }: ClinicLoginModalProps) {
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = () => {
-    const success = onLogin(passcode);
-    if (!success) {
-      setError(true);
-      setPasscode('');
-      setTimeout(() => setError(false), 2000);
+  const handleSubmit = async () => {
+    setIsLoading(true);
+    try {
+      const success = await onLogin(passcode);
+      if (!success) {
+        setError(true);
+        setPasscode('');
+        setTimeout(() => setError(false), 2000);
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -76,11 +82,12 @@ export default function ClinicLoginModal({
           )}
 
           <TouchableOpacity
-            style={styles.submitButton}
+            style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
             onPress={handleSubmit}
             activeOpacity={0.8}
+            disabled={isLoading}
           >
-            <Text style={styles.submitButtonText}>AUTHENTICATE</Text>
+            <Text style={styles.submitButtonText}>{isLoading ? 'VERIFYING...' : 'AUTHENTICATE'}</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -170,5 +177,8 @@ const styles = StyleSheet.create({
     fontWeight: '900' as const,
     color: Colors.black,
     letterSpacing: 2,
+  },
+  submitButtonDisabled: {
+    opacity: 0.7,
   },
 });

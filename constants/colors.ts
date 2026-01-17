@@ -20,6 +20,8 @@ export default {
   successMuted: 'rgba(16, 185, 129, 0.1)',
   error: '#ef4444',
   errorMuted: 'rgba(239, 68, 68, 0.1)',
+  warning: '#f59e0b',
+  warningMuted: 'rgba(245, 158, 11, 0.1)',
   
   overlay: 'rgba(0, 0, 0, 0.9)',
   overlayLight: 'rgba(0, 0, 0, 0.6)',
