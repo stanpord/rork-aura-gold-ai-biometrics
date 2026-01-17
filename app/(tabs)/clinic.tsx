@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Animated,
 } from 'react-native';
 import { 
   Globe, 
@@ -59,11 +60,24 @@ export default function ClinicScreen() {
   const [showTosModal, setShowTosModal] = useState(false);
   const [pendingAuth, setPendingAuth] = useState(false);
   const [showTreatmentSettings, setShowTreatmentSettings] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const handleLogin = (passcode: string): boolean => {
     const success = authenticateStaff(passcode);
     if (success) {
+      setIsTransitioning(true);
+      fadeAnim.setValue(0);
       setShowLoginModal(false);
+      
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => {
+        setIsTransitioning(false);
+      });
+      
       if (!tosAcknowledgment) {
         setPendingAuth(true);
         setShowTosModal(true);
@@ -138,7 +152,7 @@ export default function ClinicScreen() {
     }
   };
 
-  if (!isStaffAuthenticated) {
+  if (!isStaffAuthenticated && !isTransitioning) {
     return (
       <View style={styles.container}>
         <View style={styles.lockedContainer}>
@@ -175,7 +189,7 @@ export default function ClinicScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -425,7 +439,7 @@ export default function ClinicScreen() {
         </View>
       </ScrollView>
 
-        <LeadDetailModal
+      <LeadDetailModal
           visible={showLeadDetail}
           onClose={() => {
             setShowLeadDetail(false);
@@ -439,7 +453,7 @@ export default function ClinicScreen() {
           onClose={handleTosDecline}
           onAccept={handleTosAccept}
         />
-    </View>
+    </Animated.View>
   );
 }
 
