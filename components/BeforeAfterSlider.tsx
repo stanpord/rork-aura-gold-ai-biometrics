@@ -1,15 +1,16 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  PanResponder,
-  Animated,
+  TouchableOpacity,
   useWindowDimensions,
   LayoutChangeEvent,
+  Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { GripVertical, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Sparkles, RotateCcw } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 
 interface BeforeAfterSliderProps {
@@ -30,77 +31,40 @@ export default function BeforeAfterSlider({
   const isSameImage = beforeImage === afterImage;
   const { width: windowWidth } = useWindowDimensions();
   const [containerWidth, setContainerWidth] = useState(Math.min(windowWidth - 40, maxWidth));
-  const [sliderPosition, setSliderPosition] = useState(containerWidth / 2);
-  const panX = useRef(new Animated.Value(containerWidth / 2)).current;
-  const currentSliderPosition = useRef(sliderPosition);
+  const [showAfter, setShowAfter] = useState(false);
 
   const onLayout = useCallback((event: LayoutChangeEvent) => {
     const { width } = event.nativeEvent.layout;
     if (width > 0 && Math.abs(width - containerWidth) > 1) {
       setContainerWidth(width);
-      const newPosition = width / 2;
-      setSliderPosition(newPosition);
-      currentSliderPosition.current = newPosition;
-      panX.setValue(newPosition);
     }
-  }, [containerWidth, panX]);
+  }, [containerWidth]);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        panX.setOffset(currentSliderPosition.current);
-        panX.setValue(0);
-      },
-      onPanResponderMove: (_, gestureState) => {
-        const newPosition = currentSliderPosition.current + gestureState.dx;
-        const clampedPosition = Math.max(20, Math.min(containerWidth - 20, newPosition));
-        panX.setValue(gestureState.dx);
-        setSliderPosition(clampedPosition);
-      },
-      onPanResponderRelease: () => {
-        panX.flattenOffset();
-        currentSliderPosition.current = sliderPosition;
-      },
-    })
-  ).current;
+  const handleToggle = useCallback(() => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setShowAfter(prev => !prev);
+  }, []);
 
-  const clampedSliderPosition = Math.max(20, Math.min(containerWidth - 20, sliderPosition));
+  const currentImage = showAfter ? afterImage : beforeImage;
+  const canShowAfter = !isSameImage && !isSimulationPending;
 
   return (
     <View style={[styles.container, { height, maxWidth }]} onLayout={onLayout}>
       <View style={styles.imageContainer}>
         <Image
-          key={`after-${afterImage}`}
-          source={{ uri: afterImage }}
-          style={styles.baseImage}
+          key={currentImage}
+          source={{ uri: currentImage }}
+          style={styles.image}
           contentFit="cover"
           cachePolicy="none"
         />
-        
-        <View
-          style={[
-            styles.beforeImageContainer,
-            { width: clampedSliderPosition },
-          ]}
-        >
-          <View style={[styles.beforeImageWrapper, { width: containerWidth }]}>
-            <Image
-              key={`before-${beforeImage}`}
-              source={{ uri: beforeImage }}
-              style={styles.beforeImage}
-              contentFit="cover"
-              cachePolicy="none"
-            />
-          </View>
-        </View>
 
-        <View style={styles.labelBefore}>
-          <Text style={styles.labelText}>BEFORE</Text>
-        </View>
-        <View style={styles.labelAfter}>
-          <Text style={styles.labelTextGold}>AFTER</Text>
+        <View style={showAfter ? styles.labelAfter : styles.labelBefore}>
+          <Text style={showAfter ? styles.labelTextGold : styles.labelText}>
+            {showAfter ? 'AFTER' : 'BEFORE'}
+          </Text>
         </View>
 
         {isSameImage && !isSimulationPending && (
@@ -115,31 +79,31 @@ export default function BeforeAfterSlider({
             <Text style={styles.simulationLoadingText}>GENERATING SIMULATION...</Text>
           </View>
         )}
-
-        <Animated.View
-          style={[
-            styles.sliderLine,
-            { left: clampedSliderPosition - 1 },
-          ]}
-          {...panResponder.panHandlers}
-        >
-          <View style={styles.sliderLineInner} />
-          <View style={styles.sliderHandle}>
-            <View style={styles.sliderHandleInner}>
-              <ChevronLeft size={14} color={Colors.black} style={styles.chevronLeft} />
-              <View style={styles.gripContainer}>
-                <GripVertical size={16} color={Colors.black} />
-              </View>
-              <ChevronRight size={14} color={Colors.black} style={styles.chevronRight} />
-            </View>
-          </View>
-        </Animated.View>
       </View>
 
-      <View style={styles.instructionContainer}>
-        <Text style={styles.instructionText}>
-          ← Drag to compare →
-        </Text>
+      <View style={styles.buttonContainer}>
+        {!showAfter ? (
+          <TouchableOpacity
+            style={[styles.toggleButton, !canShowAfter && styles.toggleButtonDisabled]}
+            onPress={handleToggle}
+            activeOpacity={0.8}
+            disabled={!canShowAfter}
+          >
+            <Sparkles size={16} color={canShowAfter ? Colors.black : Colors.textMuted} />
+            <Text style={[styles.toggleButtonText, !canShowAfter && styles.toggleButtonTextDisabled]}>
+              {isSimulationPending ? 'GENERATING...' : 'SEE POTENTIAL'}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.toggleButtonOutline}
+            onPress={handleToggle}
+            activeOpacity={0.8}
+          >
+            <RotateCcw size={16} color={Colors.gold} />
+            <Text style={styles.toggleButtonOutlineText}>VIEW ORIGINAL</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -158,82 +122,14 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
   },
-  baseImage: {
+  image: {
     ...StyleSheet.absoluteFillObject,
     width: '100%',
     height: '100%',
-    zIndex: 1,
-  },
-  beforeImageContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    bottom: 0,
-    overflow: 'hidden',
-    zIndex: 2,
-  },
-  beforeImageWrapper: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    height: '100%',
-  },
-  beforeImage: {
-    width: '100%',
-    height: '100%',
-  },
-  sliderLine: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 44,
-    marginLeft: -22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-  },
-  sliderLineInner: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 3,
-    backgroundColor: Colors.gold,
-    shadowColor: Colors.gold,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  sliderHandle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  sliderHandleInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gripContainer: {
-    marginHorizontal: -4,
-  },
-  chevronLeft: {
-    marginRight: -6,
-  },
-  chevronRight: {
-    marginLeft: -6,
   },
   labelBefore: {
     position: 'absolute',
-    bottom: 16,
+    top: 16,
     left: 16,
     backgroundColor: 'rgba(0,0,0,0.7)',
     paddingHorizontal: 12,
@@ -242,8 +138,8 @@ const styles = StyleSheet.create({
   },
   labelAfter: {
     position: 'absolute',
-    bottom: 16,
-    right: 16,
+    top: 16,
+    left: 16,
     backgroundColor: 'rgba(0,0,0,0.7)',
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -263,23 +159,58 @@ const styles = StyleSheet.create({
     color: Colors.gold,
     letterSpacing: 2,
   },
-  instructionContainer: {
+  buttonContainer: {
     position: 'absolute',
-    top: 16,
-    left: 0,
-    right: 0,
+    bottom: 20,
+    left: 20,
+    right: 20,
     alignItems: 'center',
   },
-  instructionText: {
-    fontSize: 10,
-    fontWeight: '700' as const,
-    color: 'rgba(255,255,255,0.6)',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
-    overflow: 'hidden',
-    letterSpacing: 1,
+  toggleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.gold,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 28,
+    shadowColor: Colors.gold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  toggleButtonDisabled: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    shadowOpacity: 0,
+  },
+  toggleButtonText: {
+    fontSize: 12,
+    fontWeight: '900' as const,
+    color: Colors.black,
+    letterSpacing: 2,
+  },
+  toggleButtonTextDisabled: {
+    color: Colors.textMuted,
+  },
+  toggleButtonOutline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+  },
+  toggleButtonOutlineText: {
+    fontSize: 12,
+    fontWeight: '900' as const,
+    color: Colors.gold,
+    letterSpacing: 2,
   },
   simulationUnavailable: {
     position: 'absolute',
