@@ -2,17 +2,25 @@ import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
 import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment, TreatmentConfig, DEFAULT_TREATMENT_CONFIGS, PatientBasicInfo, ClinicalProcedure, SignatureRecord } from '@/types';
+import { encryptObject, decryptObject, isEncryptedData, getEncryptionStatus, EncryptionStatus } from '@/utils/encryption';
 
-const APP_VERSION = '1.0.5';
+const APP_VERSION = '1.0.6';
 
 const STORAGE_KEYS = {
-  LEADS: 'aura_gold_leads',
+  LEADS: 'aura_gold_leads_encrypted',
   INTRO_COMPLETE: 'aura_gold_intro_complete',
-  HEALTH_PROFILE: 'aura_gold_health_profile',
-  PATIENT_CONSENT: 'aura_gold_patient_consent',
+  HEALTH_PROFILE: 'aura_gold_health_profile_encrypted',
+  PATIENT_CONSENT: 'aura_gold_patient_consent_encrypted',
   TOS_ACKNOWLEDGMENT: 'aura_gold_tos_acknowledgment',
   TREATMENT_CONFIGS: 'aura_gold_treatment_configs',
   APP_VERSION: 'aura_gold_app_version',
+  PATIENT_BASIC_INFO: 'aura_gold_patient_basic_info_encrypted',
+};
+
+const LEGACY_STORAGE_KEYS = {
+  LEADS: 'aura_gold_leads',
+  HEALTH_PROFILE: 'aura_gold_health_profile',
+  PATIENT_CONSENT: 'aura_gold_patient_consent',
   PATIENT_BASIC_INFO: 'aura_gold_patient_basic_info',
 };
 
@@ -40,38 +48,51 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const [treatmentConfigs, setTreatmentConfigs] = useState<TreatmentConfig[]>(getDefaultTreatmentConfigs());
   const [isDevMode, setIsDevMode] = useState(false);
   const [patientBasicInfo, setPatientBasicInfo] = useState<PatientBasicInfo | null>(null);
+  const [encryptionStatus, setEncryptionStatus] = useState<EncryptionStatus | null>(null);
 
   useEffect(() => {
     loadStoredData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadStoredData = async () => {
     try {
       console.log('[AppContext] Loading stored data, current version:', APP_VERSION);
       
+      const status = await getEncryptionStatus();
+      setEncryptionStatus(status);
+      console.log('[AppContext] Encryption status:', status);
+      
       const storedVersion = await AsyncStorage.getItem(STORAGE_KEYS.APP_VERSION);
       if (storedVersion !== APP_VERSION) {
-        console.log('[AppContext] Version mismatch, clearing treatment configs cache');
+        console.log('[AppContext] Version mismatch, migrating data to encrypted storage');
+        await migrateToEncryptedStorage();
         await AsyncStorage.removeItem(STORAGE_KEYS.TREATMENT_CONFIGS);
         await AsyncStorage.setItem(STORAGE_KEYS.APP_VERSION, APP_VERSION);
       }
       
       const storedLeads = await AsyncStorage.getItem(STORAGE_KEYS.LEADS);
-
       if (storedLeads) {
-        const parsed = JSON.parse(storedLeads);
-        const restoredLeads = parsed.map((l: Lead) => ({
-          ...l,
-          createdAt: new Date(l.createdAt),
-          roadmap: l.roadmap || [],
-          peptides: l.peptides || [],
-          ivDrips: l.ivDrips || [],
-        }));
-        setLeads(restoredLeads);
-        console.log('Leads restored from storage:', restoredLeads.length, 'leads');
-        restoredLeads.forEach((lead: Lead) => {
-          console.log(`Lead ${lead.name}: roadmap=${lead.roadmap?.length || 0}, peptides=${lead.peptides?.length || 0}, ivDrips=${lead.ivDrips?.length || 0}`);
-        });
+        try {
+          let parsed: Lead[];
+          if (isEncryptedData(storedLeads)) {
+            parsed = await decryptObject<Lead[]>(storedLeads);
+            console.log('[AppContext] Leads decrypted successfully');
+          } else {
+            parsed = JSON.parse(storedLeads);
+          }
+          const restoredLeads = parsed.map((l: Lead) => ({
+            ...l,
+            createdAt: new Date(l.createdAt),
+            roadmap: l.roadmap || [],
+            peptides: l.peptides || [],
+            ivDrips: l.ivDrips || [],
+          }));
+          setLeads(restoredLeads);
+          console.log('[AppContext] Leads restored:', restoredLeads.length, 'leads');
+        } catch (decryptError) {
+          console.log('[AppContext] Error decrypting leads:', decryptError);
+        }
       }
 
       const introComplete = await AsyncStorage.getItem(STORAGE_KEYS.INTRO_COMPLETE);
@@ -81,20 +102,40 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
       const healthProfile = await AsyncStorage.getItem(STORAGE_KEYS.HEALTH_PROFILE);
       if (healthProfile) {
-        const parsed = JSON.parse(healthProfile);
-        setPatientHealthProfile({
-          ...parsed,
-          completedAt: new Date(parsed.completedAt),
-        });
+        try {
+          let parsed: PatientHealthProfile;
+          if (isEncryptedData(healthProfile)) {
+            parsed = await decryptObject<PatientHealthProfile>(healthProfile);
+            console.log('[AppContext] Health profile decrypted successfully');
+          } else {
+            parsed = JSON.parse(healthProfile);
+          }
+          setPatientHealthProfile({
+            ...parsed,
+            completedAt: new Date(parsed.completedAt),
+          });
+        } catch (decryptError) {
+          console.log('[AppContext] Error decrypting health profile:', decryptError);
+        }
       }
 
       const consent = await AsyncStorage.getItem(STORAGE_KEYS.PATIENT_CONSENT);
       if (consent) {
-        const parsed = JSON.parse(consent);
-        setPatientConsent({
-          ...parsed,
-          consentedAt: new Date(parsed.consentedAt),
-        });
+        try {
+          let parsed: PatientConsent;
+          if (isEncryptedData(consent)) {
+            parsed = await decryptObject<PatientConsent>(consent);
+            console.log('[AppContext] Patient consent decrypted successfully');
+          } else {
+            parsed = JSON.parse(consent);
+          }
+          setPatientConsent({
+            ...parsed,
+            consentedAt: new Date(parsed.consentedAt),
+          });
+        } catch (decryptError) {
+          console.log('[AppContext] Error decrypting consent:', decryptError);
+        }
       }
 
       const tos = await AsyncStorage.getItem(STORAGE_KEYS.TOS_ACKNOWLEDGMENT);
@@ -115,19 +156,70 @@ export const [AppProvider, useApp] = createContextHook(() => {
           return stored ? { ...defaultConfig, enabled: stored.enabled, customPrice: stored.customPrice } : defaultConfig;
         });
         setTreatmentConfigs(mergedConfigs);
-        console.log('Treatment configs loaded:', mergedConfigs.length);
+        console.log('[AppContext] Treatment configs loaded:', mergedConfigs.length);
       }
 
       const storedBasicInfo = await AsyncStorage.getItem(STORAGE_KEYS.PATIENT_BASIC_INFO);
       if (storedBasicInfo) {
-        const parsed = JSON.parse(storedBasicInfo);
-        setPatientBasicInfo(parsed);
-        console.log('Patient basic info loaded:', parsed.name);
+        try {
+          let parsed: PatientBasicInfo;
+          if (isEncryptedData(storedBasicInfo)) {
+            parsed = await decryptObject<PatientBasicInfo>(storedBasicInfo);
+            console.log('[AppContext] Patient basic info decrypted successfully');
+          } else {
+            parsed = JSON.parse(storedBasicInfo);
+          }
+          setPatientBasicInfo(parsed);
+          console.log('[AppContext] Patient basic info loaded:', parsed.name);
+        } catch (decryptError) {
+          console.log('[AppContext] Error decrypting basic info:', decryptError);
+        }
       }
       setIsLoadingIntro(false);
     } catch (error) {
       setIsLoadingIntro(false);
-      console.log('Error loading stored data:', error);
+      console.log('[AppContext] Error loading stored data:', error);
+    }
+  };
+
+  const migrateToEncryptedStorage = async () => {
+    console.log('[AppContext] Starting migration to encrypted storage...');
+    try {
+      const legacyLeads = await AsyncStorage.getItem(LEGACY_STORAGE_KEYS.LEADS);
+      if (legacyLeads && !isEncryptedData(legacyLeads)) {
+        const encrypted = await encryptObject(JSON.parse(legacyLeads));
+        await AsyncStorage.setItem(STORAGE_KEYS.LEADS, encrypted);
+        await AsyncStorage.removeItem(LEGACY_STORAGE_KEYS.LEADS);
+        console.log('[AppContext] Leads migrated to encrypted storage');
+      }
+
+      const legacyHealth = await AsyncStorage.getItem(LEGACY_STORAGE_KEYS.HEALTH_PROFILE);
+      if (legacyHealth && !isEncryptedData(legacyHealth)) {
+        const encrypted = await encryptObject(JSON.parse(legacyHealth));
+        await AsyncStorage.setItem(STORAGE_KEYS.HEALTH_PROFILE, encrypted);
+        await AsyncStorage.removeItem(LEGACY_STORAGE_KEYS.HEALTH_PROFILE);
+        console.log('[AppContext] Health profile migrated to encrypted storage');
+      }
+
+      const legacyConsent = await AsyncStorage.getItem(LEGACY_STORAGE_KEYS.PATIENT_CONSENT);
+      if (legacyConsent && !isEncryptedData(legacyConsent)) {
+        const encrypted = await encryptObject(JSON.parse(legacyConsent));
+        await AsyncStorage.setItem(STORAGE_KEYS.PATIENT_CONSENT, encrypted);
+        await AsyncStorage.removeItem(LEGACY_STORAGE_KEYS.PATIENT_CONSENT);
+        console.log('[AppContext] Patient consent migrated to encrypted storage');
+      }
+
+      const legacyBasicInfo = await AsyncStorage.getItem(LEGACY_STORAGE_KEYS.PATIENT_BASIC_INFO);
+      if (legacyBasicInfo && !isEncryptedData(legacyBasicInfo)) {
+        const encrypted = await encryptObject(JSON.parse(legacyBasicInfo));
+        await AsyncStorage.setItem(STORAGE_KEYS.PATIENT_BASIC_INFO, encrypted);
+        await AsyncStorage.removeItem(LEGACY_STORAGE_KEYS.PATIENT_BASIC_INFO);
+        console.log('[AppContext] Patient basic info migrated to encrypted storage');
+      }
+
+      console.log('[AppContext] Migration to encrypted storage complete');
+    } catch (error) {
+      console.log('[AppContext] Migration error:', error);
     }
   };
 
@@ -157,10 +249,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const saveHealthProfile = useCallback(async (profile: PatientHealthProfile) => {
     setPatientHealthProfile(profile);
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.HEALTH_PROFILE, JSON.stringify(profile));
-      console.log('Health profile saved:', profile);
+      const encrypted = await encryptObject(profile);
+      await AsyncStorage.setItem(STORAGE_KEYS.HEALTH_PROFILE, encrypted);
+      console.log('[AppContext] Health profile encrypted and saved');
     } catch (error) {
-      console.log('Error saving health profile:', error);
+      console.log('[AppContext] Error saving health profile:', error);
     }
   }, []);
 
@@ -176,10 +269,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const savePatientConsent = useCallback(async (consent: PatientConsent) => {
     setPatientConsent(consent);
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.PATIENT_CONSENT, JSON.stringify(consent));
-      console.log('Patient consent saved:', consent);
+      const encrypted = await encryptObject(consent);
+      await AsyncStorage.setItem(STORAGE_KEYS.PATIENT_CONSENT, encrypted);
+      console.log('[AppContext] Patient consent encrypted and saved');
     } catch (error) {
-      console.log('Error saving patient consent:', error);
+      console.log('[AppContext] Error saving patient consent:', error);
     }
   }, []);
 
@@ -214,10 +308,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const savePatientBasicInfo = useCallback(async (info: PatientBasicInfo) => {
     setPatientBasicInfo(info);
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.PATIENT_BASIC_INFO, JSON.stringify(info));
-      console.log('Patient basic info saved:', info.name);
+      const encrypted = await encryptObject(info);
+      await AsyncStorage.setItem(STORAGE_KEYS.PATIENT_BASIC_INFO, encrypted);
+      console.log('[AppContext] Patient basic info encrypted and saved');
     } catch (error) {
-      console.log('Error saving patient basic info:', error);
+      console.log('[AppContext] Error saving patient basic info:', error);
     }
   }, []);
 
@@ -226,10 +321,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
     if (updatedInfo) {
       setPatientBasicInfo(updatedInfo);
       try {
-        await AsyncStorage.setItem(STORAGE_KEYS.PATIENT_BASIC_INFO, JSON.stringify(updatedInfo));
-        console.log('Patient email updated:', email);
+        const encrypted = await encryptObject(updatedInfo);
+        await AsyncStorage.setItem(STORAGE_KEYS.PATIENT_BASIC_INFO, encrypted);
+        console.log('[AppContext] Patient email encrypted and updated');
       } catch (error) {
-        console.log('Error updating patient email:', error);
+        console.log('[AppContext] Error updating patient email:', error);
       }
     }
   }, [patientBasicInfo]);
@@ -336,6 +432,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const forceRefresh = useCallback(async () => {
     console.log('[AppContext] Force refreshing data...');
     await loadStoredData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const parsePrice = (priceStr: string): number => {
@@ -425,10 +522,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
     setHasUnlockedResults(true);
 
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(updatedLeads));
-      console.log('Lead saved to storage successfully');
+      const encrypted = await encryptObject(updatedLeads);
+      await AsyncStorage.setItem(STORAGE_KEYS.LEADS, encrypted);
+      console.log('[AppContext] Lead encrypted and saved successfully');
     } catch (error) {
-      console.log('Error saving lead:', error);
+      console.log('[AppContext] Error saving lead:', error);
     }
   }, [currentAnalysis, leads]);
 
@@ -443,10 +541,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
     const updatedLeads = leads.filter(lead => lead.id !== leadId);
     setLeads(updatedLeads);
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(updatedLeads));
-      console.log('Lead deleted:', leadId);
+      const encrypted = await encryptObject(updatedLeads);
+      await AsyncStorage.setItem(STORAGE_KEYS.LEADS, encrypted);
+      console.log('[AppContext] Lead deleted:', leadId);
     } catch (error) {
-      console.log('Error deleting lead:', error);
+      console.log('[AppContext] Error deleting lead:', error);
     }
   }, [leads]);
 
@@ -501,11 +600,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
     });
     setLeads(updatedLeads);
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(updatedLeads));
-      console.log('Lead treatments updated:', leadId, 'treatments:', selectedTreatments.length, 'signed:', hasSignedTreatments, 'newValue:', hasSignedTreatments ? Math.round(newEstimatedValue) : 'unchanged');
-      console.log('Signature log entries:', updatedLeads.find(l => l.id === leadId)?.signatureLog?.length || 0);
+      const encrypted = await encryptObject(updatedLeads);
+      await AsyncStorage.setItem(STORAGE_KEYS.LEADS, encrypted);
+      console.log('[AppContext] Lead treatments encrypted and updated:', leadId);
     } catch (error) {
-      console.log('Error updating lead treatments:', error);
+      console.log('[AppContext] Error updating lead treatments:', error);
     }
   }, [leads, patientConsent]);
 
@@ -537,11 +636,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
     });
     setLeads(updatedLeads);
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(updatedLeads));
-      console.log('Patient consent attached to lead:', leadId);
-      console.log('Consent signatures - Patient:', consent.patientSignature, 'Provider:', consent.providerSignature);
+      const encrypted = await encryptObject(updatedLeads);
+      await AsyncStorage.setItem(STORAGE_KEYS.LEADS, encrypted);
+      console.log('[AppContext] Patient consent encrypted and attached to lead:', leadId);
     } catch (error) {
-      console.log('Error attaching consent to lead:', error);
+      console.log('[AppContext] Error attaching consent to lead:', error);
     }
   }, [leads]);
 
@@ -554,10 +653,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
     });
     setLeads(updatedLeads);
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(updatedLeads));
-      console.log('Lead email updated:', leadId, email);
+      const encrypted = await encryptObject(updatedLeads);
+      await AsyncStorage.setItem(STORAGE_KEYS.LEADS, encrypted);
+      console.log('[AppContext] Lead email encrypted and updated:', leadId);
     } catch (error) {
-      console.log('Error updating lead email:', error);
+      console.log('[AppContext] Error updating lead email:', error);
     }
   }, [leads]);
 
@@ -624,5 +724,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
     savePatientBasicInfo,
     updatePatientEmail,
     clearPatientBasicInfo,
+    encryptionStatus,
   };
 });
