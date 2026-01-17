@@ -13,6 +13,7 @@ import {
   TextInput,
 } from 'react-native';
 import { File } from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { Image } from 'expo-image';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -388,13 +389,34 @@ IMPORTANT:
       }).describe('CRITICAL: Accurately assess the Fitzpatrick skin type from the image. This affects treatment safety for IPL, lasers, and other light-based therapies. Types V and VI have HIGH RISK for burns with IPL.'),
   }), []);
 
+  const resizeImageForAnalysis = useCallback(async (imageUri: string): Promise<string> => {
+    const MAX_DIMENSION = 800;
+    console.log('Resizing image for faster AI analysis...');
+    
+    try {
+      const manipResult = await ImageManipulator.manipulateAsync(
+        imageUri,
+        [{ resize: { width: MAX_DIMENSION } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      console.log('Image resized successfully to ~800px width');
+      return manipResult.uri;
+    } catch (error) {
+      console.log('Image resize failed, using original:', error);
+      return imageUri;
+    }
+  }, []);
+
   const analyzeImageWithAI = useCallback(async (imageUri: string): Promise<AnalysisResult> => {
     console.log('Starting AI clinical analysis of captured image...');
+    
+    const resizedUri = await resizeImageForAnalysis(imageUri);
+    console.log('Using resized image for analysis');
     
     let base64Image = '';
     
     if (Platform.OS === 'web') {
-      const response = await fetch(imageUri);
+      const response = await fetch(resizedUri);
       const blob = await response.blob();
       base64Image = await new Promise<string>((resolve) => {
         const reader = new FileReader();
@@ -405,7 +427,7 @@ IMPORTANT:
         reader.readAsDataURL(blob);
       });
     } else {
-      const file = new File(imageUri);
+      const file = new File(resizedUri);
       base64Image = await file.base64();
     }
 
@@ -583,7 +605,7 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
         detectedIndicators: ['Medium complexion', 'Neutral undertones'],
       },
     };
-  }, [analysisSchema]);
+  }, [analysisSchema, resizeImageForAnalysis]);
 
   const applyContraindicationChecks = useCallback((analysis: AnalysisResult): AnalysisResult => {
     const baseConditions = patientHealthProfile?.conditions || [];
