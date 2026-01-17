@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -55,8 +55,6 @@ import { AnalysisResult, PatientHealthProfile, ClinicalProcedure, PeptideTherapy
 import { checkTreatmentSafety, getExplainableReason } from '@/constants/contraindications';
 import PatientConsentModal from '@/components/PatientConsentModal';
 
-
-
 const MAX_CONTENT_WIDTH = 600;
 const MAX_SLIDER_WIDTH = 500;
 
@@ -93,7 +91,7 @@ export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showIntroScan, setShowIntroScan] = useState(true);
+  const [showIntroScan, setShowIntroScan] = useState(false);
 
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [isLeadSaved, setIsLeadSaved] = useState(false);
@@ -349,28 +347,7 @@ IMPORTANT:
     }
   }, []);
 
-  const analyzeImageWithAI = useCallback(async (imageUri: string): Promise<AnalysisResult> => {
-    console.log('Starting AI clinical analysis of captured image...');
-    
-    let base64Image = '';
-    
-    if (Platform.OS === 'web') {
-      const response = await fetch(imageUri);
-      const blob = await response.blob();
-      base64Image = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          resolve(result.split(',')[1]);
-        };
-        reader.readAsDataURL(blob);
-      });
-    } else {
-      const file = new File(imageUri);
-      base64Image = await file.base64();
-    }
-
-    const analysisSchema = z.object({
+  const analysisSchema = useMemo(() => z.object({
       auraScore: z.number().min(300).max(1000).describe('Overall aesthetic score based on facial harmony, skin quality, and structural balance. Higher scores indicate better baseline aesthetics.'),
       faceType: z.string().describe('Detected face shape classification (e.g., Diamond Elite, Classic Oval, Angular Sculpted, Heart Symmetry, Square Strong, Round Soft)'),
       skinIQ: z.object({
@@ -409,7 +386,28 @@ IMPORTANT:
         riskLevel: z.enum(['low', 'caution', 'high']).describe('Risk level for light-based treatments: low for I-III, caution for IV, high for V-VI'),
         detectedIndicators: z.array(z.string()).describe('Visual indicators used to determine skin type (melanin density, undertones, etc.)'),
       }).describe('CRITICAL: Accurately assess the Fitzpatrick skin type from the image. This affects treatment safety for IPL, lasers, and other light-based therapies. Types V and VI have HIGH RISK for burns with IPL.'),
-    });
+  }), []);
+
+  const analyzeImageWithAI = useCallback(async (imageUri: string): Promise<AnalysisResult> => {
+    console.log('Starting AI clinical analysis of captured image...');
+    
+    let base64Image = '';
+    
+    if (Platform.OS === 'web') {
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+      base64Image = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1]);
+        };
+        reader.readAsDataURL(blob);
+      });
+    } else {
+      const file = new File(imageUri);
+      base64Image = await file.base64();
+    }
 
     const maxRetries = 2;
 
@@ -585,7 +583,7 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
         detectedIndicators: ['Medium complexion', 'Neutral undertones'],
       },
     };
-  }, []);
+  }, [analysisSchema]);
 
   const applyContraindicationChecks = useCallback((analysis: AnalysisResult): AnalysisResult => {
     const baseConditions = patientHealthProfile?.conditions || [];
@@ -864,7 +862,9 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
 
   if (showIntroScan) {
     return (
-      <BiometricIntroScan onComplete={() => setShowIntroScan(false)} />
+      <BiometricIntroScan onComplete={() => {
+        setShowIntroScan(false);
+      }} />
     );
   }
 
