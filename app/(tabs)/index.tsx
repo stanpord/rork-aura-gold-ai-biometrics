@@ -1048,7 +1048,7 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
           />
           {isAnalyzing && <BiometricScanOverlay />}
 
-          {!currentAnalysis && (
+          {!currentAnalysis && !isAnalyzing && (
             <View style={styles.analysisOverlay}>
               <View style={styles.analysisIconContainer}>
                 <Zap size={32} color={Colors.black} />
@@ -1057,7 +1057,6 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
               <TouchableOpacity
                 style={styles.generateButton}
                 onPress={runAnalysis}
-                disabled={isAnalyzing}
                 activeOpacity={0.8}
               >
                 <Play size={16} color={Colors.black} />
