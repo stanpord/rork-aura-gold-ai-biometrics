@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   Animated,
   Dimensions,
@@ -26,8 +25,6 @@ interface BiometricIntroScanProps {
 
 export default function BiometricIntroScan({ onComplete }: BiometricIntroScanProps) {
   const [currentPhase, setCurrentPhase] = useState(0);
-
-  const [progressPercent, setProgressPercent] = useState(0);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -125,8 +122,6 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
         progress = 100;
         clearInterval(progressInterval);
       }
-      setProgressPercent(progress);
-      
       if (Platform.OS !== 'web' && progress % 10 === 0) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
@@ -226,10 +221,6 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
           />
         </Animated.View>
 
-        {/* Minimal progress indicator at bottom */}
-        <View style={styles.progressOverlay}>
-          <Text style={styles.progressText}>{progressPercent}%</Text>
-        </View>
       </View>
 
       {currentPhase === 3 && (
@@ -284,23 +275,7 @@ const styles = StyleSheet.create({
   scanLineGradient: {
     flex: 1,
   },
-  progressOverlay: {
-    position: 'absolute',
-    bottom: 60,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  progressText: {
-    fontSize: 14,
-    fontWeight: '700' as const,
-    color: Colors.gold,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
+
   completeOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
