@@ -7,7 +7,6 @@ import {
   ScrollView,
   Alert,
   Platform,
-  ActivityIndicator,
   useWindowDimensions,
   Modal,
   TextInput,
@@ -1061,14 +1060,8 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
                 disabled={isAnalyzing}
                 activeOpacity={0.8}
               >
-                {isAnalyzing ? (
-                  <ActivityIndicator color={Colors.black} />
-                ) : (
-                  <>
-                    <Play size={16} color={Colors.black} />
-                    <Text style={styles.generateButtonText}>GENERATE ROADMAP</Text>
-                  </>
-                )}
+                <Play size={16} color={Colors.black} />
+                <Text style={styles.generateButtonText}>GENERATE ROADMAP</Text>
               </TouchableOpacity>
             </View>
           )}
