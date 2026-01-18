@@ -246,43 +246,6 @@ export default function ScanScreen() {
     }
   };
 
-  const captureImage = async () => {
-    if (!cameraRef.current) return;
-    
-    if (!isLightingAcceptable) {
-      if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      }
-      Alert.alert(
-        'Poor Lighting',
-        'Please adjust your lighting conditions before capturing. Move to a well-lit area or adjust your position.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-    
-    try {
-      if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      }
-      const photo = await cameraRef.current.takePictureAsync({
-        base64: true,
-        quality: 0.8,
-      });
-      if (photo) {
-        setCapturedImage(photo.uri);
-        setIsCameraActive(false);
-        setIsGuidedCaptureActive(false);
-        if (!patientBasicInfo?.email) {
-          setTimeout(() => setShowEmailModal(true), 500);
-        }
-      }
-    } catch (error) {
-      console.log('Error capturing image:', error);
-      Alert.alert('Error', 'Failed to capture image. Please try again.');
-    }
-  };
-
   const handleGuidedCaptureReady = useCallback(async () => {
     console.log('Guided capture ready - checking lighting before taking photo');
     if (!cameraRef.current) return;
@@ -990,20 +953,11 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
                   >
                     <X size={24} color={Colors.white} />
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.captureButton,
-                      !isLightingAcceptable && styles.captureButtonDisabled
-                    ]}
-                    onPress={captureImage}
-                    activeOpacity={0.8}
-                    disabled={!isLightingAcceptable}
-                  >
-                    <View style={[
-                      styles.captureButtonInner,
-                      !isLightingAcceptable && styles.captureButtonInnerDisabled
-                    ]} />
-                  </TouchableOpacity>
+                  <View style={styles.autoCapturePlaceholder}>
+                    <View style={styles.autoCaptureIndicator}>
+                      <Text style={styles.autoCaptureText}>AUTO</Text>
+                    </View>
+                  </View>
                   <TouchableOpacity
                     style={styles.flipButton}
                     onPress={toggleCameraFacing}
@@ -1554,6 +1508,29 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  autoCapturePlaceholder: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+    borderStyle: 'dashed',
+  },
+  autoCaptureIndicator: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  autoCaptureText: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: Colors.gold,
+    letterSpacing: 1,
   },
   consultationOptions: {
     flex: 1,
