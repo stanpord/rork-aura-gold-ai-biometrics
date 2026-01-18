@@ -41,6 +41,7 @@ import {
   AlertCircle,
   FileText,
   SwitchCamera,
+  Eye,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
@@ -52,6 +53,7 @@ import BeforeAfterSlider from '@/components/BeforeAfterSlider';
 import BiometricIntroScan from '@/components/BiometricIntroScan';
 import GuidedCaptureOverlay from '@/components/GuidedCaptureOverlay';
 import HealthQuestionnaire from '@/components/HealthQuestionnaire';
+import TreatmentVisualizationModal from '@/components/TreatmentVisualizationModal';
 import { AnalysisResult, PatientHealthProfile, ClinicalProcedure, PeptideTherapy, IVOptimization, PatientConsent } from '@/types';
 import { checkTreatmentSafety, getExplainableReason } from '@/constants/contraindications';
 import PatientConsentModal from '@/components/PatientConsentModal';
@@ -111,6 +113,8 @@ export default function ScanScreen() {
 
   const [showDevPrompt, setShowDevPrompt] = useState(false);
   const [devCodeInput, setDevCodeInput] = useState('');
+  const [showTreatmentVisualization, setShowTreatmentVisualization] = useState(false);
+  const [selectedTreatmentForVisualization, setSelectedTreatmentForVisualization] = useState<string>('');
 
   const handleDevModePress = useCallback(() => {
     if (isDevMode) {
@@ -1341,6 +1345,22 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
                   <Text style={styles.clinicalReasonText}>{proc.clinicalReason}</Text>
                 </View>
                 {renderSafetyWarning(proc.safetyStatus)}
+                {!proc.safetyStatus?.isBlocked && (
+                  <TouchableOpacity
+                    style={styles.seeResultsButton}
+                    onPress={() => {
+                      setSelectedTreatmentForVisualization(proc.name);
+                      setShowTreatmentVisualization(true);
+                      if (Platform.OS !== 'web') {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      }
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Eye size={14} color={Colors.gold} />
+                    <Text style={styles.seeResultsButtonText}>SEE YOUR RESULTS</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ))}
           </View>
@@ -1461,6 +1481,12 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
         </TouchableOpacity>
       </ScrollView>
 
+      <TreatmentVisualizationModal
+        visible={showTreatmentVisualization}
+        onClose={() => setShowTreatmentVisualization(false)}
+        treatmentName={selectedTreatmentForVisualization}
+        originalImage={capturedImage}
+      />
     </View>
   );
 }
@@ -2088,6 +2114,24 @@ const styles = StyleSheet.create({
     borderColor: Colors.goldMuted,
   },
   newScanButtonText: {
+    fontSize: 11,
+    fontWeight: '800' as const,
+    color: Colors.gold,
+    letterSpacing: 1,
+  },
+  seeResultsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 14,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.25)',
+  },
+  seeResultsButtonText: {
     fontSize: 11,
     fontWeight: '800' as const,
     color: Colors.gold,
