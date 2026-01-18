@@ -100,6 +100,13 @@ export interface ScanComparison {
   changeAmount?: number;
 }
 
+export interface BiometricProfile {
+  faceEmbedding?: string;
+  capturedAt: Date;
+  deviceInfo?: string;
+  verificationLevel: 'basic' | 'verified' | 'enhanced';
+}
+
 export interface Lead {
   id: string;
   name: string;
@@ -121,6 +128,9 @@ export interface Lead {
   signatureLog?: SignatureRecord[];
   scanHistory?: ScanRecord[];
   lastScanDate?: Date;
+  biometricProfile?: BiometricProfile;
+  lastCheckIn?: Date;
+  profileImage?: string;
 }
 
 export interface TreatmentRecurrence {

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, AppStateStatus } from 'react-native';
 import createContextHook from '@nkzw/create-context-hook';
-import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment, TreatmentConfig, DEFAULT_TREATMENT_CONFIGS, PatientBasicInfo, ClinicalProcedure, SignatureRecord, ScanRecord } from '@/types';
+import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment, TreatmentConfig, DEFAULT_TREATMENT_CONFIGS, PatientBasicInfo, ClinicalProcedure, SignatureRecord, ScanRecord, BiometricProfile } from '@/types';
 import { encryptObject, decryptObject, isEncryptedData, getEncryptionStatus, EncryptionStatus } from '@/utils/encryption';
 import { initializeAuditLog, logAuditEvent, logAuthEvent, logPHIAccess, logConsentEvent, getAuditSummary } from '@/utils/auditLog';
 
@@ -873,6 +873,78 @@ export const [AppProvider, useApp] = createContextHook(() => {
     }];
   }, [leads]);
 
+  const checkInPatient = useCallback(async (leadId: string, profileImage?: string): Promise<void> => {
+    const updatedLeads = leads.map(lead => {
+      if (lead.id === leadId) {
+        return {
+          ...lead,
+          lastCheckIn: new Date(),
+          profileImage: profileImage || lead.profileImage,
+        };
+      }
+      return lead;
+    });
+    setLeads(updatedLeads);
+    try {
+      const encrypted = await encryptObject(updatedLeads);
+      await AsyncStorage.setItem(STORAGE_KEYS.LEADS, encrypted);
+      await logAuditEvent('PHI_ACCESS', 'Patient check-in via biometric verification', {
+        userRole: 'staff',
+        resourceType: 'lead',
+        resourceId: leadId,
+        phiAccessed: true,
+      });
+      console.log('[HIPAA] Patient checked in:', leadId);
+    } catch (error) {
+      console.log('[AppContext] Error checking in patient:', error);
+    }
+  }, [leads]);
+
+  const createPatientWithBiometrics = useCallback(async (
+    name: string,
+    phone: string,
+    email: string | undefined,
+    biometricProfile: BiometricProfile,
+    profileImage?: string
+  ): Promise<Lead | null> => {
+    try {
+      const newLead: Lead = {
+        id: Date.now().toString(),
+        name,
+        phone,
+        email,
+        auraScore: 0,
+        faceType: 'Pending Analysis',
+        estimatedValue: 0,
+        roadmap: [],
+        peptides: [],
+        ivDrips: [],
+        status: 'new',
+        createdAt: new Date(),
+        biometricProfile,
+        profileImage,
+        lastCheckIn: new Date(),
+      };
+
+      const updatedLeads = [newLead, ...leads];
+      setLeads(updatedLeads);
+
+      const encrypted = await encryptObject(updatedLeads);
+      await AsyncStorage.setItem(STORAGE_KEYS.LEADS, encrypted);
+      await logAuditEvent('PHI_CREATE', 'New patient created with biometric verification', {
+        userRole: 'staff',
+        resourceType: 'lead',
+        resourceId: newLead.id,
+        phiAccessed: true,
+      });
+      console.log('[HIPAA] New patient created with biometrics:', newLead.id);
+      return newLead;
+    } catch (error) {
+      console.log('[AppContext] Error creating patient with biometrics:', error);
+      return null;
+    }
+  }, [leads]);
+
   const stats = isStaffAuthenticated ? {
     pipeline: leads.reduce((acc, lead) => acc + (lead.estimatedValue || 0), 0),
     scans: leads.length,
@@ -911,6 +983,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
     findPatientByPhone,
     addScanToExistingPatient,
     getPatientScanHistory,
+    checkInPatient,
+    createPatientWithBiometrics,
     resetScan,
     stats,
     hasCompletedIntro,

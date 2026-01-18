@@ -37,6 +37,7 @@ import TermsOfServiceModal from '@/components/TermsOfServiceModal';
 import { Lead, TermsOfServiceAcknowledgment } from '@/types';
 import TreatmentSettingsPanel from '@/components/TreatmentSettingsPanel';
 import SessionWarningBanner from '@/components/SessionWarningBanner';
+import FrontDeskCheckIn from '@/components/FrontDeskCheckIn';
 
 interface ZenotiConfig {
   apiKey: string;
@@ -62,6 +63,7 @@ export default function ClinicScreen() {
   const [pendingAuth, setPendingAuth] = useState(false);
   const [showTreatmentSettings, setShowTreatmentSettings] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showFrontDeskCheckIn, setShowFrontDeskCheckIn] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const handleLogin = async (passcode: string): Promise<boolean> => {
@@ -221,6 +223,26 @@ export default function ClinicScreen() {
           showWarning={showSessionWarning}
           onExtendSession={extendSession}
         />
+
+        <TouchableOpacity
+          style={styles.checkInButton}
+          onPress={() => {
+            setShowFrontDeskCheckIn(true);
+            if (Platform.OS !== 'web') {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            }
+          }}
+          activeOpacity={0.8}
+        >
+          <View style={styles.checkInIconContainer}>
+            <Users size={24} color={Colors.white} />
+          </View>
+          <View style={styles.checkInContent}>
+            <Text style={styles.checkInTitle}>PATIENT CHECK-IN</Text>
+            <Text style={styles.checkInSubtitle}>Biometric facial recognition</Text>
+          </View>
+          <ChevronDown size={20} color={Colors.gold} style={{ transform: [{ rotate: '-90deg' }] }} />
+        </TouchableOpacity>
 
         <View style={styles.statsGrid}>
           <View style={styles.statCardLarge}>
@@ -460,6 +482,19 @@ export default function ClinicScreen() {
           visible={showTosModal}
           onClose={handleTosDecline}
           onAccept={handleTosAccept}
+        />
+
+        <FrontDeskCheckIn
+          visible={showFrontDeskCheckIn}
+          onClose={() => setShowFrontDeskCheckIn(false)}
+          onPatientSelected={(lead) => {
+            setSelectedLead(lead);
+            setShowLeadDetail(true);
+          }}
+          onNewPatientCreated={(lead) => {
+            setSelectedLead(lead);
+            setShowLeadDetail(true);
+          }}
         />
     </Animated.View>
   );
@@ -880,5 +915,39 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  checkInButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: Colors.gold,
+  },
+  checkInIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  checkInContent: {
+    flex: 1,
+  },
+  checkInTitle: {
+    fontSize: 14,
+    fontWeight: '800' as const,
+    color: Colors.white,
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  checkInSubtitle: {
+    fontSize: 12,
+    color: Colors.gold,
+    fontWeight: '500' as const,
   },
 });
