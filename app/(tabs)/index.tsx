@@ -104,6 +104,8 @@ export default function ScanScreen() {
   const [cameraFacing, setCameraFacing] = useState<'front' | 'back'>('front');
   const [isGuidedCaptureActive, setIsGuidedCaptureActive] = useState(false);
   const [isLightingAcceptable, setIsLightingAcceptable] = useState(false);
+  const [measuredBrightness, setMeasuredBrightness] = useState(0);
+  const brightnessCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cameraRef = useRef<CameraView>(null);
   const DEV_CODE = '1234';
 
@@ -232,7 +234,110 @@ export default function ScanScreen() {
   const stopCamera = () => {
     setIsCameraActive(false);
     setIsGuidedCaptureActive(false);
+    setMeasuredBrightness(0);
+    if (brightnessCheckRef.current) {
+      clearInterval(brightnessCheckRef.current);
+      brightnessCheckRef.current = null;
+    }
   };
+
+  const analyzeBrightnessFromImage = useCallback(async (imageUri: string): Promise<number> => {
+    try {
+      if (Platform.OS === 'web') {
+        return new Promise((resolve) => {
+          const img = new window.Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+              resolve(50);
+              return;
+            }
+            const sampleSize = 50;
+            canvas.width = sampleSize;
+            canvas.height = sampleSize;
+            ctx.drawImage(img, 0, 0, sampleSize, sampleSize);
+            const imageData = ctx.getImageData(0, 0, sampleSize, sampleSize);
+            const data = imageData.data;
+            let totalBrightness = 0;
+            const pixelCount = data.length / 4;
+            for (let i = 0; i < data.length; i += 4) {
+              const r = data[i];
+              const g = data[i + 1];
+              const b = data[i + 2];
+              const brightness = (r * 0.299 + g * 0.587 + b * 0.114);
+              totalBrightness += brightness;
+            }
+            const avgBrightness = totalBrightness / pixelCount;
+            const normalizedBrightness = (avgBrightness / 255) * 100;
+            console.log('Web brightness analysis:', normalizedBrightness.toFixed(1));
+            resolve(normalizedBrightness);
+          };
+          img.onerror = () => resolve(50);
+          img.src = imageUri;
+        });
+      } else {
+        const file = new File(imageUri);
+        const base64 = await file.base64();
+        const binaryString = atob(base64);
+        let totalBrightness = 0;
+        let sampleCount = 0;
+        const step = Math.max(1, Math.floor(binaryString.length / 1000));
+        for (let i = 0; i < binaryString.length; i += step) {
+          const byte = binaryString.charCodeAt(i);
+          totalBrightness += byte;
+          sampleCount++;
+        }
+        const avgByte = totalBrightness / sampleCount;
+        const normalizedBrightness = (avgByte / 255) * 100;
+        console.log('Native brightness analysis:', normalizedBrightness.toFixed(1));
+        return normalizedBrightness;
+      }
+    } catch (error) {
+      console.log('Brightness analysis error:', error);
+      return 50;
+    }
+  }, []);
+
+  const checkCameraBrightness = useCallback(async () => {
+    if (!cameraRef.current || !isCameraActive) return;
+    
+    try {
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.1,
+        skipProcessing: true,
+      });
+      
+      if (photo?.uri) {
+        const brightness = await analyzeBrightnessFromImage(photo.uri);
+        setMeasuredBrightness(brightness);
+        console.log('Camera brightness measured:', brightness.toFixed(1));
+      }
+    } catch (error) {
+      console.log('Brightness check error:', error);
+    }
+  }, [isCameraActive, analyzeBrightnessFromImage]);
+
+  React.useEffect(() => {
+    if (isCameraActive && isGuidedCaptureActive) {
+      const initialDelay = setTimeout(() => {
+        checkCameraBrightness();
+      }, 500);
+      
+      brightnessCheckRef.current = setInterval(() => {
+        checkCameraBrightness();
+      }, 1500);
+      
+      return () => {
+        clearTimeout(initialDelay);
+        if (brightnessCheckRef.current) {
+          clearInterval(brightnessCheckRef.current);
+          brightnessCheckRef.current = null;
+        }
+      };
+    }
+  }, [isCameraActive, isGuidedCaptureActive, checkCameraBrightness]);
 
   const toggleCameraFacing = () => {
     console.log('Toggling camera from:', cameraFacing);
@@ -943,6 +1048,7 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
                 <GuidedCaptureOverlay
                   isActive={isGuidedCaptureActive}
                   onReadyToCapture={handleGuidedCaptureReady}
+                  brightnessLevel={measuredBrightness}
                   onLightingStatusChange={setIsLightingAcceptable}
                 />
                 <View style={styles.cameraControls}>
