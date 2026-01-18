@@ -68,6 +68,8 @@ export default function GuidedCaptureOverlay({
   
   const lightingCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lightingStableCountRef = useRef(0);
+  const lastBrightnessRef = useRef(brightnessLevel);
+  const stableBrightnessTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lightingWarningAnim = useRef(new Animated.Value(0)).current;
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -274,57 +276,80 @@ export default function GuidedCaptureOverlay({
   useEffect(() => {
     if (!isActive || !positionValidated) return;
 
-    const status = getLightingStatus(brightnessLevel);
-    setLightingStatus(status);
+    const checkLighting = () => {
+      const status = getLightingStatus(brightnessLevel);
+      setLightingStatus(status);
 
-    // Notify parent about lighting status
-    onLightingStatusChange?.(status === 'good');
+      onLightingStatusChange?.(status === 'good');
 
-    if (status === 'good') {
-      lightingStableCountRef.current += 1;
-      setLightingWarning(null);
-      
-      Animated.timing(lightingWarningAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
+      if (status === 'good') {
+        lightingStableCountRef.current += 1;
+        setLightingWarning(null);
+        
+        Animated.timing(lightingWarningAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
 
-      if (lightingStableCountRef.current >= 10) {
+        if (lightingStableCountRef.current >= 3) {
+          const lightingCheck = validationChecks.find(c => c.id === 'lighting');
+          if (lightingCheck && !lightingCheck.passed) {
+            updateCheck('lighting', true, 1);
+            setCurrentInstruction('Hold still for scan...');
+            startStabilityCheck();
+          }
+        }
+      } else {
+        lightingStableCountRef.current = 0;
+        setLightingWarning(getLightingMessage(status));
+        
+        Animated.timing(lightingWarningAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
+
+        if (Platform.OS !== 'web') {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+
         const lightingCheck = validationChecks.find(c => c.id === 'lighting');
-        if (lightingCheck && !lightingCheck.passed) {
-          updateCheck('lighting', true, 1);
-          setCurrentInstruction('Hold still for scan...');
-          startStabilityCheck();
+        if (lightingCheck?.passed) {
+          updateCheck('lighting', false, 1);
+          if (stabilityTimerRef.current) {
+            clearInterval(stabilityTimerRef.current);
+            stabilityTimerRef.current = null;
+          }
+          setStabilityProgress(0);
+          progressAnim.setValue(0);
+          updateCheck('stability', false, 2);
+          setCurrentInstruction(getLightingMessage(status));
         }
       }
-    } else {
-      lightingStableCountRef.current = 0;
-      setLightingWarning(getLightingMessage(status));
-      
-      Animated.timing(lightingWarningAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
+    };
 
-      if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+    // Run check immediately
+    checkLighting();
 
-      const lightingCheck = validationChecks.find(c => c.id === 'lighting');
-      if (lightingCheck?.passed) {
-        updateCheck('lighting', false, 1);
-        if (stabilityTimerRef.current) {
-          clearInterval(stabilityTimerRef.current);
-          stabilityTimerRef.current = null;
-        }
-        setStabilityProgress(0);
-        progressAnim.setValue(0);
-        updateCheck('stability', false, 2);
-        setCurrentInstruction(getLightingMessage(status));
-      }
+    // Also run on interval to handle stable brightness values
+    if (stableBrightnessTimerRef.current) {
+      clearInterval(stableBrightnessTimerRef.current);
     }
+    stableBrightnessTimerRef.current = setInterval(() => {
+      const lightingCheck = validationChecks.find(c => c.id === 'lighting');
+      if (!lightingCheck?.passed) {
+        checkLighting();
+      }
+    }, 300);
+
+    lastBrightnessRef.current = brightnessLevel;
+
+    return () => {
+      if (stableBrightnessTimerRef.current) {
+        clearInterval(stableBrightnessTimerRef.current);
+      }
+    };
   }, [brightnessLevel, isActive, positionValidated, getLightingStatus, getLightingMessage, validationChecks, updateCheck, startStabilityCheck, lightingWarningAnim, progressAnim, onLightingStatusChange]);
 
   const getLightingIndicatorColor = useCallback(() => {
