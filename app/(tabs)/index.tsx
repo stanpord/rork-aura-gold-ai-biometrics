@@ -50,6 +50,7 @@ import LeadCaptureModal from '@/components/LeadCaptureModal';
 import EmailCaptureModal from '@/components/EmailCaptureModal';
 import BeforeAfterSlider from '@/components/BeforeAfterSlider';
 import BiometricIntroScan from '@/components/BiometricIntroScan';
+import GuidedCaptureOverlay from '@/components/GuidedCaptureOverlay';
 import HealthQuestionnaire from '@/components/HealthQuestionnaire';
 import { AnalysisResult, PatientHealthProfile, ClinicalProcedure, PeptideTherapy, IVOptimization, PatientConsent } from '@/types';
 import { checkTreatmentSafety, getExplainableReason } from '@/constants/contraindications';
@@ -101,6 +102,7 @@ export default function ScanScreen() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [isEmailSaved, setIsEmailSaved] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<'front' | 'back'>('front');
+  const [isGuidedCaptureActive, setIsGuidedCaptureActive] = useState(false);
   const cameraRef = useRef<CameraView>(null);
   const DEV_CODE = '1234';
 
@@ -194,6 +196,7 @@ export default function ScanScreen() {
       }
     }
     setIsCameraActive(true);
+    setIsGuidedCaptureActive(true);
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
@@ -227,6 +230,7 @@ export default function ScanScreen() {
 
   const stopCamera = () => {
     setIsCameraActive(false);
+    setIsGuidedCaptureActive(false);
   };
 
   const toggleCameraFacing = () => {
@@ -255,6 +259,7 @@ export default function ScanScreen() {
       if (photo) {
         setCapturedImage(photo.uri);
         setIsCameraActive(false);
+        setIsGuidedCaptureActive(false);
         if (!patientBasicInfo?.email) {
           setTimeout(() => setShowEmailModal(true), 500);
         }
@@ -264,6 +269,32 @@ export default function ScanScreen() {
       Alert.alert('Error', 'Failed to capture image. Please try again.');
     }
   };
+
+  const handleGuidedCaptureReady = useCallback(async () => {
+    console.log('Guided capture ready - taking photo');
+    if (!cameraRef.current) return;
+    
+    try {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      }
+      const photo = await cameraRef.current.takePictureAsync({
+        base64: true,
+        quality: 0.8,
+      });
+      if (photo) {
+        setCapturedImage(photo.uri);
+        setIsCameraActive(false);
+        setIsGuidedCaptureActive(false);
+        if (!patientBasicInfo?.email) {
+          setTimeout(() => setShowEmailModal(true), 500);
+        }
+      }
+    } catch (error) {
+      console.log('Error capturing image:', error);
+      Alert.alert('Error', 'Failed to capture image. Please try again.');
+    }
+  }, [setCapturedImage, patientBasicInfo?.email]);
 
   const generateTreatmentSimulation = useCallback(async (imageUri: string, treatments: string[], retryCount = 0): Promise<string | null> => {
     const maxRetries = 2;
@@ -920,9 +951,10 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
                   mirror={cameraFacing === 'front'}
                   responsiveOrientationWhenOrientationLocked={true}
                 />
-                <View style={styles.cameraOverlay}>
-                  <View style={styles.faceGuide} />
-                </View>
+                <GuidedCaptureOverlay
+                  isActive={isGuidedCaptureActive}
+                  onReadyToCapture={handleGuidedCaptureReady}
+                />
                 <View style={styles.cameraControls}>
                   <TouchableOpacity
                     style={styles.cancelButton}
