@@ -6,18 +6,58 @@ import Colors from '@/constants/colors';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const BIOMARKERS = [
+  // Skin Quality (1-10)
   { id: 'elasticity', name: 'Skin Elasticity', unit: '%', range: [65, 95] },
   { id: 'collagen', name: 'Collagen Density', unit: 'mg/cm²', range: [1.2, 2.8] },
   { id: 'hydration', name: 'Hydration Level', unit: '%', range: [45, 85] },
   { id: 'poreSize', name: 'Pore Size Index', unit: 'µm', range: [20, 60] },
-  { id: 'fineLines', name: 'Fine Line Depth', unit: 'mm', range: [0.1, 0.8] },
-  { id: 'pigmentation', name: 'Pigmentation Score', unit: '', range: [1, 10] },
-  { id: 'volumeLoss', name: 'Volume Deficit', unit: 'ml', range: [0.5, 4.5] },
-  { id: 'symmetry', name: 'Facial Symmetry', unit: '%', range: [85, 99] },
   { id: 'texture', name: 'Texture Uniformity', unit: '', range: [4, 9] },
   { id: 'radiance', name: 'Skin Radiance', unit: 'cd/m²', range: [15, 45] },
-  { id: 'wrinkleDepth', name: 'Wrinkle Severity', unit: 'grade', range: [1, 5] },
   { id: 'melanin', name: 'Melanin Index', unit: 'MI', range: [10, 50] },
+  { id: 'sebum', name: 'Sebum Production', unit: 'µg/cm²', range: [50, 200] },
+  { id: 'skinPH', name: 'Skin pH Balance', unit: 'pH', range: [4.5, 6.5] },
+  { id: 'transEpidermal', name: 'TEWL Rate', unit: 'g/m²h', range: [5, 25] },
+  // Aging Markers (11-20)
+  { id: 'fineLines', name: 'Fine Line Depth', unit: 'mm', range: [0.1, 0.8] },
+  { id: 'wrinkleDepth', name: 'Wrinkle Severity', unit: 'grade', range: [1, 5] },
+  { id: 'crowsFeet', name: "Crow's Feet Index", unit: '', range: [1, 10] },
+  { id: 'foreheadLines', name: 'Forehead Lines', unit: 'mm', range: [0.2, 1.5] },
+  { id: 'glabellar', name: 'Glabellar Depth', unit: 'mm', range: [0.1, 2.0] },
+  { id: 'nasolabial', name: 'Nasolabial Folds', unit: 'grade', range: [1, 5] },
+  { id: 'marionette', name: 'Marionette Lines', unit: 'grade', range: [1, 5] },
+  { id: 'perioral', name: 'Perioral Lines', unit: 'grade', range: [1, 5] },
+  { id: 'neckBands', name: 'Platysmal Bands', unit: 'grade', range: [1, 5] },
+  { id: 'jowling', name: 'Jowl Descent', unit: 'mm', range: [0, 15] },
+  // Pigmentation (21-27)
+  { id: 'pigmentation', name: 'Pigmentation Score', unit: '', range: [1, 10] },
+  { id: 'uvDamage', name: 'UV Damage Index', unit: '', range: [1, 10] },
+  { id: 'sunSpots', name: 'Solar Lentigo Count', unit: '', range: [0, 25] },
+  { id: 'melasma', name: 'Melasma Grade', unit: '', range: [0, 4] },
+  { id: 'evenness', name: 'Tone Evenness', unit: '%', range: [60, 98] },
+  { id: 'redness', name: 'Erythema Index', unit: 'EI', range: [5, 40] },
+  { id: 'vascular', name: 'Vascular Visibility', unit: '', range: [1, 10] },
+  // Volume & Structure (28-37)
+  { id: 'volumeLoss', name: 'Volume Deficit', unit: 'ml', range: [0.5, 4.5] },
+  { id: 'symmetry', name: 'Facial Symmetry', unit: '%', range: [85, 99] },
+  { id: 'malarVolume', name: 'Malar Volume', unit: 'ml', range: [2, 8] },
+  { id: 'templeHollow', name: 'Temple Hollowing', unit: 'mm', range: [0, 8] },
+  { id: 'tearTrough', name: 'Tear Trough Depth', unit: 'mm', range: [0, 6] },
+  { id: 'lipVolume', name: 'Lip Volume', unit: 'ml', range: [3, 12] },
+  { id: 'lipSymmetry', name: 'Lip Symmetry', unit: '%', range: [80, 99] },
+  { id: 'chinProjection', name: 'Chin Projection', unit: 'mm', range: [-5, 10] },
+  { id: 'jawlineDefinition', name: 'Jawline Definition', unit: '', range: [1, 10] },
+  { id: 'facialWidth', name: 'Facial Width Ratio', unit: '', range: [1.3, 1.7] },
+  // Advanced Metrics (38-47)
+  { id: 'skinAge', name: 'Biological Skin Age', unit: 'yrs', range: [25, 65] },
+  { id: 'photoaging', name: 'Photoaging Score', unit: '', range: [1, 10] },
+  { id: 'oxidativeStress', name: 'Oxidative Stress', unit: '', range: [1, 10] },
+  { id: 'glycation', name: 'AGE Accumulation', unit: 'AU', range: [1.0, 4.0] },
+  { id: 'inflammaging', name: 'Inflammaging Index', unit: '', range: [1, 10] },
+  { id: 'barrierFunction', name: 'Barrier Integrity', unit: '%', range: [60, 98] },
+  { id: 'cellTurnover', name: 'Cell Turnover Rate', unit: 'days', range: [21, 45] },
+  { id: 'microbiome', name: 'Microbiome Balance', unit: '', range: [1, 10] },
+  { id: 'antioxidant', name: 'Antioxidant Reserve', unit: '%', range: [40, 90] },
+  { id: 'auraIndex', name: 'Aura Index', unit: '', range: [45, 95] },
 ];
 
 const ANALYSIS_STAGES = [
@@ -152,7 +192,7 @@ export default function BiometricScanOverlay() {
         }
         return nextIndex;
       });
-    }, 900);
+    }, 250);
 
     return () => {
       scanAnimation.stop();
@@ -532,10 +572,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
   },
   biomarkerTitle: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '700' as const,
     color: Colors.gold,
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   biomarkersList: {
     maxHeight: SCREEN_HEIGHT * 0.38,
