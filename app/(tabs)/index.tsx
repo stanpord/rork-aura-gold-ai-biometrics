@@ -284,8 +284,21 @@ export default function ScanScreen() {
   };
 
   const handleGuidedCaptureReady = useCallback(async () => {
-    console.log('Guided capture ready - taking photo');
+    console.log('Guided capture ready - checking lighting before taking photo');
     if (!cameraRef.current) return;
+    
+    if (!isLightingAcceptable) {
+      console.log('Lighting became unacceptable during countdown - blocking capture');
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+      Alert.alert(
+        'Poor Lighting',
+        'Lighting conditions changed. Please ensure good lighting and try again.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
     
     try {
       if (Platform.OS !== 'web') {
@@ -307,7 +320,7 @@ export default function ScanScreen() {
       console.log('Error capturing image:', error);
       Alert.alert('Error', 'Failed to capture image. Please try again.');
     }
-  }, [setCapturedImage, patientBasicInfo?.email]);
+  }, [setCapturedImage, patientBasicInfo?.email, isLightingAcceptable]);
 
   const generateTreatmentSimulation = useCallback(async (imageUri: string, treatments: string[], retryCount = 0): Promise<string | null> => {
     const maxRetries = 2;
