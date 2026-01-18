@@ -1,64 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, ScrollView } from 'react-native';
-import { Sparkles, Brain, Microscope, Dna, Activity, Check, Loader } from 'lucide-react-native';
+import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
+import { Sparkles, Brain, Microscope, Dna, Activity } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-const BIOMARKERS = [
-  // Skin Quality (1-10)
-  { id: 'elasticity', name: 'Skin Elasticity', unit: '%', range: [65, 95] },
-  { id: 'collagen', name: 'Collagen Density', unit: 'mg/cm²', range: [1.2, 2.8] },
-  { id: 'hydration', name: 'Hydration Level', unit: '%', range: [45, 85] },
-  { id: 'poreSize', name: 'Pore Size Index', unit: 'µm', range: [20, 60] },
-  { id: 'texture', name: 'Texture Uniformity', unit: '', range: [4, 9] },
-  { id: 'radiance', name: 'Skin Radiance', unit: 'cd/m²', range: [15, 45] },
-  { id: 'melanin', name: 'Melanin Index', unit: 'MI', range: [10, 50] },
-  { id: 'sebum', name: 'Sebum Production', unit: 'µg/cm²', range: [50, 200] },
-  { id: 'skinPH', name: 'Skin pH Balance', unit: 'pH', range: [4.5, 6.5] },
-  { id: 'transEpidermal', name: 'TEWL Rate', unit: 'g/m²h', range: [5, 25] },
-  // Aging Markers (11-20)
-  { id: 'fineLines', name: 'Fine Line Depth', unit: 'mm', range: [0.1, 0.8] },
-  { id: 'wrinkleDepth', name: 'Wrinkle Severity', unit: 'grade', range: [1, 5] },
-  { id: 'crowsFeet', name: "Crow's Feet Index", unit: '', range: [1, 10] },
-  { id: 'foreheadLines', name: 'Forehead Lines', unit: 'mm', range: [0.2, 1.5] },
-  { id: 'glabellar', name: 'Glabellar Depth', unit: 'mm', range: [0.1, 2.0] },
-  { id: 'nasolabial', name: 'Nasolabial Folds', unit: 'grade', range: [1, 5] },
-  { id: 'marionette', name: 'Marionette Lines', unit: 'grade', range: [1, 5] },
-  { id: 'perioral', name: 'Perioral Lines', unit: 'grade', range: [1, 5] },
-  { id: 'neckBands', name: 'Platysmal Bands', unit: 'grade', range: [1, 5] },
-  { id: 'jowling', name: 'Jowl Descent', unit: 'mm', range: [0, 15] },
-  // Pigmentation (21-27)
-  { id: 'pigmentation', name: 'Pigmentation Score', unit: '', range: [1, 10] },
-  { id: 'uvDamage', name: 'UV Damage Index', unit: '', range: [1, 10] },
-  { id: 'sunSpots', name: 'Solar Lentigo Count', unit: '', range: [0, 25] },
-  { id: 'melasma', name: 'Melasma Grade', unit: '', range: [0, 4] },
-  { id: 'evenness', name: 'Tone Evenness', unit: '%', range: [60, 98] },
-  { id: 'redness', name: 'Erythema Index', unit: 'EI', range: [5, 40] },
-  { id: 'vascular', name: 'Vascular Visibility', unit: '', range: [1, 10] },
-  // Volume & Structure (28-37)
-  { id: 'volumeLoss', name: 'Volume Deficit', unit: 'ml', range: [0.5, 4.5] },
-  { id: 'symmetry', name: 'Facial Symmetry', unit: '%', range: [85, 99] },
-  { id: 'malarVolume', name: 'Malar Volume', unit: 'ml', range: [2, 8] },
-  { id: 'templeHollow', name: 'Temple Hollowing', unit: 'mm', range: [0, 8] },
-  { id: 'tearTrough', name: 'Tear Trough Depth', unit: 'mm', range: [0, 6] },
-  { id: 'lipVolume', name: 'Lip Volume', unit: 'ml', range: [3, 12] },
-  { id: 'lipSymmetry', name: 'Lip Symmetry', unit: '%', range: [80, 99] },
-  { id: 'chinProjection', name: 'Chin Projection', unit: 'mm', range: [-5, 10] },
-  { id: 'jawlineDefinition', name: 'Jawline Definition', unit: '', range: [1, 10] },
-  { id: 'facialWidth', name: 'Facial Width Ratio', unit: '', range: [1.3, 1.7] },
-  // Advanced Metrics (38-47)
-  { id: 'skinAge', name: 'Biological Skin Age', unit: 'yrs', range: [25, 65] },
-  { id: 'photoaging', name: 'Photoaging Score', unit: '', range: [1, 10] },
-  { id: 'oxidativeStress', name: 'Oxidative Stress', unit: '', range: [1, 10] },
-  { id: 'glycation', name: 'AGE Accumulation', unit: 'AU', range: [1.0, 4.0] },
-  { id: 'inflammaging', name: 'Inflammaging Index', unit: '', range: [1, 10] },
-  { id: 'barrierFunction', name: 'Barrier Integrity', unit: '%', range: [60, 98] },
-  { id: 'cellTurnover', name: 'Cell Turnover Rate', unit: 'days', range: [21, 45] },
-  { id: 'microbiome', name: 'Microbiome Balance', unit: '', range: [1, 10] },
-  { id: 'antioxidant', name: 'Antioxidant Reserve', unit: '%', range: [40, 90] },
-  { id: 'auraIndex', name: 'Aura Index', unit: '', range: [45, 95] },
-];
 
 const ANALYSIS_STAGES = [
   { icon: Microscope, text: 'Analyzing skin texture...', subtext: 'Detecting pore size and surface quality' },
@@ -67,14 +12,6 @@ const ANALYSIS_STAGES = [
   { icon: Activity, text: 'Generating treatment plan...', subtext: 'Matching clinical protocols' },
   { icon: Sparkles, text: 'Finalizing your Aura Index...', subtext: 'Computing personalized score' },
 ];
-
-interface BiomarkerReading {
-  id: string;
-  name: string;
-  value: number | null;
-  unit: string;
-  status: 'pending' | 'scanning' | 'complete';
-}
 
 export default function BiometricScanOverlay() {
   const scanLinePosition = useRef(new Animated.Value(0)).current;
@@ -86,11 +23,6 @@ export default function BiometricScanOverlay() {
   const dotAnim2 = useRef(new Animated.Value(0)).current;
   const dotAnim3 = useRef(new Animated.Value(0)).current;
   const [currentStage, setCurrentStage] = useState(0);
-  const [biomarkerReadings, setBiomarkerReadings] = useState<BiomarkerReading[]>(
-    BIOMARKERS.map(b => ({ id: b.id, name: b.name, value: null, unit: b.unit, status: 'pending' as const }))
-  );
-  const [activeBiomarkerIndex, setActiveBiomarkerIndex] = useState(0);
-  const biomarkerAnims = useRef(BIOMARKERS.map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
     const scanAnimation = Animated.loop(
@@ -183,60 +115,14 @@ export default function BiometricScanOverlay() {
       setCurrentStage(prev => (prev + 1) % ANALYSIS_STAGES.length);
     }, 2400);
 
-    const biomarkerInterval = setInterval(() => {
-      setActiveBiomarkerIndex(prev => {
-        const nextIndex = prev + 1;
-        if (nextIndex >= BIOMARKERS.length) {
-          clearInterval(biomarkerInterval);
-          return prev;
-        }
-        return nextIndex;
-      });
-    }, 250);
-
     return () => {
       scanAnimation.stop();
       pulseAnimation.stop();
       iconPulse.stop();
       dotsAnimation.stop();
       clearInterval(stageInterval);
-      clearInterval(biomarkerInterval);
     };
   }, [scanLinePosition, pulseAnim, textFadeAnim, iconScaleAnim, progressAnim, dotAnim1, dotAnim2, dotAnim3]);
-
-  useEffect(() => {
-    if (activeBiomarkerIndex < BIOMARKERS.length) {
-      setBiomarkerReadings(prev => prev.map((b, i) => {
-        if (i === activeBiomarkerIndex) {
-          return { ...b, status: 'scanning' };
-        }
-        return b;
-      }));
-
-      Animated.timing(biomarkerAnims[activeBiomarkerIndex], {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
-
-      const completeTimeout = setTimeout(() => {
-        const biomarker = BIOMARKERS[activeBiomarkerIndex];
-        const randomValue = biomarker.range[0] + Math.random() * (biomarker.range[1] - biomarker.range[0]);
-        const formattedValue = biomarker.unit === '%' || biomarker.unit === '' || biomarker.unit === 'grade' || biomarker.unit === 'MI'
-          ? Math.round(randomValue)
-          : parseFloat(randomValue.toFixed(2));
-        
-        setBiomarkerReadings(prev => prev.map((b, i) => {
-          if (i === activeBiomarkerIndex) {
-            return { ...b, value: formattedValue, status: 'complete' };
-          }
-          return b;
-        }));
-      }, 700);
-
-      return () => clearTimeout(completeTimeout);
-    }
-  }, [activeBiomarkerIndex, biomarkerAnims]);
 
   const translateY = scanLinePosition.interpolate({
     inputRange: [0, 1],
@@ -274,74 +160,6 @@ export default function BiometricScanOverlay() {
       <View style={styles.cornerBL} />
       <View style={styles.cornerBR} />
       <Animated.View style={[styles.targetCircle, { opacity: pulseAnim }]} />
-
-      {/* Biomarkers Panel */}
-      <View style={styles.biomarkersPanel}>
-        <View style={styles.biomarkerHeader}>
-          <Dna size={14} color={Colors.gold} />
-          <Text style={styles.biomarkerTitle}>BIOMARKERS DETECTED</Text>
-        </View>
-        <ScrollView 
-          style={styles.biomarkersList} 
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.biomarkersListContent}
-        >
-          {biomarkerReadings.map((reading, index) => (
-            <Animated.View
-              key={reading.id}
-              style={[
-                styles.biomarkerRow,
-                {
-                  opacity: biomarkerAnims[index].interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.3, 1],
-                  }),
-                  transform: [{
-                    translateX: biomarkerAnims[index].interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [-10, 0],
-                    }),
-                  }],
-                },
-              ]}
-            >
-              <View style={styles.biomarkerLeft}>
-                {reading.status === 'complete' ? (
-                  <View style={styles.biomarkerCheckIcon}>
-                    <Check size={10} color={Colors.success} />
-                  </View>
-                ) : reading.status === 'scanning' ? (
-                  <View style={styles.biomarkerScanningIcon}>
-                    <Animated.View style={{ transform: [{ rotate: pulseAnim.interpolate({ inputRange: [0.3, 1], outputRange: ['0deg', '360deg'] }) }] }}>
-                      <Loader size={10} color={Colors.gold} />
-                    </Animated.View>
-                  </View>
-                ) : (
-                  <View style={styles.biomarkerPendingIcon} />
-                )}
-                <Text style={[
-                  styles.biomarkerName,
-                  reading.status === 'complete' && styles.biomarkerNameComplete,
-                  reading.status === 'scanning' && styles.biomarkerNameScanning,
-                ]}>
-                  {reading.name}
-                </Text>
-              </View>
-              <View style={styles.biomarkerRight}>
-                {reading.status === 'complete' && reading.value !== null ? (
-                  <Text style={styles.biomarkerValue}>
-                    {reading.value}{reading.unit ? ` ${reading.unit}` : ''}
-                  </Text>
-                ) : reading.status === 'scanning' ? (
-                  <Text style={styles.biomarkerScanning}>scanning...</Text>
-                ) : (
-                  <Text style={styles.biomarkerPending}>—</Text>
-                )}
-              </View>
-            </Animated.View>
-          ))}
-        </ScrollView>
-      </View>
       
       <View style={styles.statusContainer}>
         <Animated.View style={[styles.iconContainer, { transform: [{ scale: iconScaleAnim }] }]}>
@@ -548,104 +366,5 @@ const styles = StyleSheet.create({
   },
   stageIndicatorActive: {
     backgroundColor: Colors.gold,
-  },
-  biomarkersPanel: {
-    position: 'absolute',
-    top: 50,
-    right: 12,
-    width: 180,
-    maxHeight: SCREEN_HEIGHT * 0.45,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
-    overflow: 'hidden',
-  },
-  biomarkerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(245, 158, 11, 0.2)',
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-  },
-  biomarkerTitle: {
-    fontSize: 8,
-    fontWeight: '700' as const,
-    color: Colors.gold,
-    letterSpacing: 0.5,
-  },
-  biomarkersList: {
-    maxHeight: SCREEN_HEIGHT * 0.38,
-  },
-  biomarkersListContent: {
-    paddingVertical: 6,
-  },
-  biomarkerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  biomarkerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flex: 1,
-  },
-  biomarkerCheckIcon: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  biomarkerScanningIcon: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  biomarkerPendingIcon: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  biomarkerName: {
-    fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.4)',
-    flex: 1,
-  },
-  biomarkerNameComplete: {
-    color: Colors.white,
-  },
-  biomarkerNameScanning: {
-    color: Colors.gold,
-  },
-  biomarkerRight: {
-    minWidth: 50,
-    alignItems: 'flex-end',
-  },
-  biomarkerValue: {
-    fontSize: 10,
-    fontWeight: '600' as const,
-    color: Colors.success,
-    fontVariant: ['tabular-nums'],
-  },
-  biomarkerScanning: {
-    fontSize: 8,
-    color: Colors.gold,
-    fontStyle: 'italic' as const,
-  },
-  biomarkerPending: {
-    fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.2)',
   },
 });
