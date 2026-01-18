@@ -39,6 +39,7 @@ interface GuidedCaptureOverlayProps {
   onReadyToCapture: () => void;
   isActive: boolean;
   brightnessLevel?: number;
+  onLightingStatusChange?: (isAcceptable: boolean) => void;
 }
 
 const OVAL_WIDTH = 220;
@@ -49,6 +50,7 @@ export default function GuidedCaptureOverlay({
   onReadyToCapture, 
   isActive,
   brightnessLevel = 50,
+  onLightingStatusChange,
 }: GuidedCaptureOverlayProps) {
   const [validationChecks, setValidationChecks] = useState<ValidationCheck[]>([
     { id: 'position', label: 'Face centered', icon: Move, passed: false },
@@ -275,6 +277,9 @@ export default function GuidedCaptureOverlay({
     const status = getLightingStatus(brightnessLevel);
     setLightingStatus(status);
 
+    // Notify parent about lighting status
+    onLightingStatusChange?.(status === 'good');
+
     if (status === 'good') {
       lightingStableCountRef.current += 1;
       setLightingWarning(null);
@@ -320,7 +325,7 @@ export default function GuidedCaptureOverlay({
         setCurrentInstruction(getLightingMessage(status));
       }
     }
-  }, [brightnessLevel, isActive, positionValidated, getLightingStatus, getLightingMessage, validationChecks, updateCheck, startStabilityCheck, lightingWarningAnim, progressAnim]);
+  }, [brightnessLevel, isActive, positionValidated, getLightingStatus, getLightingMessage, validationChecks, updateCheck, startStabilityCheck, lightingWarningAnim, progressAnim, onLightingStatusChange]);
 
   const getLightingIndicatorColor = useCallback(() => {
     const quality = getLightingQuality(brightnessLevel);

@@ -103,6 +103,7 @@ export default function ScanScreen() {
   const [isEmailSaved, setIsEmailSaved] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<'front' | 'back'>('front');
   const [isGuidedCaptureActive, setIsGuidedCaptureActive] = useState(false);
+  const [isLightingAcceptable, setIsLightingAcceptable] = useState(false);
   const cameraRef = useRef<CameraView>(null);
   const DEV_CODE = '1234';
 
@@ -247,6 +248,18 @@ export default function ScanScreen() {
 
   const captureImage = async () => {
     if (!cameraRef.current) return;
+    
+    if (!isLightingAcceptable) {
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+      Alert.alert(
+        'Poor Lighting',
+        'Please adjust your lighting conditions before capturing. Move to a well-lit area or adjust your position.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
     
     try {
       if (Platform.OS !== 'web') {
@@ -954,6 +967,7 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
                 <GuidedCaptureOverlay
                   isActive={isGuidedCaptureActive}
                   onReadyToCapture={handleGuidedCaptureReady}
+                  onLightingStatusChange={setIsLightingAcceptable}
                 />
                 <View style={styles.cameraControls}>
                   <TouchableOpacity
@@ -964,11 +978,18 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
                     <X size={24} color={Colors.white} />
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={styles.captureButton}
+                    style={[
+                      styles.captureButton,
+                      !isLightingAcceptable && styles.captureButtonDisabled
+                    ]}
                     onPress={captureImage}
                     activeOpacity={0.8}
+                    disabled={!isLightingAcceptable}
                   >
-                    <View style={styles.captureButtonInner} />
+                    <View style={[
+                      styles.captureButtonInner,
+                      !isLightingAcceptable && styles.captureButtonInnerDisabled
+                    ]} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.flipButton}
@@ -1505,6 +1526,13 @@ const styles = StyleSheet.create({
     borderRadius: 29,
     borderWidth: 4,
     borderColor: Colors.black,
+  },
+  captureButtonDisabled: {
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    shadowOpacity: 0,
+  },
+  captureButtonInnerDisabled: {
+    borderColor: 'rgba(0,0,0,0.3)',
   },
   flipButton: {
     width: 50,
