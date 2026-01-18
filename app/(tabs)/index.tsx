@@ -1051,27 +1051,29 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
                   brightnessLevel={measuredBrightness}
                   onLightingStatusChange={setIsLightingAcceptable}
                 />
-                <View style={styles.cameraControls}>
-                  <TouchableOpacity
-                    style={styles.cancelButton}
-                    onPress={stopCamera}
-                    activeOpacity={0.8}
-                  >
-                    <X size={24} color={Colors.white} />
-                  </TouchableOpacity>
-                  <View style={styles.autoCapturePlaceholder}>
-                    <View style={styles.autoCaptureIndicator}>
-                      <Text style={styles.autoCaptureText}>AUTO</Text>
+                {!isGuidedCaptureActive && (
+                  <View style={styles.cameraControls}>
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={stopCamera}
+                      activeOpacity={0.8}
+                    >
+                      <X size={24} color={Colors.white} />
+                    </TouchableOpacity>
+                    <View style={styles.autoCapturePlaceholder}>
+                      <View style={styles.autoCaptureIndicator}>
+                        <Text style={styles.autoCaptureText}>AUTO</Text>
+                      </View>
                     </View>
+                    <TouchableOpacity
+                      style={styles.flipButton}
+                      onPress={toggleCameraFacing}
+                      activeOpacity={0.8}
+                    >
+                      <SwitchCamera size={24} color={Colors.white} />
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity
-                    style={styles.flipButton}
-                    onPress={toggleCameraFacing}
-                    activeOpacity={0.8}
-                  >
-                    <SwitchCamera size={24} color={Colors.white} />
-                  </TouchableOpacity>
-                </View>
+                )}
               </View>
             ) : (
               <View style={styles.consultationOptions}>

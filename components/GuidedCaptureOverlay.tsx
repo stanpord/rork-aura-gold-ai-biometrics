@@ -537,13 +537,17 @@ export default function GuidedCaptureOverlay({
       )}
 
       <View style={styles.tipsContainer}>
-        <View style={styles.tipItem}>
-          <AlertCircle size={12} color={Colors.textMuted} />
-          <Text style={styles.tipText}>Remove glasses for best results</Text>
+        <View style={styles.tipRow}>
+          <View style={styles.tipItem}>
+            <AlertCircle size={14} color={Colors.gold} />
+            <Text style={styles.tipText}>Remove glasses</Text>
+          </View>
         </View>
-        <View style={styles.tipItem}>
-          <Sun size={12} color={Colors.textMuted} />
-          <Text style={styles.tipText}>Face natural light source</Text>
+        <View style={styles.tipRow}>
+          <View style={styles.tipItem}>
+            <Sun size={14} color={Colors.gold} />
+            <Text style={styles.tipText}>Face natural light source</Text>
+          </View>
         </View>
       </View>
     </View>
@@ -747,26 +751,31 @@ const styles = StyleSheet.create({
   },
   tipsContainer: {
     position: 'absolute',
-    bottom: 55,
+    bottom: 20,
     left: 20,
     right: 20,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
+    alignItems: 'center',
+    gap: 10,
+  },
+  tipRow: {
+    alignItems: 'center',
   },
   tipItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
+    gap: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
   },
   tipText: {
-    fontSize: 10,
-    color: Colors.textMuted,
-    fontWeight: '500' as const,
+    fontSize: 13,
+    color: Colors.white,
+    fontWeight: '600' as const,
+    letterSpacing: 0.3,
   },
   lightingWarningContainer: {
     position: 'absolute',
