@@ -21,10 +21,10 @@ import Colors from '@/constants/colors';
 
 type LightingStatus = 'checking' | 'too_dark' | 'too_bright' | 'good';
 
-const MIN_BRIGHTNESS = 30;
-const MAX_BRIGHTNESS = 85;
-const OPTIMAL_MIN = 45;
-const OPTIMAL_MAX = 70;
+const MIN_BRIGHTNESS = 20;
+const MAX_BRIGHTNESS = 92;
+const OPTIMAL_MIN = 30;
+const OPTIMAL_MAX = 80;
 
 
 
