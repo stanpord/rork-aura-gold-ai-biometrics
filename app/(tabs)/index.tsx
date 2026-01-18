@@ -1459,7 +1459,7 @@ const styles = StyleSheet.create({
   },
   cameraControls: {
     position: 'absolute',
-    bottom: 40,
+    bottom: 16,
     left: 0,
     right: 0,
     flexDirection: 'row',
