@@ -14,8 +14,17 @@ import {
   Timer,
   Scan,
   AlertCircle,
+  SunDim,
+  CloudSun,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+
+type LightingStatus = 'checking' | 'too_dark' | 'too_bright' | 'good';
+
+const MIN_BRIGHTNESS = 30;
+const MAX_BRIGHTNESS = 85;
+const OPTIMAL_MIN = 45;
+const OPTIMAL_MAX = 70;
 
 
 
@@ -29,6 +38,7 @@ interface ValidationCheck {
 interface GuidedCaptureOverlayProps {
   onReadyToCapture: () => void;
   isActive: boolean;
+  brightnessLevel?: number;
 }
 
 const OVAL_WIDTH = 220;
@@ -37,7 +47,8 @@ const STABILITY_DURATION = 2000;
 
 export default function GuidedCaptureOverlay({ 
   onReadyToCapture, 
-  isActive 
+  isActive,
+  brightnessLevel = 50,
 }: GuidedCaptureOverlayProps) {
   const [validationChecks, setValidationChecks] = useState<ValidationCheck[]>([
     { id: 'position', label: 'Face centered', icon: Move, passed: false },
@@ -49,6 +60,13 @@ export default function GuidedCaptureOverlay({
   const [isReady, setIsReady] = useState(false);
   const [stabilityProgress, setStabilityProgress] = useState(0);
   const [captureCountdown, setCaptureCountdown] = useState<number | null>(null);
+  const [lightingStatus, setLightingStatus] = useState<LightingStatus>('checking');
+  const [lightingWarning, setLightingWarning] = useState<string | null>(null);
+  const [positionValidated, setPositionValidated] = useState(false);
+  
+  const lightingCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lightingStableCountRef = useRef(0);
+  const lightingWarningAnim = useRef(new Animated.Value(0)).current;
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
@@ -60,6 +78,144 @@ export default function GuidedCaptureOverlay({
 
   const stabilityTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const getLightingStatus = useCallback((brightness: number): LightingStatus => {
+    if (brightness < MIN_BRIGHTNESS) return 'too_dark';
+    if (brightness > MAX_BRIGHTNESS) return 'too_bright';
+    return 'good';
+  }, []);
+
+  const getLightingQuality = useCallback((brightness: number): 'poor' | 'acceptable' | 'optimal' => {
+    if (brightness < MIN_BRIGHTNESS || brightness > MAX_BRIGHTNESS) return 'poor';
+    if (brightness >= OPTIMAL_MIN && brightness <= OPTIMAL_MAX) return 'optimal';
+    return 'acceptable';
+  }, []);
+
+  const getLightingMessage = useCallback((status: LightingStatus): string => {
+    switch (status) {
+      case 'too_dark':
+        return 'Too dark - move to brighter area';
+      case 'too_bright':
+        return 'Too bright - avoid direct sunlight';
+      case 'good':
+        return 'Lighting is good';
+      default:
+        return 'Checking lighting...';
+    }
+  }, []);
+
+  const updateCheck = useCallback((id: string, passed: boolean, index: number) => {
+    setValidationChecks(prev => 
+      prev.map(check => check.id === id ? { ...check, passed } : check)
+    );
+
+    if (passed) {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      
+      Animated.spring(checkmarkScales[index], {
+        toValue: 1,
+        friction: 5,
+        tension: 100,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [checkmarkScales]);
+
+  const startPositionCheck = useCallback(() => {
+    setTimeout(() => {
+      updateCheck('position', true, 0);
+      setPositionValidated(true);
+      setCurrentInstruction('Checking lighting conditions...');
+      
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    }, 1200);
+  }, [updateCheck]);
+
+  const startCaptureCountdown = useCallback(() => {
+    setCaptureCountdown(3);
+    
+    let count = 3;
+    countdownTimerRef.current = setInterval(() => {
+      count -= 1;
+      setCaptureCountdown(count);
+      
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+
+      if (count <= 0) {
+        if (countdownTimerRef.current) {
+          clearInterval(countdownTimerRef.current);
+        }
+        
+        if (Platform.OS !== 'web') {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        }
+        
+        onReadyToCapture();
+      }
+    }, 1000);
+  }, [onReadyToCapture]);
+
+  const startStabilityCheck = useCallback(() => {
+    if (stabilityTimerRef.current) {
+      clearInterval(stabilityTimerRef.current);
+    }
+
+    let progress = 0;
+    const interval = 50;
+    const steps = STABILITY_DURATION / interval;
+    const increment = 100 / steps;
+
+    stabilityTimerRef.current = setInterval(() => {
+      const currentStatus = getLightingStatus(brightnessLevel);
+      if (currentStatus !== 'good') {
+        if (stabilityTimerRef.current) {
+          clearInterval(stabilityTimerRef.current);
+          stabilityTimerRef.current = null;
+        }
+        progress = 0;
+        setStabilityProgress(0);
+        progressAnim.setValue(0);
+        return;
+      }
+
+      progress += increment;
+      setStabilityProgress(Math.min(progress, 100));
+
+      Animated.timing(progressAnim, {
+        toValue: progress / 100,
+        duration: interval,
+        useNativeDriver: false,
+      }).start();
+
+      if (progress >= 100) {
+        if (stabilityTimerRef.current) {
+          clearInterval(stabilityTimerRef.current);
+        }
+        
+        updateCheck('stability', true, 2);
+        setCurrentInstruction('Ready! Capturing in...');
+        
+        if (Platform.OS !== 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: false,
+        }).start();
+
+        setIsReady(true);
+        startCaptureCountdown();
+      }
+    }, interval);
+  }, [updateCheck, progressAnim, glowAnim, startCaptureCountdown, getLightingStatus, brightnessLevel]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -97,123 +253,83 @@ export default function GuidedCaptureOverlay({
     pulse.start();
     scanLine.start();
 
-    simulateValidationSequence();
+    startPositionCheck();
+
+    const currentLightingInterval = lightingCheckIntervalRef.current;
+    const currentStabilityTimer = stabilityTimerRef.current;
+    const currentCountdownTimer = countdownTimerRef.current;
 
     return () => {
       pulse.stop();
       scanLine.stop();
-      if (stabilityTimerRef.current) clearInterval(stabilityTimerRef.current);
-      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+      if (currentStabilityTimer) clearInterval(currentStabilityTimer);
+      if (currentCountdownTimer) clearInterval(currentCountdownTimer);
+      if (currentLightingInterval) clearInterval(currentLightingInterval);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
 
-  const updateCheck = useCallback((id: string, passed: boolean, index: number) => {
-    setValidationChecks(prev => 
-      prev.map(check => check.id === id ? { ...check, passed } : check)
-    );
+  useEffect(() => {
+    if (!isActive || !positionValidated) return;
 
-    if (passed) {
-      if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+    const status = getLightingStatus(brightnessLevel);
+    setLightingStatus(status);
+
+    if (status === 'good') {
+      lightingStableCountRef.current += 1;
+      setLightingWarning(null);
       
-      Animated.spring(checkmarkScales[index], {
-        toValue: 1,
-        friction: 5,
-        tension: 100,
+      Animated.timing(lightingWarningAnim, {
+        toValue: 0,
+        duration: 200,
         useNativeDriver: true,
       }).start();
-    }
-  }, [checkmarkScales]);
 
-  const startCaptureCountdown = useCallback(() => {
-    setCaptureCountdown(3);
-    
-    let count = 3;
-    countdownTimerRef.current = setInterval(() => {
-      count -= 1;
-      setCaptureCountdown(count);
+      if (lightingStableCountRef.current >= 10) {
+        const lightingCheck = validationChecks.find(c => c.id === 'lighting');
+        if (lightingCheck && !lightingCheck.passed) {
+          updateCheck('lighting', true, 1);
+          setCurrentInstruction('Hold still for scan...');
+          startStabilityCheck();
+        }
+      }
+    } else {
+      lightingStableCountRef.current = 0;
+      setLightingWarning(getLightingMessage(status));
       
-      if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
-
-      if (count <= 0) {
-        if (countdownTimerRef.current) {
-          clearInterval(countdownTimerRef.current);
-        }
-        
-        if (Platform.OS !== 'web') {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        }
-        
-        onReadyToCapture();
-      }
-    }, 1000);
-  }, [onReadyToCapture]);
-
-  const startStabilityCheck = useCallback(() => {
-    let progress = 0;
-    const interval = 50;
-    const steps = STABILITY_DURATION / interval;
-    const increment = 100 / steps;
-
-    stabilityTimerRef.current = setInterval(() => {
-      progress += increment;
-      setStabilityProgress(Math.min(progress, 100));
-
-      Animated.timing(progressAnim, {
-        toValue: progress / 100,
-        duration: interval,
-        useNativeDriver: false,
+      Animated.timing(lightingWarningAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
       }).start();
 
-      if (progress >= 100) {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+
+      const lightingCheck = validationChecks.find(c => c.id === 'lighting');
+      if (lightingCheck?.passed) {
+        updateCheck('lighting', false, 1);
         if (stabilityTimerRef.current) {
           clearInterval(stabilityTimerRef.current);
+          stabilityTimerRef.current = null;
         }
-        
-        updateCheck('stability', true, 2);
-        setCurrentInstruction('Ready! Capturing in...');
-        
-        if (Platform.OS !== 'web') {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
-
-        Animated.timing(glowAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: false,
-        }).start();
-
-        setIsReady(true);
-        startCaptureCountdown();
+        setStabilityProgress(0);
+        progressAnim.setValue(0);
+        updateCheck('stability', false, 2);
+        setCurrentInstruction(getLightingMessage(status));
       }
-    }, interval);
-  }, [updateCheck, progressAnim, glowAnim, startCaptureCountdown]);
+    }
+  }, [brightnessLevel, isActive, positionValidated, getLightingStatus, getLightingMessage, validationChecks, updateCheck, startStabilityCheck, lightingWarningAnim, progressAnim]);
 
-  const simulateValidationSequence = useCallback(() => {
-    setTimeout(() => {
-      updateCheck('position', true, 0);
-      setCurrentInstruction('Checking lighting conditions...');
-      
-      if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-    }, 1200);
-
-    setTimeout(() => {
-      updateCheck('lighting', true, 1);
-      setCurrentInstruction('Hold still for scan...');
-      
-      if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-      
-      startStabilityCheck();
-    }, 2400);
-  }, [updateCheck, startStabilityCheck]);
+  const getLightingIndicatorColor = useCallback(() => {
+    const quality = getLightingQuality(brightnessLevel);
+    switch (quality) {
+      case 'optimal': return Colors.success;
+      case 'acceptable': return Colors.gold;
+      default: return Colors.error;
+    }
+  }, [brightnessLevel, getLightingQuality]);
 
   const scanLineTranslateY = scanLineAnim.interpolate({
     inputRange: [0, 1],
@@ -282,6 +398,61 @@ export default function GuidedCaptureOverlay({
           </Text>
         </View>
       </View>
+
+      {lightingWarning && (
+        <Animated.View 
+          style={[
+            styles.lightingWarningContainer,
+            { opacity: lightingWarningAnim }
+          ]}
+        >
+          <View style={styles.lightingWarningBox}>
+            {lightingStatus === 'too_dark' ? (
+              <SunDim size={20} color={Colors.error} />
+            ) : (
+              <Sun size={20} color={Colors.error} />
+            )}
+            <Text style={styles.lightingWarningText}>{lightingWarning}</Text>
+          </View>
+          <View style={styles.lightingTipBox}>
+            {lightingStatus === 'too_dark' ? (
+              <Text style={styles.lightingTipText}>
+                💡 Turn on more lights or move near a window
+              </Text>
+            ) : (
+              <Text style={styles.lightingTipText}>
+                🌤️ Move away from direct light source or window
+              </Text>
+            )}
+          </View>
+        </Animated.View>
+      )}
+
+      {positionValidated && (
+        <View style={styles.lightingMeterContainer}>
+          <View style={styles.lightingMeterLabel}>
+            <CloudSun size={14} color={Colors.textMuted} />
+            <Text style={styles.lightingMeterText}>Lighting</Text>
+          </View>
+          <View style={styles.lightingMeterBarBg}>
+            <View 
+              style={[
+                styles.lightingMeterBarFill,
+                { 
+                  width: `${Math.min(100, Math.max(0, brightnessLevel))}%`,
+                  backgroundColor: getLightingIndicatorColor()
+                }
+              ]} 
+            />
+            <View style={[styles.lightingThreshold, styles.lightingThresholdMin]} />
+            <View style={[styles.lightingThreshold, styles.lightingThresholdMax]} />
+          </View>
+          <Text style={[styles.lightingStatusText, { color: getLightingIndicatorColor() }]}>
+            {getLightingQuality(brightnessLevel) === 'optimal' ? 'Optimal' : 
+             getLightingQuality(brightnessLevel) === 'acceptable' ? 'OK' : 'Poor'}
+          </Text>
+        </View>
+      )}
 
       <View style={styles.checksContainer}>
         {validationChecks.map((check, index) => {
@@ -561,5 +732,91 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.textMuted,
     fontWeight: '500' as const,
+  },
+  lightingWarningContainer: {
+    position: 'absolute',
+    top: 110,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
+    gap: 8,
+  },
+  lightingWarningBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.4)',
+  },
+  lightingWarningText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: Colors.error,
+  },
+  lightingTipBox: {
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  lightingTipText: {
+    fontSize: 11,
+    color: Colors.white,
+    fontWeight: '500' as const,
+  },
+  lightingMeterContainer: {
+    position: 'absolute',
+    bottom: 250,
+    left: 40,
+    right: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  lightingMeterLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    width: 70,
+  },
+  lightingMeterText: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    fontWeight: '600' as const,
+  },
+  lightingMeterBarBg: {
+    flex: 1,
+    height: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 4,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  lightingMeterBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  lightingThreshold: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  lightingThresholdMin: {
+    left: `${MIN_BRIGHTNESS}%`,
+  },
+  lightingThresholdMax: {
+    left: `${MAX_BRIGHTNESS}%`,
+  },
+  lightingStatusText: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    width: 45,
+    textAlign: 'right' as const,
   },
 });
