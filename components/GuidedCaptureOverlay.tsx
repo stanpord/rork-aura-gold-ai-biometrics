@@ -42,8 +42,8 @@ interface GuidedCaptureOverlayProps {
   onLightingStatusChange?: (isAcceptable: boolean) => void;
 }
 
-const OVAL_WIDTH = 220;
-const OVAL_HEIGHT = 300;
+const OVAL_WIDTH = 260;
+const OVAL_HEIGHT = 360;
 const STABILITY_DURATION = 2000;
 
 export default function GuidedCaptureOverlay({ 
@@ -658,7 +658,7 @@ const styles = StyleSheet.create({
   },
   instructionContainer: {
     position: 'absolute',
-    top: 60,
+    top: 40,
     left: 20,
     right: 20,
     alignItems: 'center',
@@ -685,12 +685,12 @@ const styles = StyleSheet.create({
   },
   checksContainer: {
     position: 'absolute',
-    bottom: 140,
+    bottom: 120,
     left: 20,
     right: 20,
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 24,
+    gap: 32,
   },
   checkItem: {
     alignItems: 'center',
@@ -721,11 +721,11 @@ const styles = StyleSheet.create({
   },
   stabilityContainer: {
     position: 'absolute',
-    bottom: 200,
+    bottom: 215,
     left: 40,
     right: 40,
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   stabilityBarBackground: {
     width: '100%',
@@ -747,29 +747,34 @@ const styles = StyleSheet.create({
   },
   tipsContainer: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 55,
     left: 20,
     right: 20,
-    alignItems: 'center',
-    gap: 6,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 20,
   },
   tipItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   tipText: {
-    fontSize: 11,
+    fontSize: 10,
     color: Colors.textMuted,
     fontWeight: '500' as const,
   },
   lightingWarningContainer: {
     position: 'absolute',
-    top: 110,
+    top: 95,
     left: 20,
     right: 20,
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   lightingWarningBox: {
     flexDirection: 'row',
@@ -800,7 +805,7 @@ const styles = StyleSheet.create({
   },
   lightingMeterContainer: {
     position: 'absolute',
-    bottom: 250,
+    bottom: 185,
     left: 40,
     right: 40,
     flexDirection: 'row',
