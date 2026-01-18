@@ -77,6 +77,29 @@ export interface SignatureRecord {
   timestamp: string;
 }
 
+export interface ScanRecord {
+  id: string;
+  scanDate: Date;
+  auraScore: number;
+  faceType: string;
+  skinIQ?: SkinIQ;
+  volumeAssessment?: VolumeZoneAnalysis[];
+  fitzpatrickAssessment?: FitzpatrickAssessment;
+  roadmap: ClinicalProcedure[];
+  peptides: PeptideTherapy[];
+  ivDrips: IVOptimization[];
+  capturedImage?: string;
+  notes?: string;
+}
+
+export interface ScanComparison {
+  metric: string;
+  previousValue: string | number;
+  currentValue: string | number;
+  change: 'improved' | 'declined' | 'stable';
+  changeAmount?: number;
+}
+
 export interface Lead {
   id: string;
   name: string;
@@ -96,6 +119,8 @@ export interface Lead {
   selectedTreatments?: SelectedTreatment[];
   patientConsent?: PatientConsent;
   signatureLog?: SignatureRecord[];
+  scanHistory?: ScanRecord[];
+  lastScanDate?: Date;
 }
 
 export interface TreatmentRecurrence {

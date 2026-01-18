@@ -26,6 +26,7 @@ import {
   Printer,
   ChevronDown,
   ChevronUp,
+  History,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -33,6 +34,7 @@ import { Lead, ClinicalProcedure, PeptideTherapy, IVOptimization, SelectedTreatm
 import { useApp } from '@/contexts/AppContext';
 import TreatmentDosingModal from '@/components/TreatmentDosingModal';
 import PatientSummaryModal from '@/components/PatientSummaryModal';
+import ScanHistoryModal from '@/components/ScanHistoryModal';
 
 interface LeadDetailModalProps {
   visible: boolean;
@@ -41,7 +43,7 @@ interface LeadDetailModalProps {
 }
 
 export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailModalProps) {
-  const { updateLeadTreatments, getLeadById } = useApp();
+  const { updateLeadTreatments, getLeadById, getPatientScanHistory } = useApp();
   
   const currentLead = lead?.id ? getLeadById(lead.id) || lead : lead;
   const [selectedTreatmentForDosing, setSelectedTreatmentForDosing] = useState<{
@@ -50,6 +52,12 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
   } | null>(null);
   const [showClientSummary, setShowClientSummary] = useState(false);
   const [showPatientSummary, setShowPatientSummary] = useState(false);
+  const [showScanHistory, setShowScanHistory] = useState(false);
+
+  const scanHistoryCount = useMemo(() => {
+    if (!currentLead) return 0;
+    return getPatientScanHistory(currentLead.id).length;
+  }, [currentLead, getPatientScanHistory]);
 
   const confirmedTreatments = useMemo(() => currentLead?.selectedTreatments || [], [currentLead?.selectedTreatments]);
 
@@ -173,6 +181,23 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
             </View>
           </View>
           <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.historyButton}
+              onPress={() => {
+                setShowScanHistory(true);
+                if (Platform.OS !== 'web') {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <History size={16} color={Colors.gold} />
+              {scanHistoryCount > 1 && (
+                <View style={styles.historyBadge}>
+                  <Text style={styles.historyBadgeText}>{scanHistoryCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.printSummaryButton}
               onPress={() => {
@@ -676,6 +701,12 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
         onClose={() => setShowPatientSummary(false)}
         lead={currentLead}
       />
+
+      <ScanHistoryModal
+        visible={showScanHistory}
+        onClose={() => setShowScanHistory(false)}
+        lead={currentLead}
+      />
     </Modal>
   );
 }
@@ -729,6 +760,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  historyButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative' as const,
+  },
+  historyBadge: {
+    position: 'absolute' as const,
+    top: -4,
+    right: -4,
+    backgroundColor: Colors.gold,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  historyBadgeText: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: Colors.black,
   },
   printSummaryButton: {
     flexDirection: 'row',

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, AppStateStatus } from 'react-native';
 import createContextHook from '@nkzw/create-context-hook';
-import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment, TreatmentConfig, DEFAULT_TREATMENT_CONFIGS, PatientBasicInfo, ClinicalProcedure, SignatureRecord } from '@/types';
+import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment, TreatmentConfig, DEFAULT_TREATMENT_CONFIGS, PatientBasicInfo, ClinicalProcedure, SignatureRecord, ScanRecord } from '@/types';
 import { encryptObject, decryptObject, isEncryptedData, getEncryptionStatus, EncryptionStatus } from '@/utils/encryption';
 import { initializeAuditLog, logAuditEvent, logAuthEvent, logPHIAccess, logConsentEvent, getAuditSummary } from '@/utils/auditLog';
 
@@ -788,6 +788,91 @@ export const [AppProvider, useApp] = createContextHook(() => {
     }
   }, [leads]);
 
+  const findPatientByPhone = useCallback((phone: string): Lead | undefined => {
+    const normalizedPhone = phone.replace(/\D/g, '');
+    return leads.find(lead => lead.phone.replace(/\D/g, '') === normalizedPhone);
+  }, [leads]);
+
+  const addScanToExistingPatient = useCallback(async (leadId: string, newScanData: Omit<ScanRecord, 'id' | 'scanDate'>): Promise<void> => {
+    const newScan: ScanRecord = {
+      ...newScanData,
+      id: Date.now().toString(),
+      scanDate: new Date(),
+    };
+
+    const updatedLeads = leads.map(lead => {
+      if (lead.id === leadId) {
+        const previousScan: ScanRecord = {
+          id: `prev_${lead.createdAt.getTime()}`,
+          scanDate: lead.lastScanDate || lead.createdAt,
+          auraScore: lead.auraScore,
+          faceType: lead.faceType,
+          skinIQ: lead.skinIQ,
+          volumeAssessment: lead.volumeAssessment,
+          fitzpatrickAssessment: lead.fitzpatrickAssessment,
+          roadmap: lead.roadmap,
+          peptides: lead.peptides,
+          ivDrips: lead.ivDrips,
+        };
+
+        const existingHistory = lead.scanHistory || [];
+        const hasCurrentInHistory = existingHistory.some(s => s.auraScore === lead.auraScore && s.faceType === lead.faceType);
+        
+        const updatedHistory = hasCurrentInHistory 
+          ? [...existingHistory, newScan]
+          : [...existingHistory, previousScan, newScan];
+
+        return {
+          ...lead,
+          auraScore: newScan.auraScore,
+          faceType: newScan.faceType,
+          skinIQ: newScan.skinIQ,
+          volumeAssessment: newScan.volumeAssessment,
+          fitzpatrickAssessment: newScan.fitzpatrickAssessment,
+          roadmap: newScan.roadmap,
+          peptides: newScan.peptides,
+          ivDrips: newScan.ivDrips,
+          scanHistory: updatedHistory,
+          lastScanDate: new Date(),
+        };
+      }
+      return lead;
+    });
+
+    setLeads(updatedLeads);
+    try {
+      const encrypted = await encryptObject(updatedLeads);
+      await AsyncStorage.setItem(STORAGE_KEYS.LEADS, encrypted);
+      console.log('[AppContext] New scan added to patient:', leadId);
+    } catch (error) {
+      console.log('[AppContext] Error adding scan to patient:', error);
+    }
+  }, [leads]);
+
+  const getPatientScanHistory = useCallback((leadId: string): ScanRecord[] => {
+    const lead = leads.find(l => l.id === leadId);
+    if (!lead) return [];
+    
+    if (lead.scanHistory && lead.scanHistory.length > 0) {
+      return lead.scanHistory.sort((a, b) => 
+        new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()
+      );
+    }
+    
+    return [{
+      id: `initial_${lead.id}`,
+      scanDate: lead.createdAt,
+      auraScore: lead.auraScore,
+      faceType: lead.faceType,
+      skinIQ: lead.skinIQ,
+      volumeAssessment: lead.volumeAssessment,
+      fitzpatrickAssessment: lead.fitzpatrickAssessment,
+      roadmap: lead.roadmap,
+      peptides: lead.peptides,
+      ivDrips: lead.ivDrips,
+    }];
+  }, [leads]);
+
   const stats = isStaffAuthenticated ? {
     pipeline: leads.reduce((acc, lead) => acc + (lead.estimatedValue || 0), 0),
     scans: leads.length,
@@ -823,6 +908,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
     getLeadById,
     attachConsentToLead,
     updateLeadEmail,
+    findPatientByPhone,
+    addScanToExistingPatient,
+    getPatientScanHistory,
     resetScan,
     stats,
     hasCompletedIntro,
