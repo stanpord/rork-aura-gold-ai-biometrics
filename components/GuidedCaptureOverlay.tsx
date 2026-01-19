@@ -10,12 +10,10 @@ import * as Haptics from 'expo-haptics';
 import {
   CheckCircle,
   Sun,
+  SunDim,
+  Camera,
   Move,
   Timer,
-  Scan,
-  AlertCircle,
-  SunDim,
-  CloudSun,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
@@ -23,8 +21,6 @@ type LightingStatus = 'checking' | 'too_dark' | 'too_bright' | 'good';
 
 const MIN_BRIGHTNESS = 20;
 const MAX_BRIGHTNESS = 92;
-const OPTIMAL_MIN = 30;
-const OPTIMAL_MAX = 80;
 
 
 
@@ -42,8 +38,8 @@ interface GuidedCaptureOverlayProps {
   onLightingStatusChange?: (isAcceptable: boolean) => void;
 }
 
-const OVAL_WIDTH = 260;
-const OVAL_HEIGHT = 360;
+const OVAL_WIDTH = 240;
+const OVAL_HEIGHT = 320;
 const STABILITY_DURATION = 2000;
 
 export default function GuidedCaptureOverlay({ 
@@ -88,12 +84,6 @@ export default function GuidedCaptureOverlay({
     if (brightness < MIN_BRIGHTNESS) return 'too_dark';
     if (brightness > MAX_BRIGHTNESS) return 'too_bright';
     return 'good';
-  }, []);
-
-  const getLightingQuality = useCallback((brightness: number): 'poor' | 'acceptable' | 'optimal' => {
-    if (brightness < MIN_BRIGHTNESS || brightness > MAX_BRIGHTNESS) return 'poor';
-    if (brightness >= OPTIMAL_MIN && brightness <= OPTIMAL_MAX) return 'optimal';
-    return 'acceptable';
   }, []);
 
   const getLightingMessage = useCallback((status: LightingStatus): string => {
@@ -387,23 +377,9 @@ export default function GuidedCaptureOverlay({
     };
   }, [brightnessLevel, isActive, positionValidated, getLightingStatus, getLightingMessage, validationChecks, updateCheck, startStabilityCheck, lightingWarningAnim, progressAnim, onLightingStatusChange]);
 
-  const getLightingIndicatorColor = useCallback(() => {
-    const quality = getLightingQuality(brightnessLevel);
-    switch (quality) {
-      case 'optimal': return Colors.success;
-      case 'acceptable': return Colors.gold;
-      default: return Colors.error;
-    }
-  }, [brightnessLevel, getLightingQuality]);
-
   const scanLineTranslateY = scanLineAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [-OVAL_HEIGHT / 2, OVAL_HEIGHT / 2],
-  });
-
-  const glowColor = glowAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['rgba(245, 158, 11, 0.4)', 'rgba(16, 185, 129, 0.8)'],
   });
 
   const progressWidth = progressAnim.interpolate({
@@ -411,37 +387,33 @@ export default function GuidedCaptureOverlay({
     outputRange: ['0%', '100%'],
   });
 
+  const getStatusColor = () => {
+    if (isReady) return Colors.success;
+    if (lightingWarning) return Colors.error;
+    return 'rgba(255, 255, 255, 0.6)';
+  };
+
   return (
     <View style={styles.container} pointerEvents="box-none">
+      {/* Main oval guide */}
       <View style={styles.ovalContainer}>
         <Animated.View
           style={[
             styles.ovalGuide,
             {
               transform: [{ scale: pulseAnim }],
-              borderColor: glowColor,
-              shadowColor: isReady ? Colors.success : Colors.gold,
+              borderColor: getStatusColor(),
             },
           ]}
         >
-          <View style={styles.cornerTL} />
-          <View style={styles.cornerTR} />
-          <View style={styles.cornerBL} />
-          <View style={styles.cornerBR} />
-
           {!isReady && (
             <Animated.View
               style={[
                 styles.scanLine,
-                {
-                  transform: [{ translateY: scanLineTranslateY }],
-                },
+                { transform: [{ translateY: scanLineTranslateY }] },
               ]}
             />
           )}
-
-          <View style={styles.crosshairH} />
-          <View style={styles.crosshairV} />
         </Animated.View>
 
         {captureCountdown !== null && captureCountdown > 0 && (
@@ -451,139 +423,66 @@ export default function GuidedCaptureOverlay({
         )}
       </View>
 
-      <View style={styles.instructionContainer}>
-        <View style={styles.instructionBox}>
+      {/* Status bar at top */}
+      <View style={styles.statusBar}>
+        <View style={[
+          styles.statusPill,
+          isReady && styles.statusPillReady,
+          lightingWarning && styles.statusPillWarning,
+        ]}>
           {isReady ? (
-            <CheckCircle size={18} color={Colors.success} />
+            <CheckCircle size={16} color={Colors.success} />
+          ) : lightingWarning ? (
+            lightingStatus === 'too_dark' ? (
+              <SunDim size={16} color={Colors.error} />
+            ) : (
+              <Sun size={16} color={Colors.error} />
+            )
           ) : (
-            <Scan size={18} color={Colors.gold} />
+            <Camera size={16} color="rgba(255,255,255,0.8)" />
           )}
-          <Text style={[styles.instructionText, isReady && styles.instructionReady]}>
-            {currentInstruction}
+          <Text style={[
+            styles.statusText,
+            isReady && styles.statusTextReady,
+            lightingWarning && styles.statusTextWarning,
+          ]}>
+            {lightingWarning || currentInstruction}
           </Text>
         </View>
       </View>
 
-      {lightingWarning && (
-        <Animated.View 
-          style={[
-            styles.lightingWarningContainer,
-            { opacity: lightingWarningAnim }
-          ]}
-        >
-          <View style={styles.lightingWarningBox}>
-            {lightingStatus === 'too_dark' ? (
-              <SunDim size={20} color={Colors.error} />
-            ) : (
-              <Sun size={20} color={Colors.error} />
-            )}
-            <Text style={styles.lightingWarningText}>{lightingWarning}</Text>
-          </View>
-          <View style={styles.lightingTipBox}>
-            {lightingStatus === 'too_dark' ? (
-              <Text style={styles.lightingTipText}>
-                💡 Turn on more lights or move near a window
-              </Text>
-            ) : (
-              <Text style={styles.lightingTipText}>
-                🌤️ Move away from direct light source or window
-              </Text>
-            )}
-          </View>
-        </Animated.View>
-      )}
-
-      {positionValidated && (
-        <View style={styles.lightingMeterContainer}>
-          <View style={styles.lightingMeterLabel}>
-            <CloudSun size={14} color={Colors.textMuted} />
-            <Text style={styles.lightingMeterText}>Lighting</Text>
-          </View>
-          <View style={styles.lightingMeterBarBg}>
-            <View 
-              style={[
-                styles.lightingMeterBarFill,
-                { 
-                  width: `${Math.min(100, Math.max(0, brightnessLevel))}%`,
-                  backgroundColor: getLightingIndicatorColor()
-                }
-              ]} 
-            />
-            <View style={[styles.lightingThreshold, styles.lightingThresholdMin]} />
-            <View style={[styles.lightingThreshold, styles.lightingThresholdMax]} />
-          </View>
-          <Text style={[styles.lightingStatusText, { color: getLightingIndicatorColor() }]}>
-            {getLightingQuality(brightnessLevel) === 'optimal' ? 'Optimal' : 
-             getLightingQuality(brightnessLevel) === 'acceptable' ? 'OK' : 'Poor'}
-          </Text>
-        </View>
-      )}
-
-      <View style={styles.checksContainer}>
-        {validationChecks.map((check, index) => {
-          const IconComponent = check.icon;
-          return (
-            <View key={check.id} style={styles.checkItem}>
-              <Animated.View
-                style={[
-                  styles.checkIconContainer,
-                  check.passed && styles.checkIconPassed,
-                  {
-                    transform: [
-                      {
-                        scale: check.passed
-                          ? checkmarkScales[index].interpolate({
-                              inputRange: [0, 1],
-                              outputRange: [0.8, 1],
-                            })
-                          : 1,
-                      },
-                    ],
-                  },
-                ]}
-              >
-                {check.passed ? (
-                  <CheckCircle size={16} color={Colors.success} />
-                ) : (
-                  <IconComponent size={16} color={Colors.textMuted} />
-                )}
-              </Animated.View>
-              <Text
-                style={[styles.checkLabel, check.passed && styles.checkLabelPassed]}
-              >
-                {check.label}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
-
+      {/* Progress indicator */}
       {stabilityProgress > 0 && stabilityProgress < 100 && (
-        <View style={styles.stabilityContainer}>
-          <View style={styles.stabilityBarBackground}>
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBarBg}>
             <Animated.View
-              style={[styles.stabilityBarFill, { width: progressWidth }]}
+              style={[styles.progressBarFill, { width: progressWidth }]}
             />
           </View>
-          <Text style={styles.stabilityText}>
-            {Math.round(stabilityProgress)}% stable
-          </Text>
         </View>
       )}
 
-      <View style={styles.tipsContainer}>
-        <View style={styles.tipRow}>
-          <View style={styles.tipItem}>
-            <AlertCircle size={14} color={Colors.gold} />
-            <Text style={styles.tipText}>Remove glasses</Text>
-          </View>
-        </View>
-        <View style={styles.tipRow}>
-          <View style={styles.tipItem}>
-            <Sun size={14} color={Colors.gold} />
-            <Text style={styles.tipText}>Face natural light source</Text>
-          </View>
-        </View>
+      {/* Minimal status dots */}
+      <View style={styles.dotsContainer}>
+        {validationChecks.map((check, index) => (
+          <Animated.View
+            key={check.id}
+            style={[
+              styles.statusDot,
+              check.passed && styles.statusDotPassed,
+              {
+                transform: [{
+                  scale: check.passed
+                    ? checkmarkScales[index].interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.8, 1],
+                      })
+                    : 1,
+                }],
+              },
+            ]}
+          />
+        ))}
       </View>
     </View>
   );
@@ -604,83 +503,16 @@ const styles = StyleSheet.create({
     width: OVAL_WIDTH,
     height: OVAL_HEIGHT,
     borderRadius: OVAL_WIDTH / 2,
-    borderWidth: 3,
+    borderWidth: 2,
     backgroundColor: 'transparent',
     overflow: 'hidden',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 20,
-  },
-  cornerTL: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    width: 24,
-    height: 24,
-    borderTopWidth: 3,
-    borderLeftWidth: 3,
-    borderColor: Colors.gold,
-    borderTopLeftRadius: 8,
-  },
-  cornerTR: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    width: 24,
-    height: 24,
-    borderTopWidth: 3,
-    borderRightWidth: 3,
-    borderColor: Colors.gold,
-    borderTopRightRadius: 8,
-  },
-  cornerBL: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    width: 24,
-    height: 24,
-    borderBottomWidth: 3,
-    borderLeftWidth: 3,
-    borderColor: Colors.gold,
-    borderBottomLeftRadius: 8,
-  },
-  cornerBR: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    width: 24,
-    height: 24,
-    borderBottomWidth: 3,
-    borderRightWidth: 3,
-    borderColor: Colors.gold,
-    borderBottomRightRadius: 8,
   },
   scanLine: {
     position: 'absolute',
-    left: 10,
-    right: 10,
-    height: 2,
-    backgroundColor: Colors.gold,
-    shadowColor: Colors.gold,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 10,
-  },
-  crosshairH: {
-    position: 'absolute',
-    top: '50%',
-    left: '25%',
-    right: '25%',
+    left: 20,
+    right: 20,
     height: 1,
-    backgroundColor: 'rgba(245, 158, 11, 0.3)',
-  },
-  crosshairV: {
-    position: 'absolute',
-    left: '50%',
-    top: '25%',
-    bottom: '25%',
-    width: 1,
-    backgroundColor: 'rgba(245, 158, 11, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
   },
   countdownContainer: {
     position: 'absolute',
@@ -688,214 +520,77 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   countdownText: {
-    fontSize: 72,
-    fontWeight: '900' as const,
+    fontSize: 64,
+    fontWeight: '300' as const,
     color: Colors.white,
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 10,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
   },
-  instructionContainer: {
+  statusBar: {
     position: 'absolute',
-    top: 40,
-    left: 20,
-    right: 20,
+    top: 50,
+    left: 24,
+    right: 24,
     alignItems: 'center',
   },
-  instructionBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
-  },
-  instructionText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.white,
-    letterSpacing: -0.3,
-  },
-  instructionReady: {
-    color: Colors.success,
-  },
-  checksContainer: {
-    position: 'absolute',
-    bottom: 120,
-    left: 20,
-    right: 20,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 32,
-  },
-  checkItem: {
-    alignItems: 'center',
-    gap: 6,
-  },
-  checkIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  checkIconPassed: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    borderColor: 'rgba(16, 185, 129, 0.4)',
-  },
-  checkLabel: {
-    fontSize: 10,
-    fontWeight: '600' as const,
-    color: Colors.textMuted,
-    letterSpacing: 0.3,
-  },
-  checkLabelPassed: {
-    color: Colors.success,
-  },
-  stabilityContainer: {
-    position: 'absolute',
-    bottom: 215,
-    left: 40,
-    right: 40,
-    alignItems: 'center',
-    gap: 6,
-  },
-  stabilityBarBackground: {
-    width: '100%',
-    height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  stabilityBarFill: {
-    height: '100%',
-    backgroundColor: Colors.gold,
-    borderRadius: 3,
-  },
-  stabilityText: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-    color: Colors.gold,
-    letterSpacing: 0.5,
-  },
-  tipsContainer: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-    alignItems: 'center',
-    gap: 10,
-  },
-  tipRow: {
-    alignItems: 'center',
-  },
-  tipItem: {
+  statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.4)',
   },
-  tipText: {
-    fontSize: 13,
-    color: Colors.white,
-    fontWeight: '600' as const,
-    letterSpacing: 0.3,
+  statusPillReady: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
   },
-  lightingWarningContainer: {
-    position: 'absolute',
-    top: 95,
-    left: 20,
-    right: 20,
-    alignItems: 'center',
-    gap: 6,
+  statusPillWarning: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
   },
-  lightingWarningBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.4)',
+  statusText: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+    color: 'rgba(255, 255, 255, 0.9)',
   },
-  lightingWarningText: {
-    fontSize: 13,
-    fontWeight: '600' as const,
+  statusTextReady: {
+    color: Colors.success,
+  },
+  statusTextWarning: {
     color: Colors.error,
   },
-  lightingTipBox: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  lightingTipText: {
-    fontSize: 11,
-    color: Colors.white,
-    fontWeight: '500' as const,
-  },
-  lightingMeterContainer: {
+  progressContainer: {
     position: 'absolute',
-    bottom: 185,
-    left: 40,
-    right: 40,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    bottom: 140,
+    left: 60,
+    right: 60,
   },
-  lightingMeterLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    width: 70,
-  },
-  lightingMeterText: {
-    fontSize: 10,
-    color: Colors.textMuted,
-    fontWeight: '600' as const,
-  },
-  lightingMeterBarBg: {
-    flex: 1,
-    height: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 4,
+  progressBarBg: {
+    width: '100%',
+    height: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 2,
     overflow: 'hidden',
-    position: 'relative',
   },
-  lightingMeterBarFill: {
+  progressBarFill: {
     height: '100%',
-    borderRadius: 4,
+    backgroundColor: Colors.white,
+    borderRadius: 2,
   },
-  lightingThreshold: {
+  dotsContainer: {
     position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    bottom: 100,
+    flexDirection: 'row',
+    gap: 8,
   },
-  lightingThresholdMin: {
-    left: `${MIN_BRIGHTNESS}%`,
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
   },
-  lightingThresholdMax: {
-    left: `${MAX_BRIGHTNESS}%`,
-  },
-  lightingStatusText: {
-    fontSize: 10,
-    fontWeight: '700' as const,
-    width: 45,
-    textAlign: 'right' as const,
+  statusDotPassed: {
+    backgroundColor: Colors.success,
   },
 });
