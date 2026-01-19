@@ -229,12 +229,12 @@ export default function GuidedCaptureOverlay({
         Animated.timing(pulseAnim, {
           toValue: 1.05,
           duration: 1000,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
           duration: 1000,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ])
     );
