@@ -71,6 +71,7 @@ export default function GuidedCaptureOverlay({
   const lastBrightnessRef = useRef(brightnessLevel);
   const stableBrightnessTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lightingWarningAnim = useRef(new Animated.Value(0)).current;
+  const hasCapturedRef = useRef(false);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
@@ -140,10 +141,23 @@ export default function GuidedCaptureOverlay({
   }, [updateCheck]);
 
   const startCaptureCountdown = useCallback(() => {
+    if (hasCapturedRef.current) {
+      console.log('[GuidedCapture] Already captured, skipping countdown');
+      return;
+    }
+    
     setCaptureCountdown(3);
     
     let count = 3;
     countdownTimerRef.current = setInterval(() => {
+      if (hasCapturedRef.current) {
+        if (countdownTimerRef.current) {
+          clearInterval(countdownTimerRef.current);
+          countdownTimerRef.current = null;
+        }
+        return;
+      }
+      
       count -= 1;
       setCaptureCountdown(count);
       
@@ -154,6 +168,24 @@ export default function GuidedCaptureOverlay({
       if (count <= 0) {
         if (countdownTimerRef.current) {
           clearInterval(countdownTimerRef.current);
+          countdownTimerRef.current = null;
+        }
+        
+        if (hasCapturedRef.current) {
+          console.log('[GuidedCapture] Already captured, skipping capture');
+          return;
+        }
+        
+        hasCapturedRef.current = true;
+        console.log('[GuidedCapture] Capturing single photo');
+        
+        if (stabilityTimerRef.current) {
+          clearInterval(stabilityTimerRef.current);
+          stabilityTimerRef.current = null;
+        }
+        if (stableBrightnessTimerRef.current) {
+          clearInterval(stableBrightnessTimerRef.current);
+          stableBrightnessTimerRef.current = null;
         }
         
         if (Platform.OS !== 'web') {
@@ -222,7 +254,10 @@ export default function GuidedCaptureOverlay({
   }, [updateCheck, progressAnim, glowAnim, startCaptureCountdown, getLightingStatus, brightnessLevel]);
 
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive) {
+      hasCapturedRef.current = false;
+      return;
+    }
 
     const pulse = Animated.loop(
       Animated.sequence([

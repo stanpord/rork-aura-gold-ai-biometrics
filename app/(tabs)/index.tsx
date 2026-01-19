@@ -108,6 +108,7 @@ export default function ScanScreen() {
   const [measuredBrightness, setMeasuredBrightness] = useState(0);
   const brightnessCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cameraRef = useRef<CameraView>(null);
+  const isCapturingRef = useRef(false);
   const DEV_CODE = '1234';
 
   const [showDevPrompt, setShowDevPrompt] = useState(false);
@@ -202,6 +203,7 @@ export default function ScanScreen() {
     }
     setIsCameraActive(true);
     setIsGuidedCaptureActive(true);
+    isCapturingRef.current = false;
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
@@ -237,6 +239,7 @@ export default function ScanScreen() {
     setIsCameraActive(false);
     setIsGuidedCaptureActive(false);
     setMeasuredBrightness(0);
+    isCapturingRef.current = false;
     if (brightnessCheckRef.current) {
       clearInterval(brightnessCheckRef.current);
       brightnessCheckRef.current = null;
@@ -357,6 +360,12 @@ export default function ScanScreen() {
     console.log('Guided capture ready - checking lighting before taking photo');
     if (!cameraRef.current) return;
     
+    if (isCapturingRef.current) {
+      console.log('Already capturing, ignoring duplicate call');
+      return;
+    }
+    isCapturingRef.current = true;
+    
     if (!isLightingAcceptable) {
       console.log('Lighting became unacceptable during countdown - blocking capture');
       if (Platform.OS !== 'web') {
@@ -388,6 +397,7 @@ export default function ScanScreen() {
       }
     } catch (error) {
       console.log('Error capturing image:', error);
+      isCapturingRef.current = false;
       Alert.alert('Error', 'Failed to capture image. Please try again.');
     }
   }, [setCapturedImage, patientBasicInfo?.email, isLightingAcceptable]);
