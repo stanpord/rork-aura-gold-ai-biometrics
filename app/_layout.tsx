@@ -4,11 +4,12 @@ import { trpc, trpcClient } from '@/lib/trpc';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppProvider, useApp } from '@/contexts/AppContext';
 import BiometricIntroScan from '@/components/BiometricIntroScan';
 import Colors from '@/constants/colors';
+import BiomarkerLoadingScreen from '@/components/BiomarkerLoadingScreen';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -52,11 +53,7 @@ function AppContent() {
   };
 
   if (isLoadingIntro) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.gold} />
-      </View>
-    );
+    return <BiomarkerLoadingScreen />;
   }
 
   return (
@@ -82,11 +79,4 @@ export default function RootLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: Colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+const styles = StyleSheet.create({});
