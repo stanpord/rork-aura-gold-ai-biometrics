@@ -5,7 +5,7 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
-  ImageBackground,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '@/constants/colors';
@@ -40,11 +40,24 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
   const [activeBiomarker, setActiveBiomarker] = useState(0);
   const [phase, setPhase] = useState<'biomarkers' | 'scanning'>('biomarkers');
+  const [imageLoaded, setImageLoaded] = useState(false);
   
   const phaseTransitionAnim = useRef(new Animated.Value(1)).current;
   const scanLineAnim = useRef(new Animated.Value(0)).current;
   const scanPulseAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Image.prefetch(WOMAN_IMAGE)
+      .then(() => {
+        console.log('Image preloaded successfully');
+        setImageLoaded(true);
+      })
+      .catch((err) => {
+        console.log('Image prefetch failed, will load on demand:', err);
+        setImageLoaded(true);
+      });
+  }, []);
 
   useEffect(() => {
     const staggerDelay = 40;
@@ -207,11 +220,14 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
 
     return (
       <Animated.View style={[styles.scanningPhase, { opacity: phaseTransitionAnim }]}>
-        <ImageBackground
-          source={{ uri: WOMAN_IMAGE }}
-          style={styles.imageContainer}
-          resizeMode="cover"
-        >
+        <View style={styles.imageContainer}>
+          <Image
+            source={{ uri: WOMAN_IMAGE }}
+            style={styles.backgroundImage}
+            resizeMode="cover"
+            onLoad={() => console.log('Image loaded in render')}
+            onError={(e) => console.log('Image error:', e.nativeEvent.error)}
+          />
           <LinearGradient
             colors={['rgba(0, 0, 0, 0.3)', 'transparent', 'rgba(0, 0, 0, 0.5)']}
             style={StyleSheet.absoluteFill}
@@ -265,7 +281,7 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
             <Animated.View style={[styles.facePoint, styles.facePointLeftEye, { opacity: glowAnim }]} />
             <Animated.View style={[styles.facePoint, styles.facePointRightEye, { opacity: glowAnim }]} />
           </View>
-        </ImageBackground>
+        </View>
 
         <View style={styles.scanningFooter}>
           <View style={styles.scanningHeader}>
@@ -538,6 +554,11 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     backgroundColor: '#0a1015',
+  },
+  backgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
   },
   scanLine: {
     position: 'absolute',
