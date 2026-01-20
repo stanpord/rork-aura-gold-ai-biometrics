@@ -34,7 +34,8 @@ import {
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
-import { Lead, ClinicalProcedure, PeptideTherapy, IVOptimization, SelectedTreatment, TreatmentDosingSettings, ComplianceSignOff, TREATMENT_RECURRENCE_MAP, SafetyStatus } from '@/types';
+import { Lead, ClinicalProcedure, PeptideTherapy, IVOptimization, SelectedTreatment, TreatmentDosingSettings, ComplianceSignOff, TREATMENT_RECURRENCE_MAP, SafetyStatus, PatientHealthProfile } from '@/types';
+import { checkTreatmentSafety, getExplainableReason, PatientDemographics } from '@/constants/contraindications';
 import { useApp } from '@/contexts/AppContext';
 import TreatmentDosingModal from '@/components/TreatmentDosingModal';
 import PatientSummaryModal from '@/components/PatientSummaryModal';
@@ -47,7 +48,7 @@ interface LeadDetailModalProps {
 }
 
 export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailModalProps) {
-  const { updateLeadTreatments, getLeadById, getPatientScanHistory, getPatientConditions, getTreatmentSafetyStatus, patientHealthProfile } = useApp();
+  const { updateLeadTreatments, getLeadById, getPatientScanHistory, patientHealthProfile, patientBasicInfo, currentAnalysis } = useApp();
   
   const currentLead = lead?.id ? getLeadById(lead.id) || lead : lead;
   const [selectedTreatmentForDosing, setSelectedTreatmentForDosing] = useState<{
@@ -65,12 +66,95 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
 
   const confirmedTreatments = useMemo(() => currentLead?.selectedTreatments || [], [currentLead?.selectedTreatments]);
 
-  const patientConditions = useMemo(() => getPatientConditions(), [getPatientConditions]);
+  const getLeadHealthProfile = useCallback((): PatientHealthProfile | null => {
+    if (currentLead?.healthProfile) {
+      return currentLead.healthProfile;
+    }
+    return patientHealthProfile;
+  }, [currentLead, patientHealthProfile]);
+
+  const calculateAgeFromDOB = useCallback((dateOfBirth: string): number | undefined => {
+    if (!dateOfBirth) return undefined;
+    try {
+      const dob = new Date(dateOfBirth);
+      const today = new Date();
+      let age = today.getFullYear() - dob.getFullYear();
+      const monthDiff = today.getMonth() - dob.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+      return age >= 0 ? age : undefined;
+    } catch {
+      return undefined;
+    }
+  }, []);
+
+  const getLeadDemographics = useCallback((): PatientDemographics => {
+    const demographics: PatientDemographics = {};
+    
+    if (patientBasicInfo?.dateOfBirth) {
+      demographics.patientAge = calculateAgeFromDOB(patientBasicInfo.dateOfBirth);
+    }
+    
+    const fitzpatrick = currentLead?.fitzpatrickAssessment?.type || currentAnalysis?.fitzpatrickAssessment?.type;
+    if (fitzpatrick) {
+      demographics.patientSkinType = fitzpatrick;
+    }
+    
+    return demographics;
+  }, [patientBasicInfo, currentLead, currentAnalysis, calculateAgeFromDOB]);
+
+  const getLeadConditions = useCallback((): string[] => {
+    const healthProfile = getLeadHealthProfile();
+    const conditions: string[] = [];
+    
+    if (healthProfile?.conditions) {
+      conditions.push(...healthProfile.conditions);
+    }
+    
+    const fitzpatrick = currentLead?.fitzpatrickAssessment?.type || currentAnalysis?.fitzpatrickAssessment?.type;
+    if (fitzpatrick === 'V' || fitzpatrick === 'VI') {
+      if (!conditions.includes('fitzpatrick_v_vi')) {
+        conditions.push('fitzpatrick_v_vi');
+      }
+    } else if (fitzpatrick === 'IV') {
+      if (!conditions.includes('fitzpatrick_iv')) {
+        conditions.push('fitzpatrick_iv');
+      }
+    }
+    
+    return conditions;
+  }, [getLeadHealthProfile, currentLead, currentAnalysis]);
+
+  const patientConditions = useMemo(() => getLeadConditions(), [getLeadConditions]);
 
   const getTreatmentSafety = useCallback((treatmentName: string): SafetyStatus | undefined => {
-    if (!patientHealthProfile) return undefined;
-    return getTreatmentSafetyStatus(treatmentName);
-  }, [patientHealthProfile, getTreatmentSafetyStatus]);
+    const healthProfile = getLeadHealthProfile();
+    if (!healthProfile) return undefined;
+    
+    const conditions = getLeadConditions();
+    const demographics = getLeadDemographics();
+    const hasLabWork = healthProfile.hasRecentLabWork ?? false;
+    
+    const result = checkTreatmentSafety(treatmentName, conditions, hasLabWork, demographics);
+    
+    let explainableReason: string | undefined;
+    if (result.isBlocked) {
+      explainableReason = getExplainableReason(treatmentName, result.blockedReasons);
+    }
+    
+    return {
+      isBlocked: result.isBlocked,
+      blockedReasons: result.blockedReasons,
+      hasCautions: result.hasCautions,
+      cautionReasons: result.cautionReasons,
+      requiresLabWork: result.requiresLabWork,
+      requiredLabTests: result.requiredLabTests,
+      isConditional: result.isConditional,
+      conditionalMessage: result.conditionalMessage,
+      explainableReason,
+    };
+  }, [getLeadHealthProfile, getLeadConditions, getLeadDemographics]);
 
   const handleClose = () => {
     if (Platform.OS !== 'web') {
