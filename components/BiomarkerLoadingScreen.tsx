@@ -28,8 +28,14 @@ const BIOMARKERS = [
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const COLUMNS = 3;
 const BIOMARKER_PHASE_DURATION = 5000;
+const SCANNING_PHASE_DURATION = 4000;
+const TOTAL_DURATION = BIOMARKER_PHASE_DURATION + SCANNING_PHASE_DURATION;
 
-export default function BiomarkerLoadingScreen() {
+interface Props {
+  onComplete?: () => void;
+}
+
+export default function BiomarkerLoadingScreen({ onComplete }: Props) {
   const fadeAnims = useRef(BIOMARKERS.map(() => new Animated.Value(0))).current;
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
   const [activeBiomarker, setActiveBiomarker] = useState(0);
@@ -87,9 +93,16 @@ export default function BiomarkerLoadingScreen() {
       });
     }, BIOMARKER_PHASE_DURATION);
 
+    const completeTimeout = setTimeout(() => {
+      if (onComplete) {
+        onComplete();
+      }
+    }, TOTAL_DURATION);
+
     return () => {
       clearInterval(interval);
       clearTimeout(phaseTimeout);
+      clearTimeout(completeTimeout);
     };
   }, []);
 

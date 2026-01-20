@@ -37,6 +37,7 @@ function RootLayoutNav() {
 function AppContent() {
   const { hasCompletedIntro, isLoadingIntro, completeIntro } = useApp();
   const [showIntro, setShowIntro] = useState(false);
+  const [showLoadingScreen, setShowLoadingScreen] = useState(true);
 
   useEffect(() => {
     if (!isLoadingIntro) {
@@ -52,8 +53,12 @@ function AppContent() {
     completeIntro();
   };
 
-  if (isLoadingIntro) {
-    return <BiomarkerLoadingScreen />;
+  const handleLoadingComplete = () => {
+    setShowLoadingScreen(false);
+  };
+
+  if (isLoadingIntro || showLoadingScreen) {
+    return <BiomarkerLoadingScreen onComplete={handleLoadingComplete} />;
   }
 
   return (
