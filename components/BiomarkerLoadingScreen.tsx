@@ -60,7 +60,7 @@ export default function BiomarkerLoadingScreen() {
 
     const interval = setInterval(() => {
       setActiveBiomarker((prev) => (prev + 1) % BIOMARKERS.length);
-    }, 180);
+    }, 400);
 
     return () => clearInterval(interval);
   }, []);
