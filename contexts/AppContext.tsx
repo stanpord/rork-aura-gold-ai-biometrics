@@ -156,7 +156,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const loadStoredData = async () => {
     const startTime = Date.now();
-    const MIN_LOADING_TIME_MS = 3500;
+    const MIN_LOADING_TIME_MS = 18000;
     
     try {
       console.log('[AppContext] Loading stored data, current version:', APP_VERSION);

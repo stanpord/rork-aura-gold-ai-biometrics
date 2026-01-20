@@ -31,12 +31,11 @@ export default function BiomarkerLoadingScreen() {
   const [activeBiomarker, setActiveBiomarker] = useState(0);
 
   useEffect(() => {
-    const staggerDelay = 150;
-    const animations = fadeAnims.map((anim, index) =>
+    const staggerDelay = 350;
+    const animations = fadeAnims.map((anim) =>
       Animated.timing(anim, {
         toValue: 1,
-        duration: 500,
-        delay: index * staggerDelay,
+        duration: 600,
         useNativeDriver: true,
       })
     );
@@ -60,7 +59,7 @@ export default function BiomarkerLoadingScreen() {
 
     const interval = setInterval(() => {
       setActiveBiomarker((prev) => (prev + 1) % BIOMARKERS.length);
-    }, 400);
+    }, 600);
 
     return () => clearInterval(interval);
   }, []);
