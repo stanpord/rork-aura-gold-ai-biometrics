@@ -131,6 +131,7 @@ export interface Lead {
   biometricProfile?: BiometricProfile;
   lastCheckIn?: Date;
   profileImage?: string;
+  healthProfile?: PatientHealthProfile;
 }
 
 export interface TreatmentRecurrence {

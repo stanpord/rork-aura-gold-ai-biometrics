@@ -791,6 +791,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       fitzpatrickAssessment: currentAnalysis.fitzpatrickAssessment,
       status: 'new',
       createdAt: new Date(),
+      healthProfile: patientHealthProfile || undefined,
     };
 
     console.log('New lead created:', {
@@ -812,7 +813,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     } catch (error) {
       console.log('[AppContext] Error saving lead:', error);
     }
-  }, [currentAnalysis, leads]);
+  }, [currentAnalysis, leads, patientHealthProfile]);
 
   const resetScan = useCallback(() => {
     setCapturedImage(null);

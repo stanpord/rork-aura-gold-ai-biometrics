@@ -27,10 +27,14 @@ import {
   ChevronDown,
   ChevronUp,
   History,
+  AlertTriangle,
+  Shield,
+  AlertCircle,
+  Ban,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
-import { Lead, ClinicalProcedure, PeptideTherapy, IVOptimization, SelectedTreatment, TreatmentDosingSettings, ComplianceSignOff, TREATMENT_RECURRENCE_MAP } from '@/types';
+import { Lead, ClinicalProcedure, PeptideTherapy, IVOptimization, SelectedTreatment, TreatmentDosingSettings, ComplianceSignOff, TREATMENT_RECURRENCE_MAP, SafetyStatus } from '@/types';
 import { useApp } from '@/contexts/AppContext';
 import TreatmentDosingModal from '@/components/TreatmentDosingModal';
 import PatientSummaryModal from '@/components/PatientSummaryModal';
@@ -43,7 +47,7 @@ interface LeadDetailModalProps {
 }
 
 export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailModalProps) {
-  const { updateLeadTreatments, getLeadById, getPatientScanHistory } = useApp();
+  const { updateLeadTreatments, getLeadById, getPatientScanHistory, getPatientConditions, getTreatmentSafetyStatus, patientHealthProfile } = useApp();
   
   const currentLead = lead?.id ? getLeadById(lead.id) || lead : lead;
   const [selectedTreatmentForDosing, setSelectedTreatmentForDosing] = useState<{
@@ -61,6 +65,13 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
 
   const confirmedTreatments = useMemo(() => currentLead?.selectedTreatments || [], [currentLead?.selectedTreatments]);
 
+  const patientConditions = useMemo(() => getPatientConditions(), [getPatientConditions]);
+
+  const getTreatmentSafety = useCallback((treatmentName: string): SafetyStatus | undefined => {
+    if (!patientHealthProfile) return undefined;
+    return getTreatmentSafetyStatus(treatmentName);
+  }, [patientHealthProfile, getTreatmentSafetyStatus]);
+
   const handleClose = () => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -69,11 +80,19 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
   };
 
   const handleSelectTreatment = useCallback((treatment: ClinicalProcedure | PeptideTherapy | IVOptimization, type: 'procedure' | 'peptide' | 'iv') => {
+    const safetyStatus = getTreatmentSafety('name' in treatment ? treatment.name : '');
+    if (safetyStatus?.isBlocked) {
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+      console.log('[LeadDetailModal] Treatment blocked:', treatment, safetyStatus.blockedReasons);
+      return;
+    }
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     setSelectedTreatmentForDosing({ treatment, type });
-  }, []);
+  }, [getTreatmentSafety]);
 
   const handleConfirmDosing = useCallback((dosing: TreatmentDosingSettings, signOff?: ComplianceSignOff) => {
     if (!selectedTreatmentForDosing || !currentLead) return;
@@ -104,6 +123,94 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
       return false;
     });
   }, [confirmedTreatments]);
+
+  const renderSafetyBadge = useCallback((treatmentName: string) => {
+    const safety = getTreatmentSafety(treatmentName);
+    if (!safety) return null;
+
+    if (safety.isBlocked) {
+      return (
+        <View style={styles.blockedBadge}>
+          <Ban size={12} color="#ef4444" />
+          <Text style={styles.blockedBadgeText}>BLOCKED</Text>
+        </View>
+      );
+    }
+
+    if (safety.hasCautions) {
+      return (
+        <View style={styles.cautionBadge}>
+          <AlertTriangle size={12} color="#f59e0b" />
+          <Text style={styles.cautionBadgeText}>CAUTION</Text>
+        </View>
+      );
+    }
+
+    if (safety.isConditional) {
+      return (
+        <View style={styles.conditionalBadge}>
+          <AlertCircle size={12} color="#60a5fa" />
+          <Text style={styles.conditionalBadgeText}>PENDING LAB</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.clearedBadge}>
+        <Shield size={12} color={Colors.success} />
+        <Text style={styles.clearedBadgeText}>CLEARED</Text>
+      </View>
+    );
+  }, [getTreatmentSafety]);
+
+  const renderSafetyDetails = useCallback((treatmentName: string) => {
+    const safety = getTreatmentSafety(treatmentName);
+    if (!safety) return null;
+
+    if (safety.isBlocked && safety.blockedReasons.length > 0) {
+      return (
+        <View style={styles.safetyDetailsBlocked}>
+          <Ban size={14} color="#ef4444" />
+          <View style={styles.safetyDetailsContent}>
+            <Text style={styles.safetyDetailsBlockedTitle}>Contraindicated</Text>
+            <Text style={styles.safetyDetailsBlockedText}>
+              {safety.blockedReasons.join(', ')}
+            </Text>
+            {safety.explainableReason && (
+              <Text style={styles.safetyExplainableText}>{safety.explainableReason}</Text>
+            )}
+          </View>
+        </View>
+      );
+    }
+
+    if (safety.hasCautions && safety.cautionReasons.length > 0) {
+      return (
+        <View style={styles.safetyDetailsCaution}>
+          <AlertTriangle size={14} color="#f59e0b" />
+          <View style={styles.safetyDetailsContent}>
+            <Text style={styles.safetyDetailsCautionTitle}>Caution Required</Text>
+            <Text style={styles.safetyDetailsCautionText}>
+              {safety.cautionReasons.join(', ')}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    if (safety.isConditional && safety.conditionalMessage) {
+      return (
+        <View style={styles.safetyDetailsConditional}>
+          <AlertCircle size={14} color="#60a5fa" />
+          <Text style={styles.safetyDetailsConditionalText}>
+            {safety.conditionalMessage}
+          </Text>
+        </View>
+      );
+    }
+
+    return null;
+  }, [getTreatmentSafety]);
 
   const recurringRevenueData = useMemo(() => {
     if (!lead) return { treatments: [], totalAnnual: 0 };
@@ -354,9 +461,15 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
             ) : (
               <>
                 {currentLead.roadmap.map((procedure, index) => (
-                  <View key={index} style={styles.recommendationCard}>
+                  <View key={index} style={[
+                      styles.recommendationCard,
+                      getTreatmentSafety(procedure.name)?.isBlocked && styles.blockedCard
+                    ]}>
                     <View style={styles.recommendationHeader}>
-                      <Text style={styles.recommendationName}>{procedure.name}</Text>
+                      <View style={styles.recommendationHeaderLeft}>
+                        <Text style={styles.recommendationName}>{procedure.name}</Text>
+                        {renderSafetyBadge(procedure.name)}
+                      </View>
                       <Text style={styles.recommendationPrice}>{procedure.price}</Text>
                     </View>
                     <Text style={styles.recommendationBenefit}>{procedure.benefit}</Text>
@@ -366,6 +479,7 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
                         <Text style={styles.clinicalReasonText}>{procedure.clinicalReason}</Text>
                       </View>
                     )}
+                    {renderSafetyDetails(procedure.name)}
                     {TREATMENT_RECURRENCE_MAP[procedure.name] && (
                       <View style={styles.maintenanceBadge}>
                         <RefreshCcw size={10} color="#10b981" />
@@ -377,13 +491,19 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
                     <TouchableOpacity
                       style={[
                         styles.selectTreatmentButton,
-                        isTreatmentConfirmed(procedure.name) && styles.selectTreatmentButtonConfirmed
+                        isTreatmentConfirmed(procedure.name) && styles.selectTreatmentButtonConfirmed,
+                        getTreatmentSafety(procedure.name)?.isBlocked && styles.selectTreatmentButtonBlocked
                       ]}
                       onPress={() => handleSelectTreatment(procedure, 'procedure')}
                       activeOpacity={0.8}
-                      disabled={isTreatmentConfirmed(procedure.name)}
+                      disabled={isTreatmentConfirmed(procedure.name) || getTreatmentSafety(procedure.name)?.isBlocked}
                     >
-                      {isTreatmentConfirmed(procedure.name) ? (
+                      {getTreatmentSafety(procedure.name)?.isBlocked ? (
+                        <>
+                          <Ban size={14} color="#ef4444" />
+                          <Text style={styles.selectTreatmentButtonTextBlocked}>CONTRAINDICATED</Text>
+                        </>
+                      ) : isTreatmentConfirmed(procedure.name) ? (
                         <>
                           <CheckCircle size={14} color={Colors.success} />
                           <Text style={styles.selectTreatmentButtonTextConfirmed}>TREATMENT SELECTED</Text>
@@ -415,15 +535,22 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
             ) : (
               <>
                 {currentLead.peptides.map((peptide, index) => (
-                <View key={index} style={styles.peptideCard}>
+                <View key={index} style={[
+                      styles.peptideCard,
+                      getTreatmentSafety(peptide.name)?.isBlocked && styles.blockedCardGreen
+                    ]}>
                     <View style={styles.peptideHeader}>
-                      <Text style={styles.peptideName}>{peptide.name}</Text>
+                      <View style={styles.peptideHeaderLeft}>
+                        <Text style={styles.peptideName}>{peptide.name}</Text>
+                        {renderSafetyBadge(peptide.name)}
+                      </View>
                       <Text style={styles.peptideFrequency}>{peptide.frequency}</Text>
                     </View>
                     <Text style={styles.peptideGoal}>{peptide.goal}</Text>
                     {peptide.mechanism && (
                       <Text style={styles.peptideMechanism}>{peptide.mechanism}</Text>
                     )}
+                    {renderSafetyDetails(peptide.name)}
                     {TREATMENT_RECURRENCE_MAP[peptide.name] && (
                       <View style={styles.maintenanceBadge}>
                         <RefreshCcw size={10} color="#10b981" />
@@ -435,13 +562,19 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
                     <TouchableOpacity
                       style={[
                         styles.selectTreatmentButton,
-                        isTreatmentConfirmed(peptide.name) && styles.selectTreatmentButtonConfirmed
+                        isTreatmentConfirmed(peptide.name) && styles.selectTreatmentButtonConfirmed,
+                        getTreatmentSafety(peptide.name)?.isBlocked && styles.selectTreatmentButtonBlocked
                       ]}
                       onPress={() => handleSelectTreatment(peptide, 'peptide')}
                       activeOpacity={0.8}
-                      disabled={isTreatmentConfirmed(peptide.name)}
+                      disabled={isTreatmentConfirmed(peptide.name) || getTreatmentSafety(peptide.name)?.isBlocked}
                     >
-                      {isTreatmentConfirmed(peptide.name) ? (
+                      {getTreatmentSafety(peptide.name)?.isBlocked ? (
+                        <>
+                          <Ban size={14} color="#ef4444" />
+                          <Text style={styles.selectTreatmentButtonTextBlocked}>CONTRAINDICATED</Text>
+                        </>
+                      ) : isTreatmentConfirmed(peptide.name) ? (
                         <>
                           <CheckCircle size={14} color={Colors.success} />
                           <Text style={styles.selectTreatmentButtonTextConfirmed}>TREATMENT SELECTED</Text>
@@ -473,9 +606,15 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
             ) : (
               <>
                 {currentLead.ivDrips.map((iv, index) => (
-                <View key={index} style={styles.ivCard}>
+                <View key={index} style={[
+                      styles.ivCard,
+                      getTreatmentSafety(iv.name)?.isBlocked && styles.blockedCardBlue
+                    ]}>
                     <View style={styles.ivHeader}>
-                      <Text style={styles.ivName}>{iv.name}</Text>
+                      <View style={styles.ivHeaderLeft}>
+                        <Text style={styles.ivName}>{iv.name}</Text>
+                        {renderSafetyBadge(iv.name)}
+                      </View>
                       <Text style={styles.ivDuration}>{iv.duration}</Text>
                     </View>
                     <Text style={styles.ivBenefit}>{iv.benefit}</Text>
@@ -485,6 +624,7 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
                         <Text style={styles.ingredientsText}>{iv.ingredients}</Text>
                       </View>
                     )}
+                    {renderSafetyDetails(iv.name)}
                     {TREATMENT_RECURRENCE_MAP[iv.name] && (
                       <View style={styles.maintenanceBadge}>
                         <RefreshCcw size={10} color="#10b981" />
@@ -496,13 +636,19 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
                     <TouchableOpacity
                       style={[
                         styles.selectTreatmentButton,
-                        isTreatmentConfirmed(iv.name) && styles.selectTreatmentButtonConfirmed
+                        isTreatmentConfirmed(iv.name) && styles.selectTreatmentButtonConfirmed,
+                        getTreatmentSafety(iv.name)?.isBlocked && styles.selectTreatmentButtonBlocked
                       ]}
                       onPress={() => handleSelectTreatment(iv, 'iv')}
                       activeOpacity={0.8}
-                      disabled={isTreatmentConfirmed(iv.name)}
+                      disabled={isTreatmentConfirmed(iv.name) || getTreatmentSafety(iv.name)?.isBlocked}
                     >
-                      {isTreatmentConfirmed(iv.name) ? (
+                      {getTreatmentSafety(iv.name)?.isBlocked ? (
+                        <>
+                          <Ban size={14} color="#ef4444" />
+                          <Text style={styles.selectTreatmentButtonTextBlocked}>CONTRAINDICATED</Text>
+                        </>
+                      ) : isTreatmentConfirmed(iv.name) ? (
                         <>
                           <CheckCircle size={14} color={Colors.success} />
                           <Text style={styles.selectTreatmentButtonTextConfirmed}>TREATMENT SELECTED</Text>
@@ -692,8 +838,8 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
         treatmentType={selectedTreatmentForDosing?.type || 'procedure'}
         onClose={() => setSelectedTreatmentForDosing(null)}
         onConfirm={handleConfirmDosing}
-        patientConditions={[]}
-        skinIQData={undefined}
+        patientConditions={patientConditions}
+        skinIQData={currentLead?.skinIQ}
       />
 
       <PatientSummaryModal
@@ -1069,8 +1215,9 @@ const styles = StyleSheet.create({
   recommendationHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 8,
+    gap: 12,
   },
   recommendationName: {
     fontSize: 14,
@@ -1151,6 +1298,174 @@ const styles = StyleSheet.create({
     color: Colors.success,
     letterSpacing: 1.5,
   },
+  selectTreatmentButtonBlocked: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  selectTreatmentButtonTextBlocked: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: '#ef4444',
+    letterSpacing: 1.5,
+  },
+  blockedCard: {
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    opacity: 0.85,
+  },
+  blockedCardGreen: {
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    opacity: 0.85,
+  },
+  blockedCardBlue: {
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    opacity: 0.85,
+  },
+  blockedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  blockedBadgeText: {
+    fontSize: 9,
+    fontWeight: '800' as const,
+    color: '#ef4444',
+    letterSpacing: 0.5,
+  },
+  cautionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  cautionBadgeText: {
+    fontSize: 9,
+    fontWeight: '800' as const,
+    color: '#f59e0b',
+    letterSpacing: 0.5,
+  },
+  conditionalBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(96, 165, 250, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  conditionalBadgeText: {
+    fontSize: 9,
+    fontWeight: '800' as const,
+    color: '#60a5fa',
+    letterSpacing: 0.5,
+  },
+  clearedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  clearedBadgeText: {
+    fontSize: 9,
+    fontWeight: '800' as const,
+    color: Colors.success,
+    letterSpacing: 0.5,
+  },
+  safetyDetailsBlocked: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  safetyDetailsContent: {
+    flex: 1,
+  },
+  safetyDetailsBlockedTitle: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: '#ef4444',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  safetyDetailsBlockedText: {
+    fontSize: 12,
+    color: '#fca5a5',
+    lineHeight: 18,
+  },
+  safetyExplainableText: {
+    fontSize: 11,
+    color: '#fca5a5',
+    fontStyle: 'italic',
+    marginTop: 6,
+    lineHeight: 16,
+  },
+  safetyDetailsCaution: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  safetyDetailsCautionTitle: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: '#f59e0b',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  safetyDetailsCautionText: {
+    fontSize: 12,
+    color: '#fcd34d',
+    lineHeight: 18,
+  },
+  safetyDetailsConditional: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: 'rgba(96, 165, 250, 0.1)',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(96, 165, 250, 0.2)',
+  },
+  safetyDetailsConditionalText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#93c5fd',
+    lineHeight: 18,
+  },
+  recommendationHeaderLeft: {
+    flex: 1,
+    gap: 6,
+  },
+  peptideHeaderLeft: {
+    flex: 1,
+    gap: 6,
+  },
+  ivHeaderLeft: {
+    flex: 1,
+    gap: 6,
+  },
   peptideCard: {
     backgroundColor: Colors.surfaceLight,
     borderRadius: 16,
@@ -1162,8 +1477,9 @@ const styles = StyleSheet.create({
   peptideHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 8,
+    gap: 12,
   },
   peptideName: {
     fontSize: 14,
@@ -1202,8 +1518,9 @@ const styles = StyleSheet.create({
   ivHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 8,
+    gap: 12,
   },
   ivName: {
     fontSize: 14,
