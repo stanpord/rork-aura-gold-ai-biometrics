@@ -6,11 +6,8 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '@/constants/colors';
-
-const WOMAN_IMAGE = 'https://images.pexels.com/photos/3764119/pexels-photo-3764119.jpeg?auto=compress&cs=tinysrgb&w=800';
 
 const BIOMARKERS = [
   'Skin Texture', 'Pore Size', 'Wrinkle Depth', 'Fine Lines', 'Elasticity',
@@ -27,38 +24,11 @@ const BIOMARKERS = [
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const COLUMNS = 3;
-const BIOMARKER_PHASE_DURATION = 5000;
-const SCANNING_PHASE_DURATION = 4000;
-const TOTAL_DURATION = BIOMARKER_PHASE_DURATION + SCANNING_PHASE_DURATION;
 
-interface Props {
-  onComplete?: () => void;
-}
-
-export default function BiomarkerLoadingScreen({ onComplete }: Props) {
+export default function BiomarkerLoadingScreen() {
   const fadeAnims = useRef(BIOMARKERS.map(() => new Animated.Value(0))).current;
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
   const [activeBiomarker, setActiveBiomarker] = useState(0);
-  const [phase, setPhase] = useState<'biomarkers' | 'scanning'>('biomarkers');
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [pendingTransition, setPendingTransition] = useState(false);
-  
-  const phaseTransitionAnim = useRef(new Animated.Value(1)).current;
-  const scanLineAnim = useRef(new Animated.Value(0)).current;
-  const scanPulseAnim = useRef(new Animated.Value(0)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Image.prefetch(WOMAN_IMAGE)
-      .then(() => {
-        console.log('Image prefetched successfully');
-        setImageLoaded(true);
-      })
-      .catch((err) => {
-        console.log('Image prefetch failed, setting loaded anyway:', err);
-        setImageLoaded(true);
-      });
-  }, []);
 
   useEffect(() => {
     const staggerDelay = 40;
@@ -92,89 +62,8 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
       setActiveBiomarker((prev) => (prev + 1) % BIOMARKERS.length);
     }, 80);
 
-    const phaseTimeout = setTimeout(() => {
-      setPendingTransition(true);
-    }, BIOMARKER_PHASE_DURATION);
-
-    const completeTimeout = setTimeout(() => {
-      if (onComplete) {
-        onComplete();
-      }
-    }, TOTAL_DURATION);
-
-    return () => {
-      clearInterval(interval);
-      clearTimeout(phaseTimeout);
-      clearTimeout(completeTimeout);
-    };
+    return () => clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    if (pendingTransition && imageLoaded) {
-      console.log('Transitioning to scanning phase - image is ready');
-      Animated.timing(phaseTransitionAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }).start(() => {
-        setPhase('scanning');
-        Animated.timing(phaseTransitionAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }).start();
-      });
-    }
-  }, [pendingTransition, imageLoaded]);
-
-  useEffect(() => {
-    if (phase === 'scanning') {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(scanLineAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(scanLineAnim, {
-            toValue: 0,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(scanPulseAnim, {
-            toValue: 1,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(scanPulseAnim, {
-            toValue: 0,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(glowAnim, {
-            toValue: 1,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-          Animated.timing(glowAnim, {
-            toValue: 0.4,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    }
-  }, [phase]);
 
   const renderBiomarkerGrid = () => {
     const rows: React.ReactNode[] = [];
@@ -220,123 +109,6 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
     return rows;
   };
 
-  
-
-  const renderScanningPhase = () => {
-    const scanLineTranslate = scanLineAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [-100, SCREEN_HEIGHT + 100],
-    });
-
-    return (
-      <Animated.View style={[styles.scanningPhase, { opacity: phaseTransitionAnim }]}>
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: WOMAN_IMAGE }}
-            style={styles.backgroundImage}
-            contentFit="cover"
-            transition={0}
-            cachePolicy="memory-disk"
-            onLoad={() => {
-              console.log('Image onLoad fired');
-              setImageLoaded(true);
-            }}
-            onError={(e) => {
-              console.log('Image load error:', e);
-            }}
-          />
-          <LinearGradient
-            colors={['rgba(0, 0, 0, 0.3)', 'transparent', 'rgba(0, 0, 0, 0.5)']}
-            style={StyleSheet.absoluteFill}
-          />
-
-          <Animated.View
-            style={[
-              styles.scanLine,
-              {
-                transform: [{ translateY: scanLineTranslate }],
-                opacity: glowAnim,
-              },
-            ]}
-          >
-            <LinearGradient
-              colors={['transparent', '#00CED1', '#00FFFF', '#00CED1', 'transparent']}
-              style={styles.scanLineGradient}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-            />
-            <View style={styles.scanLineGlow} />
-          </Animated.View>
-
-          <Animated.View
-            style={[
-              styles.gridOverlay,
-              { opacity: scanPulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.1, 0.3] }) },
-            ]}
-          >
-            {Array.from({ length: 8 }).map((_, i) => (
-              <View key={`h-${i}`} style={[styles.gridLineH, { top: `${(i + 1) * 11}%` }]} />
-            ))}
-            {Array.from({ length: 6 }).map((_, i) => (
-              <View key={`v-${i}`} style={[styles.gridLineV, { left: `${(i + 1) * 14}%` }]} />
-            ))}
-          </Animated.View>
-
-          <View style={styles.cornerMarkers}>
-            <View style={[styles.cornerMarker, styles.topLeft]} />
-            <View style={[styles.cornerMarker, styles.topRight]} />
-            <View style={[styles.cornerMarker, styles.bottomLeft]} />
-            <View style={[styles.cornerMarker, styles.bottomRight]} />
-          </View>
-
-          <View style={styles.facePoints}>
-            <Animated.View style={[styles.facePoint, styles.facePointForehead, { opacity: glowAnim }]} />
-            <Animated.View style={[styles.facePoint, styles.facePointLeftCheek, { opacity: glowAnim }]} />
-            <Animated.View style={[styles.facePoint, styles.facePointRightCheek, { opacity: glowAnim }]} />
-            <Animated.View style={[styles.facePoint, styles.facePointNose, { opacity: glowAnim }]} />
-            <Animated.View style={[styles.facePoint, styles.facePointChin, { opacity: glowAnim }]} />
-            <Animated.View style={[styles.facePoint, styles.facePointLeftEye, { opacity: glowAnim }]} />
-            <Animated.View style={[styles.facePoint, styles.facePointRightEye, { opacity: glowAnim }]} />
-          </View>
-        </View>
-
-        <View style={styles.scanningFooter}>
-          <View style={styles.scanningHeader}>
-            <Text style={styles.scanningTitle}>ANALYZING BIOMARKERS</Text>
-            <Text style={styles.scanningSubtitle}>Real-time facial mapping in progress</Text>
-          </View>
-          
-          <View style={styles.progressContainer}>
-            <Animated.View 
-              style={[
-                styles.progressBar,
-                {
-                  width: scanPulseAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['60%', '90%'],
-                  }),
-                },
-              ]} 
-            />
-          </View>
-
-          <View style={styles.biomarkerPreview}>
-            <Text style={styles.biomarkerPreviewLabel}>Currently Scanning:</Text>
-            <Text style={styles.biomarkerPreviewValue}>{BIOMARKERS[activeBiomarker]}</Text>
-          </View>
-        </View>
-      </Animated.View>
-    );
-  };
-
-  if (phase === 'scanning') {
-    return (
-      <View style={styles.container}>
-        {renderScanningPhase()}
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -351,7 +123,7 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
         />
       </View>
 
-      <Animated.View style={[styles.content, { opacity: phaseTransitionAnim }]}>
+      <View style={styles.content}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <Animated.View style={[styles.logoRing, { opacity: pulseAnim }]} />
@@ -390,7 +162,7 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
           </View>
           <Text style={styles.tagline}>Advanced Regenerative Aesthetics</Text>
         </View>
-      </Animated.View>
+      </View>
     </View>
   );
 }
@@ -559,190 +331,5 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.25)',
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-  },
-  scanningPhase: {
-    flex: 1,
-  },
-  imageContainer: {
-    flex: 1,
-    width: '100%',
-    backgroundColor: '#000',
-  },
-  backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
-  },
-  scanLine: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 3,
-    zIndex: 10,
-  },
-  scanLineGradient: {
-    flex: 1,
-    height: 3,
-  },
-  scanLineGlow: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: -15,
-    height: 35,
-    backgroundColor: 'rgba(0, 255, 255, 0.08)',
-  },
-  gridOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  gridLineH: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    height: 1,
-    backgroundColor: 'rgba(0, 206, 209, 0.25)',
-  },
-  gridLineV: {
-    position: 'absolute',
-    top: 40,
-    bottom: 40,
-    width: 1,
-    backgroundColor: 'rgba(0, 206, 209, 0.25)',
-  },
-  cornerMarkers: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  cornerMarker: {
-    position: 'absolute',
-    width: 40,
-    height: 40,
-    borderColor: '#00FFFF',
-  },
-  topLeft: {
-    top: 40,
-    left: 20,
-    borderTopWidth: 2,
-    borderLeftWidth: 2,
-  },
-  topRight: {
-    top: 40,
-    right: 20,
-    borderTopWidth: 2,
-    borderRightWidth: 2,
-  },
-  bottomLeft: {
-    bottom: 40,
-    left: 20,
-    borderBottomWidth: 2,
-    borderLeftWidth: 2,
-  },
-  bottomRight: {
-    bottom: 40,
-    right: 20,
-    borderBottomWidth: 2,
-    borderRightWidth: 2,
-  },
-  facePoints: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  facePoint: {
-    position: 'absolute',
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: 'rgba(0, 255, 255, 0.6)',
-    borderWidth: 1,
-    borderColor: '#00FFFF',
-    shadowColor: '#00FFFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
-  },
-  facePointForehead: {
-    top: '22%',
-    left: '48%',
-  },
-  facePointLeftCheek: {
-    top: '42%',
-    left: '32%',
-  },
-  facePointRightCheek: {
-    top: '42%',
-    right: '32%',
-  },
-  facePointNose: {
-    top: '38%',
-    left: '47%',
-  },
-  facePointChin: {
-    top: '55%',
-    left: '47%',
-  },
-  facePointLeftEye: {
-    top: '30%',
-    left: '38%',
-  },
-  facePointRightEye: {
-    top: '30%',
-    right: '38%',
-  },
-  scanningFooter: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 24,
-    paddingVertical: 40,
-    paddingBottom: 60,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 206, 209, 0.3)',
-  },
-  scanningHeader: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  scanningTitle: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: '#00FFFF',
-    letterSpacing: 4,
-    marginBottom: 6,
-  },
-  scanningSubtitle: {
-    fontSize: 11,
-    fontWeight: '400' as const,
-    color: 'rgba(255, 255, 255, 0.5)',
-    letterSpacing: 1,
-  },
-  progressContainer: {
-    height: 3,
-    backgroundColor: 'rgba(0, 206, 209, 0.15)',
-    borderRadius: 2,
-    overflow: 'hidden',
-    marginBottom: 20,
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#00FFFF',
-    borderRadius: 2,
-  },
-  biomarkerPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  biomarkerPreviewLabel: {
-    fontSize: 10,
-    fontWeight: '500' as const,
-    color: 'rgba(255, 255, 255, 0.4)',
-    letterSpacing: 1,
-  },
-  biomarkerPreviewValue: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-    color: '#00FFFF',
-    letterSpacing: 0.5,
   },
 });
