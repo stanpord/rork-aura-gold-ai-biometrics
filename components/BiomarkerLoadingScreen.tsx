@@ -5,12 +5,12 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
-  Image,
+  ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '@/constants/colors';
 
-const WOMAN_IMAGE = 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=800&q=80';
+const WOMAN_IMAGE = 'https://images.pexels.com/photos/3764119/pexels-photo-3764119.jpeg?auto=compress&cs=tinysrgb&w=800';
 
 const BIOMARKERS = [
   'Skin Texture', 'Pore Size', 'Wrinkle Depth', 'Fine Lines', 'Elasticity',
@@ -207,13 +207,11 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
 
     return (
       <Animated.View style={[styles.scanningPhase, { opacity: phaseTransitionAnim }]}>
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: WOMAN_IMAGE }}
-            style={styles.womanImage}
-            resizeMode="cover"
-          />
-          
+        <ImageBackground
+          source={{ uri: WOMAN_IMAGE }}
+          style={styles.imageContainer}
+          resizeMode="cover"
+        >
           <LinearGradient
             colors={['rgba(0, 0, 0, 0.3)', 'transparent', 'rgba(0, 0, 0, 0.5)']}
             style={StyleSheet.absoluteFill}
@@ -267,7 +265,7 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
             <Animated.View style={[styles.facePoint, styles.facePointLeftEye, { opacity: glowAnim }]} />
             <Animated.View style={[styles.facePoint, styles.facePointRightEye, { opacity: glowAnim }]} />
           </View>
-        </View>
+        </ImageBackground>
 
         <View style={styles.scanningFooter}>
           <View style={styles.scanningHeader}>
@@ -538,12 +536,8 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     flex: 1,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  womanImage: {
     width: '100%',
-    height: '100%',
+    backgroundColor: '#0a1015',
   },
   scanLine: {
     position: 'absolute',
