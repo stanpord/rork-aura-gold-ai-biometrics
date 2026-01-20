@@ -205,6 +205,7 @@ export interface PatientBasicInfo {
   name: string;
   phone: string;
   email?: string;
+  dateOfBirth?: string;
 }
 
 export type ViewMode = 'client' | 'clinic';

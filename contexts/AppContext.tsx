@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, AppStateStatus } from 'react-native';
 import createContextHook from '@nkzw/create-context-hook';
-import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment, TreatmentConfig, DEFAULT_TREATMENT_CONFIGS, PatientBasicInfo, ClinicalProcedure, SignatureRecord, ScanRecord, BiometricProfile } from '@/types';
+import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment, TreatmentConfig, DEFAULT_TREATMENT_CONFIGS, PatientBasicInfo, ClinicalProcedure, SignatureRecord, ScanRecord, BiometricProfile, SafetyStatus } from '@/types';
 import { encryptObject, decryptObject, isEncryptedData, getEncryptionStatus, EncryptionStatus } from '@/utils/encryption';
+import { checkTreatmentSafety, getExplainableReason, PatientDemographics, SafetyCheckResult } from '@/constants/contraindications';
 import { initializeAuditLog, logAuditEvent, logAuthEvent, logPHIAccess, logConsentEvent, getAuditSummary } from '@/utils/auditLog';
 
 const APP_VERSION = '1.0.7';
@@ -516,6 +517,173 @@ export const [AppProvider, useApp] = createContextHook(() => {
     return config?.customPrice || config?.defaultPrice || '';
   }, [treatmentConfigs]);
 
+  const calculateAgeFromDOB = useCallback((dateOfBirth: string): number | undefined => {
+    if (!dateOfBirth) return undefined;
+    try {
+      const dob = new Date(dateOfBirth);
+      const today = new Date();
+      let age = today.getFullYear() - dob.getFullYear();
+      const monthDiff = today.getMonth() - dob.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+      return age >= 0 ? age : undefined;
+    } catch {
+      console.log('[AppContext] Invalid date of birth format');
+      return undefined;
+    }
+  }, []);
+
+  const getPatientDemographics = useCallback((): PatientDemographics => {
+    const demographics: PatientDemographics = {};
+    
+    if (patientBasicInfo?.dateOfBirth) {
+      demographics.patientAge = calculateAgeFromDOB(patientBasicInfo.dateOfBirth);
+    }
+    
+    const fitzpatrick = currentAnalysis?.fitzpatrickAssessment?.type;
+    if (fitzpatrick) {
+      demographics.patientSkinType = fitzpatrick;
+    }
+    
+    console.log('[AppContext] Patient demographics:', demographics);
+    return demographics;
+  }, [patientBasicInfo, currentAnalysis, calculateAgeFromDOB]);
+
+  const getPatientConditions = useCallback((): string[] => {
+    const conditions: string[] = [];
+    
+    if (patientHealthProfile?.conditions) {
+      conditions.push(...patientHealthProfile.conditions);
+    }
+    
+    const fitzpatrick = currentAnalysis?.fitzpatrickAssessment?.type;
+    if (fitzpatrick === 'V' || fitzpatrick === 'VI') {
+      if (!conditions.includes('fitzpatrick_v_vi')) {
+        conditions.push('fitzpatrick_v_vi');
+      }
+    } else if (fitzpatrick === 'IV') {
+      if (!conditions.includes('fitzpatrick_iv')) {
+        conditions.push('fitzpatrick_iv');
+      }
+    }
+    
+    console.log('[AppContext] Patient conditions:', conditions.length, 'conditions');
+    return conditions;
+  }, [patientHealthProfile, currentAnalysis]);
+
+  const checkTreatmentSafetyForPatient = useCallback((treatmentName: string): SafetyCheckResult => {
+    const conditions = getPatientConditions();
+    const demographics = getPatientDemographics();
+    const hasLabWork = patientHealthProfile?.hasRecentLabWork ?? false;
+    
+    const result = checkTreatmentSafety(treatmentName, conditions, hasLabWork, demographics);
+    
+    if (result.isBlocked || result.hasCautions) {
+      console.log('[AppContext] Safety check for', treatmentName, ':', {
+        isBlocked: result.isBlocked,
+        blockedReasons: result.blockedReasons,
+        hasCautions: result.hasCautions,
+        cautionReasons: result.cautionReasons,
+      });
+    }
+    
+    return result;
+  }, [getPatientConditions, getPatientDemographics, patientHealthProfile]);
+
+  const getTreatmentSafetyStatus = useCallback((treatmentName: string): SafetyStatus => {
+    const result = checkTreatmentSafetyForPatient(treatmentName);
+    
+    let explainableReason: string | undefined;
+    if (result.isBlocked) {
+      explainableReason = getExplainableReason(treatmentName, result.blockedReasons);
+    }
+    
+    return {
+      isBlocked: result.isBlocked,
+      blockedReasons: result.blockedReasons,
+      hasCautions: result.hasCautions,
+      cautionReasons: result.cautionReasons,
+      requiresLabWork: result.requiresLabWork,
+      requiredLabTests: result.requiredLabTests,
+      isConditional: result.isConditional,
+      conditionalMessage: result.conditionalMessage,
+      explainableReason,
+    };
+  }, [checkTreatmentSafetyForPatient]);
+
+  const applyTreatmentSafetyToAnalysis = useCallback((analysis: AnalysisResult): AnalysisResult => {
+    if (!patientHealthProfile) {
+      console.log('[AppContext] No health profile - skipping safety application');
+      return analysis;
+    }
+    
+    console.log('[AppContext] Applying treatment safety checks to analysis');
+    
+    const updatedRoadmap = analysis.clinicalRoadmap.map(proc => ({
+      ...proc,
+      safetyStatus: getTreatmentSafetyStatus(proc.name),
+    }));
+    
+    const updatedPeptides = analysis.peptideTherapy.map(peptide => ({
+      ...peptide,
+      safetyStatus: getTreatmentSafetyStatus(peptide.name),
+    }));
+    
+    const updatedIV = analysis.ivOptimization.map(iv => ({
+      ...iv,
+      safetyStatus: getTreatmentSafetyStatus(iv.name),
+    }));
+    
+    const blockedCount = [
+      ...updatedRoadmap.filter(t => t.safetyStatus?.isBlocked),
+      ...updatedPeptides.filter(t => t.safetyStatus?.isBlocked),
+      ...updatedIV.filter(t => t.safetyStatus?.isBlocked),
+    ].length;
+    
+    const cautionCount = [
+      ...updatedRoadmap.filter(t => t.safetyStatus?.hasCautions && !t.safetyStatus?.isBlocked),
+      ...updatedPeptides.filter(t => t.safetyStatus?.hasCautions && !t.safetyStatus?.isBlocked),
+      ...updatedIV.filter(t => t.safetyStatus?.hasCautions && !t.safetyStatus?.isBlocked),
+    ].length;
+    
+    console.log('[AppContext] Safety results:', { blockedCount, cautionCount });
+    
+    return {
+      ...analysis,
+      clinicalRoadmap: updatedRoadmap,
+      peptideTherapy: updatedPeptides,
+      ivOptimization: updatedIV,
+    };
+  }, [patientHealthProfile, getTreatmentSafetyStatus]);
+
+  const hasCompletedHealthScreening = useCallback((): boolean => {
+    return patientHealthProfile !== null;
+  }, [patientHealthProfile]);
+
+  const getHealthScreeningSummary = useCallback((): { 
+    hasScreening: boolean;
+    conditionCount: number;
+    hasLabWork: boolean;
+    hasCriticalConditions: boolean;
+  } => {
+    if (!patientHealthProfile) {
+      return { hasScreening: false, conditionCount: 0, hasLabWork: false, hasCriticalConditions: false };
+    }
+    
+    const conditions = patientHealthProfile.conditions || [];
+    const criticalConditions = conditions.filter(c => 
+      ['pregnancy', 'pacemaker', 'active_malignancy', 'active_skin_cancer', 'bleeding_disorder'].includes(c)
+    );
+    
+    return {
+      hasScreening: true,
+      conditionCount: conditions.length,
+      hasLabWork: patientHealthProfile.hasRecentLabWork,
+      hasCriticalConditions: criticalConditions.length > 0,
+    };
+  }, [patientHealthProfile]);
+
   const clearAllCache = useCallback(async () => {
     console.log('[AppContext] Clearing all cache...');
     try {
@@ -967,7 +1135,14 @@ export const [AppProvider, useApp] = createContextHook(() => {
     logoutStaff,
     leads: protectedLeads,
     currentAnalysis,
-    setCurrentAnalysis,
+    setCurrentAnalysis: useCallback((analysis: AnalysisResult | null) => {
+      if (analysis && patientHealthProfile) {
+        const safeAnalysis = applyTreatmentSafetyToAnalysis(analysis);
+        setCurrentAnalysis(safeAnalysis);
+      } else {
+        setCurrentAnalysis(analysis);
+      }
+    }, [patientHealthProfile, applyTreatmentSafetyToAnalysis]),
     capturedImage,
     setCapturedImage,
     simulatedImage,
@@ -1019,5 +1194,12 @@ export const [AppProvider, useApp] = createContextHook(() => {
     extendSession,
     recordActivity,
     getAuditSummary,
+    checkTreatmentSafetyForPatient,
+    getTreatmentSafetyStatus,
+    applyTreatmentSafetyToAnalysis,
+    getPatientConditions,
+    getPatientDemographics,
+    hasCompletedHealthScreening,
+    getHealthScreeningSummary,
   };
 });
