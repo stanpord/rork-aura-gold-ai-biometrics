@@ -183,7 +183,7 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
       {/* Loading indicator while image loads */}
       {!imageLoaded && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={Colors.gold} />
         </View>
       )}
 
