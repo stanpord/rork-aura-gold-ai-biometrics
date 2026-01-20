@@ -155,6 +155,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
   }, [recordActivity]);
 
   const loadStoredData = async () => {
+    const startTime = Date.now();
+    const MIN_LOADING_TIME_MS = 3500;
+    
     try {
       console.log('[AppContext] Loading stored data, current version:', APP_VERSION);
       
@@ -274,8 +277,15 @@ export const [AppProvider, useApp] = createContextHook(() => {
           console.log('[AppContext] Error decrypting basic info:', decryptError);
         }
       }
+      const elapsed = Date.now() - startTime;
+      const remainingTime = Math.max(0, MIN_LOADING_TIME_MS - elapsed);
+      console.log('[AppContext] Data loaded, waiting', remainingTime, 'ms for biomarker animation');
+      await new Promise(resolve => setTimeout(resolve, remainingTime));
       setIsLoadingIntro(false);
     } catch (error) {
+      const elapsed = Date.now() - startTime;
+      const remainingTime = Math.max(0, MIN_LOADING_TIME_MS - elapsed);
+      await new Promise(resolve => setTimeout(resolve, remainingTime));
       setIsLoadingIntro(false);
       console.log('[AppContext] Error loading stored data:', error);
     }
