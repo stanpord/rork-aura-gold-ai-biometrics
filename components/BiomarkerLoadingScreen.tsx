@@ -31,11 +31,11 @@ export default function BiomarkerLoadingScreen() {
   const [activeBiomarker, setActiveBiomarker] = useState(0);
 
   useEffect(() => {
-    const staggerDelay = 180;
+    const staggerDelay = 50;
     const animations = fadeAnims.map((anim, index) =>
       Animated.timing(anim, {
         toValue: 1,
-        duration: 900,
+        duration: 350,
         delay: index * staggerDelay,
         useNativeDriver: true,
       })
