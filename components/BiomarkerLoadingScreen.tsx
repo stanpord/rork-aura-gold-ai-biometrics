@@ -66,7 +66,7 @@ export default function BiomarkerLoadingScreen() {
   }, []);
 
   const renderBiomarkerGrid = () => {
-    const rows: React.ReactElement[] = [];
+    const rows: React.ReactNode[] = [];
     for (let i = 0; i < BIOMARKERS.length; i += COLUMNS) {
       const rowItems = BIOMARKERS.slice(i, i + COLUMNS);
       rows.push(
