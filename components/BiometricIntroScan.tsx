@@ -5,15 +5,15 @@ import {
   Animated,
   Dimensions,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
-import { Image } from 'expo-image';
+import { Image, ImageLoadEventData } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { CheckCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
-// Beautiful model with biometric scanning overlay - ideal for medspa diagnostic
-const FACE_IMAGE = 'https://r2-pub.rork.com/generated-images/475a6908-3419-4157-b237-ce96bff62622.png';
+const FACE_IMAGE = 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=800&q=80';
 
 const { height } = Dimensions.get('window');
 
@@ -25,6 +25,9 @@ interface BiometricIntroScanProps {
 
 export default function BiometricIntroScan({ onComplete }: BiometricIntroScanProps) {
   const [currentPhase, setCurrentPhase] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const sequenceStartedRef = useRef(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -35,10 +38,25 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
 
   const exitAnim = useRef(new Animated.Value(1)).current;
 
+  const handleImageLoad = (event: ImageLoadEventData) => {
+    console.log('BiometricIntroScan: Image loaded successfully', event.source);
+    setImageLoaded(true);
+  };
+
+  const handleImageError = () => {
+    console.log('BiometricIntroScan: Image failed to load');
+    setImageError(true);
+    setImageLoaded(true);
+  };
+
   useEffect(() => {
-    startIntroSequence();
+    if (imageLoaded && !sequenceStartedRef.current) {
+      sequenceStartedRef.current = true;
+      console.log('BiometricIntroScan: Starting intro sequence');
+      startIntroSequence();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [imageLoaded]);
 
   const startIntroSequence = () => {
     Animated.timing(fadeAnim, {
@@ -162,8 +180,15 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
         },
       ]}
     >
+      {/* Loading indicator while image loads */}
+      {!imageLoaded && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      )}
+
       {/* Face-only centered image */}
-      <View style={styles.faceContainer}>
+      <View style={[styles.faceContainer, !imageLoaded && styles.hidden]}>
         <Animated.View
           style={[
             styles.faceImageContainer,
@@ -180,6 +205,10 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
             style={styles.faceImage}
             contentFit="cover"
             contentPosition="center"
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+            cachePolicy="memory-disk"
+            priority="high"
           />
           {/* Subtle scan overlay */}
           <LinearGradient
@@ -239,6 +268,15 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000',
     zIndex: 1000,
+  },
+  loadingContainer: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#000',
+  },
+  hidden: {
+    opacity: 0,
   },
   faceContainer: {
     flex: 1,
