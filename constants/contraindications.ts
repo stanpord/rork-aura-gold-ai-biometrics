@@ -807,12 +807,154 @@ export interface SafetyCheckResult {
   requiredLabTests: string[];
   isConditional: boolean;
   conditionalMessage?: string;
+  autoFlaggedConditions?: string[];
 }
+
+export interface PatientDemographics {
+  patientAge?: number;
+  patientSkinType?: 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI';
+}
+
+export interface AgeBasedRule {
+  treatment: string;
+  minAge?: number;
+  maxAge?: number;
+  warningMessage: string;
+  severity: 'absolute' | 'caution';
+}
+
+export interface SkinTypeRule {
+  treatment: string;
+  blockedSkinTypes: ('I' | 'II' | 'III' | 'IV' | 'V' | 'VI')[];
+  cautionSkinTypes: ('I' | 'II' | 'III' | 'IV' | 'V' | 'VI')[];
+  warningMessage: string;
+}
+
+export const AGE_BASED_RULES: AgeBasedRule[] = [
+  {
+    treatment: 'Botox',
+    minAge: 18,
+    warningMessage: 'Patient must be 18 years or older for neurotoxin treatments.',
+    severity: 'absolute',
+  },
+  {
+    treatment: 'Botox Cosmetic',
+    minAge: 18,
+    warningMessage: 'Patient must be 18 years or older for neurotoxin treatments.',
+    severity: 'absolute',
+  },
+  {
+    treatment: 'Dermal Fillers',
+    minAge: 21,
+    warningMessage: 'FDA recommends dermal fillers for patients 21 years or older.',
+    severity: 'caution',
+  },
+  {
+    treatment: 'Dermal Filler',
+    minAge: 21,
+    warningMessage: 'FDA recommends dermal fillers for patients 21 years or older.',
+    severity: 'caution',
+  },
+  {
+    treatment: 'Lip Filler',
+    minAge: 18,
+    warningMessage: 'Patient must be 18 years or older for lip filler treatments.',
+    severity: 'absolute',
+  },
+  {
+    treatment: 'Sculptra',
+    minAge: 22,
+    warningMessage: 'Sculptra is FDA-approved for patients 22 years or older.',
+    severity: 'caution',
+  },
+  {
+    treatment: 'PDO Threads',
+    minAge: 30,
+    warningMessage: 'PDO threads typically recommended for patients 30+ with visible laxity.',
+    severity: 'caution',
+  },
+  {
+    treatment: 'PDO Thread Lift',
+    minAge: 30,
+    warningMessage: 'PDO thread lifts typically recommended for patients 30+ with visible laxity.',
+    severity: 'caution',
+  },
+  {
+    treatment: 'Morpheus8',
+    minAge: 18,
+    warningMessage: 'RF microneedling requires patient to be 18 years or older.',
+    severity: 'absolute',
+  },
+  {
+    treatment: 'Kybella',
+    minAge: 18,
+    warningMessage: 'Kybella requires patient to be 18 years or older.',
+    severity: 'absolute',
+  },
+];
+
+export const SKIN_TYPE_RULES: SkinTypeRule[] = [
+  {
+    treatment: 'IPL',
+    blockedSkinTypes: ['V', 'VI'],
+    cautionSkinTypes: ['IV'],
+    warningMessage: 'IPL is contraindicated for Fitzpatrick V-VI due to high risk of burns and hyperpigmentation.',
+  },
+  {
+    treatment: 'Stellar IPL',
+    blockedSkinTypes: ['V', 'VI'],
+    cautionSkinTypes: ['IV'],
+    warningMessage: 'Stellar IPL is contraindicated for Fitzpatrick V-VI due to high risk of burns and hyperpigmentation.',
+  },
+  {
+    treatment: 'Clear + Brilliant',
+    blockedSkinTypes: [],
+    cautionSkinTypes: ['V', 'VI'],
+    warningMessage: 'Use caution with Clear + Brilliant on darker skin types; lower settings recommended.',
+  },
+  {
+    treatment: 'MOXI Laser',
+    blockedSkinTypes: [],
+    cautionSkinTypes: ['V', 'VI'],
+    warningMessage: 'MOXI requires adjusted parameters for Fitzpatrick V-VI to prevent hyperpigmentation.',
+  },
+  {
+    treatment: 'ResurFX',
+    blockedSkinTypes: [],
+    cautionSkinTypes: ['IV', 'V', 'VI'],
+    warningMessage: 'ResurFX requires careful parameter adjustment for darker skin types.',
+  },
+  {
+    treatment: 'Chemical Peels',
+    blockedSkinTypes: [],
+    cautionSkinTypes: ['V', 'VI'],
+    warningMessage: 'Deeper peels carry higher risk of post-inflammatory hyperpigmentation in darker skin.',
+  },
+  {
+    treatment: 'Chemical Peel',
+    blockedSkinTypes: [],
+    cautionSkinTypes: ['V', 'VI'],
+    warningMessage: 'Deeper peels carry higher risk of post-inflammatory hyperpigmentation in darker skin.',
+  },
+  {
+    treatment: 'Microneedling',
+    blockedSkinTypes: [],
+    cautionSkinTypes: ['V', 'VI'],
+    warningMessage: 'Microneedling on darker skin requires conservative depth settings.',
+  },
+  {
+    treatment: 'RF Microneedling',
+    blockedSkinTypes: [],
+    cautionSkinTypes: ['V', 'VI'],
+    warningMessage: 'RF Microneedling on darker skin types requires adjusted energy levels.',
+  },
+]
 
 export function checkTreatmentSafety(
   treatment: string,
   patientConditions: string[],
-  hasLabWork: boolean = false
+  hasLabWork: boolean = false,
+  demographics?: PatientDemographics
 ): SafetyCheckResult {
   const allRules = [
     ...CONTRAINDICATION_MATRIX,
@@ -839,6 +981,48 @@ export function checkTreatmentSafety(
 
   const blockedReasons: string[] = [];
   const cautionReasons: string[] = [];
+  const autoFlaggedConditions: string[] = [];
+
+  if (demographics?.patientAge !== undefined) {
+    const ageRules = AGE_BASED_RULES.filter(
+      (r) => r.treatment.toLowerCase() === treatment.toLowerCase()
+    );
+    for (const ageRule of ageRules) {
+      if (ageRule.minAge && demographics.patientAge < ageRule.minAge) {
+        const message = `Age ${demographics.patientAge}: ${ageRule.warningMessage}`;
+        if (ageRule.severity === 'absolute') {
+          blockedReasons.push(message);
+        } else {
+          cautionReasons.push(message);
+        }
+        autoFlaggedConditions.push(`age_under_${ageRule.minAge}`);
+      }
+      if (ageRule.maxAge && demographics.patientAge > ageRule.maxAge) {
+        const message = `Age ${demographics.patientAge}: ${ageRule.warningMessage}`;
+        if (ageRule.severity === 'absolute') {
+          blockedReasons.push(message);
+        } else {
+          cautionReasons.push(message);
+        }
+        autoFlaggedConditions.push(`age_over_${ageRule.maxAge}`);
+      }
+    }
+  }
+
+  if (demographics?.patientSkinType) {
+    const skinRule = SKIN_TYPE_RULES.find(
+      (r) => r.treatment.toLowerCase() === treatment.toLowerCase()
+    );
+    if (skinRule) {
+      if (skinRule.blockedSkinTypes.includes(demographics.patientSkinType)) {
+        blockedReasons.push(`Fitzpatrick Type ${demographics.patientSkinType}: ${skinRule.warningMessage}`);
+        autoFlaggedConditions.push(`fitzpatrick_${demographics.patientSkinType.toLowerCase()}`);
+      } else if (skinRule.cautionSkinTypes.includes(demographics.patientSkinType)) {
+        cautionReasons.push(`Fitzpatrick Type ${demographics.patientSkinType}: ${skinRule.warningMessage}`);
+        autoFlaggedConditions.push(`fitzpatrick_${demographics.patientSkinType.toLowerCase()}_caution`);
+      }
+    }
+  }
 
   for (const flag of rule.absoluteRedFlags) {
     if (patientConditions.includes(flag)) {
@@ -873,6 +1057,7 @@ export function checkTreatmentSafety(
     requiredLabTests,
     isConditional,
     conditionalMessage,
+    autoFlaggedConditions: autoFlaggedConditions.length > 0 ? autoFlaggedConditions : undefined,
   };
 }
 
