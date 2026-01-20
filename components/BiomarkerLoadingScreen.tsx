@@ -40,6 +40,8 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
   const [activeBiomarker, setActiveBiomarker] = useState(0);
   const [phase, setPhase] = useState<'biomarkers' | 'scanning'>('biomarkers');
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [pendingTransition, setPendingTransition] = useState(false);
   
   const phaseTransitionAnim = useRef(new Animated.Value(1)).current;
   const scanLineAnim = useRef(new Animated.Value(0)).current;
@@ -47,7 +49,15 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
   const glowAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Image.prefetch(WOMAN_IMAGE).catch(() => {});
+    Image.prefetch(WOMAN_IMAGE)
+      .then(() => {
+        console.log('Image prefetched successfully');
+        setImageLoaded(true);
+      })
+      .catch((err) => {
+        console.log('Image prefetch failed, setting loaded anyway:', err);
+        setImageLoaded(true);
+      });
   }, []);
 
   useEffect(() => {
@@ -83,18 +93,7 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
     }, 80);
 
     const phaseTimeout = setTimeout(() => {
-      Animated.timing(phaseTransitionAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }).start(() => {
-        setPhase('scanning');
-        Animated.timing(phaseTransitionAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }).start();
-      });
+      setPendingTransition(true);
     }, BIOMARKER_PHASE_DURATION);
 
     const completeTimeout = setTimeout(() => {
@@ -109,6 +108,24 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
       clearTimeout(completeTimeout);
     };
   }, []);
+
+  useEffect(() => {
+    if (pendingTransition && imageLoaded) {
+      console.log('Transitioning to scanning phase - image is ready');
+      Animated.timing(phaseTransitionAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }).start(() => {
+        setPhase('scanning');
+        Animated.timing(phaseTransitionAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }).start();
+      });
+    }
+  }, [pendingTransition, imageLoaded]);
 
   useEffect(() => {
     if (phase === 'scanning') {
@@ -218,8 +235,15 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
             source={{ uri: WOMAN_IMAGE }}
             style={styles.backgroundImage}
             contentFit="cover"
-            transition={300}
+            transition={0}
             cachePolicy="memory-disk"
+            onLoad={() => {
+              console.log('Image onLoad fired');
+              setImageLoaded(true);
+            }}
+            onError={(e) => {
+              console.log('Image load error:', e);
+            }}
           />
           <LinearGradient
             colors={['rgba(0, 0, 0, 0.3)', 'transparent', 'rgba(0, 0, 0, 0.5)']}
