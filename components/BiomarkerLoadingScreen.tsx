@@ -5,8 +5,8 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
-  Image,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '@/constants/colors';
 
@@ -40,7 +40,6 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
   const [activeBiomarker, setActiveBiomarker] = useState(0);
   const [phase, setPhase] = useState<'biomarkers' | 'scanning'>('biomarkers');
-  const [imageReady, setImageReady] = useState(false);
   
   const phaseTransitionAnim = useRef(new Animated.Value(1)).current;
   const scanLineAnim = useRef(new Animated.Value(0)).current;
@@ -48,23 +47,7 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
   const glowAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    console.log('Starting image preload...');
-    Image.prefetch(WOMAN_IMAGE)
-      .then(() => {
-        console.log('Image preloaded successfully');
-        setImageReady(true);
-      })
-      .catch((err) => {
-        console.log('Image prefetch failed, setting ready anyway:', err);
-        setImageReady(true);
-      });
-    
-    const fallbackTimer = setTimeout(() => {
-      console.log('Image preload fallback timer fired');
-      setImageReady(true);
-    }, 2000);
-    
-    return () => clearTimeout(fallbackTimer);
+    Image.prefetch(WOMAN_IMAGE).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -220,13 +203,7 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
     return rows;
   };
 
-  const handleImageLoad = () => {
-    console.log('Scanning phase image loaded successfully');
-  };
-
-  const handleImageError = (e: { nativeEvent: { error: string } }) => {
-    console.log('Scanning phase image error:', e.nativeEvent.error);
-  };
+  
 
   const renderScanningPhase = () => {
     const scanLineTranslate = scanLineAnim.interpolate({
@@ -240,10 +217,9 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
           <Image
             source={{ uri: WOMAN_IMAGE }}
             style={styles.backgroundImage}
-            resizeMode="cover"
-            onLoad={handleImageLoad}
-            onError={handleImageError}
-            defaultSource={{ uri: WOMAN_IMAGE }}
+            contentFit="cover"
+            transition={300}
+            cachePolicy="memory-disk"
           />
           <LinearGradient
             colors={['rgba(0, 0, 0, 0.3)', 'transparent', 'rgba(0, 0, 0, 0.5)']}
@@ -329,13 +305,9 @@ export default function BiomarkerLoadingScreen({ onComplete }: Props) {
     );
   };
 
-  if (phase === 'scanning' && imageReady) {
+  if (phase === 'scanning') {
     return (
       <View style={styles.container}>
-        <LinearGradient
-          colors={['#050505', '#0a1015', '#050505']}
-          style={StyleSheet.absoluteFill}
-        />
         {renderScanningPhase()}
       </View>
     );
@@ -570,7 +542,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     flex: 1,
     width: '100%',
-    backgroundColor: '#0a1015',
+    backgroundColor: '#000',
   },
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,
