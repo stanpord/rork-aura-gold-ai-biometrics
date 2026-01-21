@@ -1164,10 +1164,17 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
                   <Text style={styles.devPromptCancelText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.devPromptSubmitButton}
                   onPress={handleDevCodeSubmit}
+                  style={styles.devPromptSubmitButtonWrapper}
                 >
-                  <Text style={styles.devPromptSubmitText}>Submit</Text>
+                  <LinearGradient
+                    colors={['#E8D5A3', Colors.gold, Colors.goldDark]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.devPromptSubmitButton}
+                  >
+                    <Text style={styles.devPromptSubmitText}>Submit</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1195,12 +1202,18 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
               </View>
               <Text style={styles.analysisTitle}>BIOMETRIC SCAN ACTIVE</Text>
               <TouchableOpacity
-                style={styles.generateButton}
                 onPress={runAnalysis}
                 activeOpacity={0.8}
               >
-                <Play size={16} color={Colors.black} />
-                <Text style={styles.generateButtonText}>GENERATE ROADMAP</Text>
+                <LinearGradient
+                  colors={['#E8D5A3', Colors.gold, Colors.goldDark]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.generateButton}
+                >
+                  <Play size={16} color={Colors.black} />
+                  <Text style={styles.generateButtonText}>GENERATE ROADMAP</Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           )}
@@ -1215,11 +1228,17 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
                 Secure your results to sync with your patient profile
               </Text>
               <TouchableOpacity
-                style={styles.unlockButton}
                 onPress={() => setShowLeadModal(true)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.unlockButtonText}>UNLOCK DIAGNOSTIC</Text>
+                <LinearGradient
+                  colors={['#E8D5A3', Colors.gold, Colors.goldDark]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.unlockButton}
+                >
+                  <Text style={styles.unlockButtonText}>UNLOCK DIAGNOSTIC</Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           )}
@@ -1741,13 +1760,18 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   generateButton: {
-    backgroundColor: Colors.white,
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 32,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
+    shadowColor: Colors.gold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
   generateButtonText: {
     fontSize: 11,
@@ -1788,10 +1812,14 @@ const styles = StyleSheet.create({
     maxWidth: 240,
   },
   unlockButton: {
-    backgroundColor: Colors.gold,
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 32,
+    shadowColor: Colors.gold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
   unlockButtonText: {
     fontSize: 10,
@@ -2467,11 +2495,17 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
   },
-  devPromptSubmitButton: {
+  devPromptSubmitButtonWrapper: {
     flex: 1,
+  },
+  devPromptSubmitButton: {
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: Colors.gold,
+    shadowColor: Colors.gold,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
   devPromptSubmitText: {
     fontSize: 14,
