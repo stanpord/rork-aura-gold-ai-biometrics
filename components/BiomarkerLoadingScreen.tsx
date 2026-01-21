@@ -84,6 +84,7 @@ export default function BiomarkerLoadingScreen({ onComplete }: BiomarkerLoadingS
       clearInterval(interval);
       clearTimeout(completionTimer);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fadeAnims, pulseAnim]);
 
   const renderBiomarkerGrid = () => {
@@ -203,32 +204,33 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 30,
+    paddingTop: 40,
+    paddingBottom: 20,
+    justifyContent: 'space-between',
   },
   header: {
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   logoContainer: {
-    width: 52,
-    height: 52,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   logoRing: {
     position: 'absolute',
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: Colors.gold,
   },
   logoInner: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(245, 158, 11, 0.3)',
@@ -236,16 +238,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '300' as const,
     color: Colors.gold,
     letterSpacing: 2,
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '200' as const,
     color: Colors.white,
-    letterSpacing: 6,
+    letterSpacing: 5,
     marginBottom: 4,
   },
   subtitle: {
@@ -257,15 +259,15 @@ const styles = StyleSheet.create({
   },
   biomarkersSection: {
     flex: 1,
-    justifyContent: 'center',
-    marginVertical: 10,
+    justifyContent: 'flex-start',
+    paddingTop: 8,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
-    gap: 12,
+    marginBottom: 12,
+    gap: 10,
   },
   sectionLine: {
     flex: 1,
@@ -280,24 +282,24 @@ const styles = StyleSheet.create({
     letterSpacing: 4,
   },
   biomarkersGrid: {
-    gap: 6,
+    gap: 5,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 6,
+    gap: 5,
   },
   biomarkerItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 5,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.04)',
-    minWidth: (SCREEN_WIDTH - 60) / 3,
-    maxWidth: (SCREEN_WIDTH - 60) / 3,
+    minWidth: (SCREEN_WIDTH - 56) / 3,
+    maxWidth: (SCREEN_WIDTH - 56) / 3,
   },
   biomarkerItemActive: {
     backgroundColor: 'rgba(245, 158, 11, 0.08)',
@@ -326,8 +328,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    gap: 10,
-    paddingTop: 10,
+    gap: 8,
+    paddingTop: 8,
   },
   scanningIndicator: {
     flexDirection: 'row',
