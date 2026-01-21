@@ -32,7 +32,7 @@ export default function BiomarkerLoadingScreen() {
 
   useEffect(() => {
     console.log('[BiomarkerLoadingScreen] Starting biomarker animation sequence');
-    const staggerDelay = 400;
+    const staggerDelay = 350;
     const animations = fadeAnims.map((anim) =>
       Animated.timing(anim, {
         toValue: 1,
@@ -66,7 +66,7 @@ export default function BiomarkerLoadingScreen() {
         }
         return next;
       });
-    }, 400);
+    }, 350);
 
     return () => {
       console.log('[BiomarkerLoadingScreen] Cleaning up animations');
