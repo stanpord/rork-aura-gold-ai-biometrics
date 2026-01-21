@@ -89,12 +89,15 @@ export default function ScanScreen() {
     patientBasicInfo,
     savePatientBasicInfo,
     updatePatientEmail,
+    hasCompletedIntro,
+    isLoadingIntro,
+    completeIntro,
   } = useApp();
 
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [introPhase, setIntroPhase] = useState<'biomarkers' | 'facescan' | 'complete'>('biomarkers');
+  const [introPhase, setIntroPhase] = useState<'biomarkers' | 'facescan' | 'complete' | 'loading'>('loading');
 
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [isLeadSaved, setIsLeadSaved] = useState(false);
@@ -1037,7 +1040,23 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
     return null;
   };
 
-  if (introPhase === 'biomarkers') {
+  React.useEffect(() => {
+    if (!isLoadingIntro) {
+      if (hasCompletedIntro) {
+        setIntroPhase('complete');
+      } else {
+        setIntroPhase('biomarkers');
+      }
+    }
+  }, [isLoadingIntro, hasCompletedIntro]);
+
+  if (introPhase === 'loading' || isLoadingIntro) {
+    return (
+      <BiomarkerLoadingScreen onComplete={() => {}} />
+    );
+  }
+
+  if (introPhase === 'biomarkers' && !hasCompletedIntro) {
     return (
       <BiomarkerLoadingScreen onComplete={() => {
         setIntroPhase('facescan');
@@ -1045,9 +1064,10 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
     );
   }
 
-  if (introPhase === 'facescan') {
+  if (introPhase === 'facescan' && !hasCompletedIntro) {
     return (
       <BiometricIntroScan onComplete={() => {
+        completeIntro();
         setIntroPhase('complete');
       }} />
     );
