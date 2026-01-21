@@ -5,10 +5,10 @@ export default {
   border: 'rgba(255, 255, 255, 0.05)',
   borderLight: 'rgba(255, 255, 255, 0.1)',
   
-  gold: '#D4AF37',
-  goldLight: '#E8C872',
-  goldDark: '#A68B28',
-  goldMuted: 'rgba(212, 175, 55, 0.2)',
+  gold: '#C9A962',
+  goldLight: '#DFC88A',
+  goldDark: '#9E8347',
+  goldMuted: 'rgba(201, 169, 98, 0.2)',
   
   text: '#e2e8f0',
   textMuted: '#64748b',
