@@ -25,7 +25,11 @@ const BIOMARKERS = [
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const COLUMNS = 3;
 
-export default function BiomarkerLoadingScreen() {
+interface BiomarkerLoadingScreenProps {
+  onComplete?: () => void;
+}
+
+export default function BiomarkerLoadingScreen({ onComplete }: BiomarkerLoadingScreenProps) {
   const fadeAnims = useRef(BIOMARKERS.map(() => new Animated.Value(0))).current;
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
   const [activeBiomarker, setActiveBiomarker] = useState(0);
@@ -68,9 +72,17 @@ export default function BiomarkerLoadingScreen() {
       });
     }, 350);
 
+    const completionTimer = setTimeout(() => {
+      console.log('[BiomarkerLoadingScreen] Animation complete, triggering onComplete');
+      if (onComplete) {
+        onComplete();
+      }
+    }, BIOMARKERS.length * staggerDelay + 1500);
+
     return () => {
       console.log('[BiomarkerLoadingScreen] Cleaning up animations');
       clearInterval(interval);
+      clearTimeout(completionTimer);
     };
   }, [fadeAnims, pulseAnim]);
 

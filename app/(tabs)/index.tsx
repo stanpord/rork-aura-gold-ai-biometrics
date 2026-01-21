@@ -50,6 +50,7 @@ import LeadCaptureModal from '@/components/LeadCaptureModal';
 import EmailCaptureModal from '@/components/EmailCaptureModal';
 import BeforeAfterSlider from '@/components/BeforeAfterSlider';
 import BiometricIntroScan from '@/components/BiometricIntroScan';
+import BiomarkerLoadingScreen from '@/components/BiomarkerLoadingScreen';
 import GuidedCaptureOverlay from '@/components/GuidedCaptureOverlay';
 import HealthQuestionnaire from '@/components/HealthQuestionnaire';
 
@@ -93,7 +94,7 @@ export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showIntroScan, setShowIntroScan] = useState(false);
+  const [showIntroScan, setShowIntroScan] = useState(true);
 
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [isLeadSaved, setIsLeadSaved] = useState(false);
@@ -1038,7 +1039,7 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
 
   if (showIntroScan) {
     return (
-      <BiometricIntroScan onComplete={() => {
+      <BiomarkerLoadingScreen onComplete={() => {
         setShowIntroScan(false);
       }} />
     );
