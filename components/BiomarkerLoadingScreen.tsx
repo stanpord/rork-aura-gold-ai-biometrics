@@ -7,6 +7,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 
 const BIOMARKERS = [
@@ -30,6 +31,7 @@ interface BiomarkerLoadingScreenProps {
 }
 
 export default function BiomarkerLoadingScreen({ onComplete }: BiomarkerLoadingScreenProps) {
+  const insets = useSafeAreaInsets();
   const fadeAnims = useRef(BIOMARKERS.map(() => new Animated.Value(0))).current;
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
   const [activeBiomarker, setActiveBiomarker] = useState(0);
@@ -145,7 +147,7 @@ export default function BiomarkerLoadingScreen({ onComplete }: BiomarkerLoadingS
         />
       </View>
 
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <Animated.View style={[styles.logoRing, { opacity: pulseAnim }]} />
@@ -204,8 +206,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 40,
-    paddingBottom: 20,
     justifyContent: 'space-between',
   },
   header: {
