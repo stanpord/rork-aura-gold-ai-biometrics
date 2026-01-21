@@ -94,7 +94,7 @@ export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showIntroScan, setShowIntroScan] = useState(true);
+  const [introPhase, setIntroPhase] = useState<'biomarkers' | 'facescan' | 'complete'>('biomarkers');
 
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [isLeadSaved, setIsLeadSaved] = useState(false);
@@ -1037,10 +1037,18 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
     return null;
   };
 
-  if (showIntroScan) {
+  if (introPhase === 'biomarkers') {
     return (
       <BiomarkerLoadingScreen onComplete={() => {
-        setShowIntroScan(false);
+        setIntroPhase('facescan');
+      }} />
+    );
+  }
+
+  if (introPhase === 'facescan') {
+    return (
+      <BiometricIntroScan onComplete={() => {
+        setIntroPhase('complete');
       }} />
     );
   }
