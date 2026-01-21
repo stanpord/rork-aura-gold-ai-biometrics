@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Aura Gold AI Biometrics",
+    "name": "Aura Gold Biometrics",
     "slug": "aura-gold-ai-biometrics",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "rork-app",
