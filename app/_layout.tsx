@@ -4,7 +4,7 @@ import { trpc, trpcClient } from '@/lib/trpc';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet } from 'react-native';
+
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppProvider, useApp } from '@/contexts/AppContext';
 import BiometricIntroScan from '@/components/BiometricIntroScan';
@@ -79,4 +79,4 @@ export default function RootLayout() {
   );
 }
 
-const styles = StyleSheet.create({});
+

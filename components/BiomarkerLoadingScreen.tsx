@@ -72,7 +72,7 @@ export default function BiomarkerLoadingScreen() {
       console.log('[BiomarkerLoadingScreen] Cleaning up animations');
       clearInterval(interval);
     };
-  }, []);
+  }, [fadeAnims, pulseAnim]);
 
   const renderBiomarkerGrid = () => {
     const rows: React.ReactNode[] = [];
