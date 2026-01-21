@@ -7,7 +7,7 @@ import { encryptObject, decryptObject, isEncryptedData, getEncryptionStatus, Enc
 import { checkTreatmentSafety, getExplainableReason, PatientDemographics, SafetyCheckResult } from '@/constants/contraindications';
 import { initializeAuditLog, logAuditEvent, logAuthEvent, logPHIAccess, logConsentEvent, getAuditSummary } from '@/utils/auditLog';
 
-const APP_VERSION = '1.0.7';
+const APP_VERSION = '1.0.8';
 
 const SESSION_TIMEOUT_MS = 15 * 60 * 1000;
 const SESSION_WARNING_MS = 2 * 60 * 1000;
@@ -156,7 +156,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const loadStoredData = async () => {
     const startTime = Date.now();
-    const MIN_LOADING_TIME_MS = 18000;
+    const MIN_LOADING_TIME_MS = 20000;
     
     try {
       console.log('[AppContext] Loading stored data, current version:', APP_VERSION);

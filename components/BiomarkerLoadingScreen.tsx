@@ -31,7 +31,8 @@ export default function BiomarkerLoadingScreen() {
   const [activeBiomarker, setActiveBiomarker] = useState(0);
 
   useEffect(() => {
-    const staggerDelay = 350;
+    console.log('[BiomarkerLoadingScreen] Starting biomarker animation sequence');
+    const staggerDelay = 400;
     const animations = fadeAnims.map((anim) =>
       Animated.timing(anim, {
         toValue: 1,
@@ -58,10 +59,19 @@ export default function BiomarkerLoadingScreen() {
     ).start();
 
     const interval = setInterval(() => {
-      setActiveBiomarker((prev) => (prev + 1) % BIOMARKERS.length);
-    }, 600);
+      setActiveBiomarker((prev) => {
+        const next = (prev + 1) % BIOMARKERS.length;
+        if (next === 0) {
+          console.log('[BiomarkerLoadingScreen] Completed full biomarker cycle');
+        }
+        return next;
+      });
+    }, 400);
 
-    return () => clearInterval(interval);
+    return () => {
+      console.log('[BiomarkerLoadingScreen] Cleaning up animations');
+      clearInterval(interval);
+    };
   }, []);
 
   const renderBiomarkerGrid = () => {
