@@ -109,6 +109,7 @@ export default function ScanScreen() {
   const brightnessCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cameraRef = useRef<CameraView>(null);
   const isCapturingRef = useRef(false);
+  const isBrightnessCheckingRef = useRef(false);
   const DEV_CODE = '1234';
 
   const [showDevPrompt, setShowDevPrompt] = useState(false);
@@ -240,6 +241,7 @@ export default function ScanScreen() {
     setIsGuidedCaptureActive(false);
     setMeasuredBrightness(0);
     isCapturingRef.current = false;
+    isBrightnessCheckingRef.current = false;
     if (brightnessCheckRef.current) {
       clearInterval(brightnessCheckRef.current);
       brightnessCheckRef.current = null;
@@ -306,7 +308,11 @@ export default function ScanScreen() {
   }, []);
 
   const checkCameraBrightness = useCallback(async () => {
-    if (!cameraRef.current || !isCameraActive) return;
+    if (!cameraRef.current || !isCameraActive || isBrightnessCheckingRef.current || isCapturingRef.current) {
+      return;
+    }
+    
+    isBrightnessCheckingRef.current = true;
     
     try {
       const photo = await cameraRef.current.takePictureAsync({
@@ -314,25 +320,31 @@ export default function ScanScreen() {
         skipProcessing: true,
       });
       
-      if (photo?.uri) {
+      if (photo?.uri && !isCapturingRef.current) {
         const brightness = await analyzeBrightnessFromImage(photo.uri);
         setMeasuredBrightness(brightness);
         console.log('Camera brightness measured:', brightness.toFixed(1));
       }
     } catch (error) {
       console.log('Brightness check error:', error);
+    } finally {
+      isBrightnessCheckingRef.current = false;
     }
   }, [isCameraActive, analyzeBrightnessFromImage]);
 
   React.useEffect(() => {
     if (isCameraActive && isGuidedCaptureActive) {
+      isBrightnessCheckingRef.current = false;
+      
       const initialDelay = setTimeout(() => {
         checkCameraBrightness();
-      }, 500);
+      }, 800);
       
       brightnessCheckRef.current = setInterval(() => {
-        checkCameraBrightness();
-      }, 1500);
+        if (!isBrightnessCheckingRef.current && !isCapturingRef.current) {
+          checkCameraBrightness();
+        }
+      }, 2500);
       
       return () => {
         clearTimeout(initialDelay);
@@ -340,6 +352,7 @@ export default function ScanScreen() {
           clearInterval(brightnessCheckRef.current);
           brightnessCheckRef.current = null;
         }
+        isBrightnessCheckingRef.current = false;
       };
     }
   }, [isCameraActive, isGuidedCaptureActive, checkCameraBrightness]);
@@ -365,6 +378,11 @@ export default function ScanScreen() {
       return;
     }
     isCapturingRef.current = true;
+    
+    if (brightnessCheckRef.current) {
+      clearInterval(brightnessCheckRef.current);
+      brightnessCheckRef.current = null;
+    }
     
     if (!isLightingAcceptable) {
       console.log('Lighting became unacceptable during countdown - blocking capture');
