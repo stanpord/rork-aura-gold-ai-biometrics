@@ -2022,7 +2022,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   ivBadge: {
-    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
@@ -2030,11 +2030,11 @@ const styles = StyleSheet.create({
   ivBadgeText: {
     fontSize: 8,
     fontWeight: '900' as const,
-    color: '#3b82f6',
+    color: Colors.gold,
     letterSpacing: 1,
   },
   ivIngredientsBox: {
-    backgroundColor: 'rgba(59, 130, 246, 0.06)',
+    backgroundColor: 'rgba(245, 158, 11, 0.06)',
     borderRadius: 10,
     padding: 12,
     marginBottom: 10,
@@ -2042,7 +2042,7 @@ const styles = StyleSheet.create({
   ivIngredientsLabel: {
     fontSize: 9,
     fontWeight: '800' as const,
-    color: '#3b82f6',
+    color: Colors.gold,
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom: 4,
