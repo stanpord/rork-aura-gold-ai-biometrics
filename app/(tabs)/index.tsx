@@ -1052,7 +1052,7 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
 
   if (introPhase === 'loading' || isLoadingIntro) {
     return (
-      <BiomarkerLoadingScreen onComplete={() => {}} />
+      <View style={styles.container} />
     );
   }
 
