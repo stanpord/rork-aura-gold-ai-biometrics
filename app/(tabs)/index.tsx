@@ -50,7 +50,6 @@ import LeadCaptureModal from '@/components/LeadCaptureModal';
 import EmailCaptureModal from '@/components/EmailCaptureModal';
 import BeforeAfterSlider from '@/components/BeforeAfterSlider';
 import BiometricIntroScan from '@/components/BiometricIntroScan';
-import BiomarkerLoadingScreen from '@/components/BiomarkerLoadingScreen';
 import GuidedCaptureOverlay from '@/components/GuidedCaptureOverlay';
 import HealthQuestionnaire from '@/components/HealthQuestionnaire';
 
@@ -105,7 +104,6 @@ export default function ScanScreen() {
   const [isEmailSaved, setIsEmailSaved] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<'front' | 'back'>('front');
   const [isGuidedCaptureActive, setIsGuidedCaptureActive] = useState(false);
-  const [showBiomarkerLoading, setShowBiomarkerLoading] = useState(false);
   const [isLightingAcceptable, setIsLightingAcceptable] = useState(false);
   const [measuredBrightness, setMeasuredBrightness] = useState(0);
   const brightnessCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -862,7 +860,6 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
 
     setIsAnalyzing(true);
     setIsSimulationPending(true);
-    setShowBiomarkerLoading(true);
 
     try {
       const aiAnalysisPromise = analyzeImageWithAI(capturedImage);
@@ -886,10 +883,8 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
       const safetyCheckedAnalysis = applyContraindicationChecks(aiAnalysisResult);
       setCurrentAnalysis(safetyCheckedAnalysis);
       console.log('AI analysis with safety checks:', JSON.stringify(safetyCheckedAnalysis, null, 2));
-      setShowBiomarkerLoading(false);
     } catch (error) {
       console.log('Analysis error:', error);
-      setShowBiomarkerLoading(false);
       Alert.alert('Analysis Error', 'Unable to complete facial analysis. Please try again.');
     } finally {
       setIsAnalyzing(false);
@@ -1029,10 +1024,6 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
         setShowIntroScan(false);
       }} />
     );
-  }
-
-  if (showBiomarkerLoading) {
-    return <BiomarkerLoadingScreen />;
   }
 
   if (!capturedImage) {
