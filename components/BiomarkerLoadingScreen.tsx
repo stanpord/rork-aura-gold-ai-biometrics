@@ -332,7 +332,8 @@ const styles = StyleSheet.create({
   footer: {
     alignItems: 'center',
     gap: isSmallScreen ? 4 : 8,
-    paddingTop: isSmallScreen ? 4 : 8,
+    paddingTop: isSmallScreen ? 16 : 24,
+    marginTop: isSmallScreen ? 8 : 12,
   },
   scanningIndicator: {
     flexDirection: 'row',
