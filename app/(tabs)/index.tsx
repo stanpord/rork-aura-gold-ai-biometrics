@@ -62,6 +62,31 @@ import PatientConsentModal from '@/components/PatientConsentModal';
 const MAX_CONTENT_WIDTH = 600;
 const MAX_SLIDER_WIDTH = 500;
 
+const TREATMENT_VISUAL_EFFECTS: Record<string, string> = {
+  'Botox': '- Completely smooth forehead lines making the forehead appear glass-smooth\n- Eliminate frown lines (11s) between the eyebrows completely\n- Soften crow\'s feet around the eyes significantly\n- Keep natural facial expressions - refreshed but not frozen',
+  'Wrinkle Relaxers': '- Smooth out all dynamic wrinkles on forehead and around eyes\n- Eliminate visible frown lines and crow\'s feet\n- Create a relaxed, refreshed appearance',
+  'Morpheus8': '- Dramatically tighten and lift sagging skin along jawline and jowls\n- Create a more defined, sculpted jawline contour\n- Lift and tighten neck skin, reducing any laxity\n- Improve overall skin texture making it appear smoother',
+  'RF Microneedling': '- Tighten loose skin and improve firmness\n- Enhance jawline definition\n- Improve skin texture and reduce fine lines',
+  'Dermal Filler': '- Add natural-looking volume to cheeks creating fuller, more youthful contours\n- Soften nasolabial folds (smile lines) significantly\n- Fill in under-eye hollows or tear troughs\n- Restore youthful facial proportions',
+  'Sculptra': '- Restore overall facial volume for a more youthful appearance\n- Fill in temple hollowing naturally\n- Enhance cheek volume with a gradual, natural look\n- Lift and support sagging areas through volume restoration',
+  'DiamondGlow': '- Create dramatically glowing, luminous skin\n- Refine skin texture to appear poreless and smooth\n- Even out skin tone completely\n- Give a "glass skin" appearance',
+  'Chemical Peels': '- Dramatically improve skin texture to appear smooth and refined\n- Even out skin tone and remove discoloration\n- Reduce visible pores significantly\n- Add healthy radiance to the complexion',
+  'Stellar IPL': '- Remove all visible sun spots and age spots\n- Eliminate any redness, rosacea, or broken capillaries\n- Create a clear, uniform complexion\n- Even out skin tone dramatically',
+  'IPL': '- Clear sun damage and brown spots completely\n- Reduce redness and vascular concerns\n- Even skin tone throughout the face\n- Improve overall skin clarity',
+  'Clear + Brilliant': '- Refine skin texture to appear smoother\n- Minimize pore appearance\n- Create a subtle glow and radiance\n- Give skin a refreshed, youthful quality',
+  'MOXI Laser': '- Dramatically improve skin tone and texture\n- Reduce early sun damage and pigmentation\n- Create smoother, more refined skin\n- Add healthy radiance and glow',
+  'Microneedling': '- Improve skin texture significantly - smoother and more refined\n- Reduce visible pores\n- Soften fine lines and wrinkles\n- Add firmness and elasticity to the skin',
+  'HydraFacial': '- Create deeply hydrated, plump skin\n- Add intense glow and radiance\n- Clear and refine pores\n- Give skin a healthy, dewy appearance',
+  'Lip Filler': '- Enhance lip volume naturally - fuller but balanced\n- Define lip borders and cupid\'s bow\n- Create symmetrical, hydrated-looking lips',
+  'Facials': '- Improve skin clarity and brightness\n- Deep cleanse and refine pores\n- Add healthy glow to complexion',
+  'LED Therapy': '- Reduce inflammation and redness\n- Improve overall skin tone\n- Add subtle radiance',
+  'Dermaplaning': '- Create ultra-smooth skin surface\n- Remove peach fuzz for flawless appearance\n- Enhance skin\'s natural glow',
+  'Exosome Therapy': '- Accelerate skin healing and regeneration\n- Improve overall skin quality\n- Enhance cellular vitality',
+  'PRP': '- Natural skin rejuvenation and glow\n- Improved skin texture and firmness\n- Healthy, refreshed appearance',
+  'Kybella': '- Reduce submental fullness (double chin)\n- Create more defined neck and jawline contour',
+  'Thread Lift': '- Lift sagging skin in midface and jowls\n- Create more defined facial contours\n- Tighten loose skin',
+};
+
 export default function ScanScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const isTablet = windowWidth > 768;
@@ -426,10 +451,76 @@ export default function ScanScreen() {
     }
   }, [setCapturedImage, patientBasicInfo?.email, isLightingAcceptable]);
 
+  const buildCumulativeTreatmentPrompt = useCallback((treatments: string[]): string => {
+    const treatmentEffects: string[] = [];
+    const matchedTreatments: string[] = [];
+    
+    treatments.forEach(treatment => {
+      const normalizedName = treatment.trim();
+      const effect = TREATMENT_VISUAL_EFFECTS[normalizedName];
+      if (effect) {
+        treatmentEffects.push(`## ${normalizedName.toUpperCase()} EFFECTS:\n${effect}`);
+        matchedTreatments.push(normalizedName);
+      } else {
+        const partialMatch = Object.keys(TREATMENT_VISUAL_EFFECTS).find(
+          key => normalizedName.toLowerCase().includes(key.toLowerCase()) ||
+                 key.toLowerCase().includes(normalizedName.toLowerCase())
+        );
+        if (partialMatch) {
+          treatmentEffects.push(`## ${normalizedName.toUpperCase()} EFFECTS:\n${TREATMENT_VISUAL_EFFECTS[partialMatch]}`);
+          matchedTreatments.push(normalizedName);
+        }
+      }
+    });
+
+    console.log(`Building cumulative prompt for ${matchedTreatments.length} treatments:`, matchedTreatments.join(', '));
+
+    if (treatmentEffects.length === 0) {
+      return `Transform this face photo to show dramatic but realistic aesthetic treatment results.
+
+APPLY THESE VISIBLE CHANGES:
+- Improve overall skin quality and texture
+- Create a more youthful, refreshed appearance
+- Even out skin tone
+- Add healthy radiance and glow
+- Maintain natural facial features
+
+IMPORTANT:
+- Keep the SAME person, same identity, same hair, same background
+- Changes must be CLEARLY VISIBLE - this is a before/after comparison
+- Make the person look visibly younger and more refreshed
+- This should look like a transformation from a premium aesthetic clinic`;
+    }
+
+    return `Transform this face photo to show the COMBINED CUMULATIVE RESULTS of multiple aesthetic treatments.
+
+You are simulating the visual outcome of receiving ALL of the following treatments together:
+${matchedTreatments.map((t, i) => `${i + 1}. ${t}`).join('\n')}
+
+APPLY ALL OF THESE TREATMENT-SPECIFIC EFFECTS CUMULATIVELY:
+
+${treatmentEffects.join('\n\n')}
+
+## CUMULATIVE TRANSFORMATION REQUIREMENTS:
+- ALL effects from each treatment should be visible and combined
+- Effects should stack naturally - e.g., smoother skin + lifted contours + glowing complexion
+- The final result shows what the person would look like after completing ALL recommended treatments
+- This is the "goal state" visualization showing maximum improvement potential
+
+CRITICAL:
+- Keep the SAME person, same identity, same hair, same background
+- Changes must be CLEARLY VISIBLE - this is a before/after comparison
+- Combine ALL treatment effects naturally for a cohesive transformation
+- Make the person look noticeably younger and more refreshed
+- Skin should have a healthy radiant glow
+- This should look like a dramatic transformation from a premium aesthetic clinic`;
+  }, []);
+
   const generateTreatmentSimulation = useCallback(async (imageUri: string, treatments: string[], retryCount = 0): Promise<string | null> => {
     const maxRetries = 2;
     try {
       console.log(`Starting AI treatment simulation (attempt ${retryCount + 1}/${maxRetries + 1})...`);
+      console.log(`Treatments to simulate:`, treatments.join(', '));
       
       let base64Image = '';
       
@@ -449,24 +540,7 @@ export default function ScanScreen() {
         base64Image = await file.base64();
       }
 
-      const treatmentPrompt = `Transform this face photo to show dramatic but realistic aesthetic treatment results.
-
-APPLY THESE VISIBLE CHANGES:
-
-1. WRINKLE REDUCTION: Completely smooth out ALL forehead lines, frown lines between eyebrows, and crow's feet around eyes. Make the skin look 10 years younger with zero visible wrinkles.
-
-2. SKIN RESURFACING: Dramatically improve skin texture - make pores invisible, even out all skin tone, remove any redness or discoloration. Add a luminous, glowing complexion with perfect porcelain-smooth texture.
-
-3. FACIAL CONTOURING: Add noticeable volume to cheeks making them fuller and more lifted. Define the jawline to be sharper and more sculpted. Fill in hollow temples and under-eye areas. Create a visible V-shape face contour.
-
-4. REJUVENATION: Tighten all sagging skin, especially around jowls, neck, and lower face. Lift the brows slightly. Make eyes look more open and refreshed.
-
-IMPORTANT:
-- Keep the SAME person, same identity, same hair, same background
-- Changes must be CLEARLY VISIBLE - this is a before/after comparison
-- Make the person look visibly younger and more refreshed
-- Skin should have a healthy radiant glow
-- This should look like a dramatic transformation photo from a premium aesthetic clinic`;
+      const treatmentPrompt = buildCumulativeTreatmentPrompt(treatments);
 
       console.log('Calling Gemini image edit API...');
       
@@ -886,23 +960,28 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
     setIsSimulationPending(true);
 
     try {
-      const aiAnalysisPromise = analyzeImageWithAI(capturedImage);
-      const simulationPromise = generateTreatmentSimulation(capturedImage, ['Botox', 'Morpheus8', 'Sculptra']);
-
-      const aiAnalysisResult = await aiAnalysisPromise;
+      const aiAnalysisResult = await analyzeImageWithAI(capturedImage);
       
-      simulationPromise.then((simulatedResult) => {
-        setIsSimulationPending(false);
-        if (simulatedResult) {
-          setSimulatedImage(simulatedResult);
-          console.log('Treatment simulation set successfully');
-        } else {
-          console.log('Simulation failed after retries, using original image');
-        }
-      }).catch(() => {
-        setIsSimulationPending(false);
-        console.log('Simulation promise rejected');
-      });
+      const recommendedTreatments = aiAnalysisResult.clinicalRoadmap
+        .filter(proc => !proc.safetyStatus?.isBlocked)
+        .map(proc => proc.name);
+      
+      console.log('Generating cumulative simulation for treatments:', recommendedTreatments.join(', '));
+      
+      generateTreatmentSimulation(capturedImage, recommendedTreatments)
+        .then((simulatedResult) => {
+          setIsSimulationPending(false);
+          if (simulatedResult) {
+            setSimulatedImage(simulatedResult);
+            console.log('Cumulative treatment simulation set successfully');
+          } else {
+            console.log('Simulation failed after retries, using original image');
+          }
+        })
+        .catch(() => {
+          setIsSimulationPending(false);
+          console.log('Simulation promise rejected');
+        });
 
       const safetyCheckedAnalysis = applyContraindicationChecks(aiAnalysisResult);
       setCurrentAnalysis(safetyCheckedAnalysis);
