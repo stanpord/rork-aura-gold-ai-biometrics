@@ -4,6 +4,7 @@ import { trpc, trpcClient } from '@/lib/trpc';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppProvider, useApp } from '@/contexts/AppContext';
@@ -12,6 +13,10 @@ import Colors from '@/constants/colors';
 import BiomarkerLoadingScreen from '@/components/BiomarkerLoadingScreen';
 
 SplashScreen.preventAutoHideAsync();
+
+ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {
+  console.log('Screen orientation lock not supported on this platform');
+});
 
 const queryClient = new QueryClient();
 
