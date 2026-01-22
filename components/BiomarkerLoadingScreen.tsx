@@ -262,8 +262,9 @@ const styles = StyleSheet.create({
   },
   biomarkersSection: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     overflow: 'hidden',
+    paddingTop: isVerySmallScreen ? 4 : isSmallScreen ? 8 : 12,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -332,8 +333,8 @@ const styles = StyleSheet.create({
   footer: {
     alignItems: 'center',
     gap: isSmallScreen ? 4 : 8,
-    paddingTop: isSmallScreen ? 16 : 24,
-    marginTop: isSmallScreen ? 8 : 12,
+    paddingTop: isVerySmallScreen ? 4 : isSmallScreen ? 6 : 12,
+    marginTop: isVerySmallScreen ? 4 : isSmallScreen ? 6 : 10,
   },
   scanningIndicator: {
     flexDirection: 'row',
