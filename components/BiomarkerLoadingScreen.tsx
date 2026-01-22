@@ -264,7 +264,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-start',
     overflow: 'hidden',
-    paddingTop: isVerySmallScreen ? 4 : isSmallScreen ? 8 : 12,
+    paddingTop: isVerySmallScreen ? 2 : isSmallScreen ? 4 : 8,
+    paddingBottom: isVerySmallScreen ? 4 : isSmallScreen ? 6 : 10,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -332,9 +333,9 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    gap: isSmallScreen ? 4 : 8,
-    paddingTop: isVerySmallScreen ? 4 : isSmallScreen ? 6 : 12,
-    marginTop: isVerySmallScreen ? 4 : isSmallScreen ? 6 : 10,
+    gap: isSmallScreen ? 2 : 6,
+    paddingTop: isVerySmallScreen ? 2 : isSmallScreen ? 4 : 8,
+    marginTop: isVerySmallScreen ? 2 : isSmallScreen ? 4 : 6,
   },
   scanningIndicator: {
     flexDirection: 'row',
