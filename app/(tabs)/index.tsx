@@ -451,17 +451,22 @@ export default function ScanScreen() {
     }
   }, [setCapturedImage, patientBasicInfo?.email, isLightingAcceptable]);
 
-  const resizeImageForAnalysis = useCallback(async (imageUri: string): Promise<string> => {
-    const MAX_DIMENSION = 800;
-    console.log('Resizing image for faster AI processing...');
+  const resizeImageForAnalysis = useCallback(async (imageUri: string, forSimulation = false): Promise<string> => {
+    // For analysis: AI doesn't need high res - 512px is plenty for skin/wrinkle detection
+    // For simulation: slightly higher res for better output quality
+    const MAX_DIMENSION = forSimulation ? 640 : 512;
+    const QUALITY = forSimulation ? 0.5 : 0.4;
+    
+    console.log(`Resizing image: ${MAX_DIMENSION}px, ${QUALITY * 100}% quality (${forSimulation ? 'simulation' : 'analysis'})`);
     
     try {
+      const startTime = Date.now();
       const manipResult = await ImageManipulator.manipulateAsync(
         imageUri,
         [{ resize: { width: MAX_DIMENSION } }],
-        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+        { compress: QUALITY, format: ImageManipulator.SaveFormat.JPEG }
       );
-      console.log('Image resized successfully to ~800px width, ~60% quality');
+      console.log(`Image resized in ${Date.now() - startTime}ms`);
       return manipResult.uri;
     } catch (error) {
       console.log('Image resize failed, using original:', error);
@@ -540,9 +545,10 @@ CRITICAL:
       console.log(`Starting AI treatment simulation (attempt ${retryCount + 1}/${maxRetries + 1})...`);
       console.log(`Treatments to simulate:`, treatments.join(', '));
       
+      const startTime = Date.now();
       // Resize image before sending to API - significantly reduces upload time
-      const resizedUri = await resizeImageForAnalysis(imageUri);
-      console.log('Image resized for simulation upload');
+      const resizedUri = await resizeImageForAnalysis(imageUri, true);
+      console.log(`Image prepared for simulation in ${Date.now() - startTime}ms`);
       
       let base64Image = '';
       
@@ -647,12 +653,14 @@ CRITICAL:
 
 const analyzeImageWithAI = useCallback(async (imageUri: string): Promise<AnalysisResult> => {
     console.log('Starting AI clinical analysis of captured image...');
+    const totalStartTime = Date.now();
     
-    const resizedUri = await resizeImageForAnalysis(imageUri);
-    console.log('Using resized image for analysis');
+    const resizedUri = await resizeImageForAnalysis(imageUri, false);
+    console.log(`Image prep complete, starting base64 conversion...`);
     
     let base64Image = '';
     
+    const b64StartTime = Date.now();
     if (Platform.OS === 'web') {
       const response = await fetch(resizedUri);
       const blob = await response.blob();
@@ -668,6 +676,7 @@ const analyzeImageWithAI = useCallback(async (imageUri: string): Promise<Analysi
       const file = new File(resizedUri);
       base64Image = await file.base64();
     }
+    console.log(`Base64 conversion took ${Date.now() - b64StartTime}ms, payload ~${Math.round(base64Image.length / 1024)}KB`);
 
     const maxRetries = 2;
 
@@ -762,7 +771,7 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
           schema: analysisSchema,
         });
 
-        console.log('AI clinical analysis completed successfully');
+        console.log(`AI clinical analysis completed in ${Date.now() - totalStartTime}ms total`);
         return result;
       } catch (error) {
         console.log(`AI analysis attempt ${attempt + 1} failed:`, error);
