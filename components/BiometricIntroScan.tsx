@@ -236,8 +236,9 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000',
+    zIndex: 100,
   },
   faceContainer: {
     flex: 1,
