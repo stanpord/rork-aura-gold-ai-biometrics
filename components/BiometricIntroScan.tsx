@@ -172,8 +172,6 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
       style={[
         styles.container,
         {
-          width: SCREEN_WIDTH,
-          height: SCREEN_HEIGHT,
           opacity: Animated.multiply(fadeAnim, exitAnim),
         },
       ]}
@@ -252,9 +250,7 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000',
     zIndex: 100,
   },

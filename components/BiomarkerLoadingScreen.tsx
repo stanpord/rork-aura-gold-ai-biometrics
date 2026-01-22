@@ -241,10 +241,10 @@ export default function BiomarkerLoadingScreen({ onComplete }: BiomarkerLoadingS
   };
 
   return (
-    <View style={[styles.container, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}>
+    <View style={styles.container}>
       <LinearGradient
         colors={['#050505', '#0a0808', '#050505']}
-        style={[StyleSheet.absoluteFill, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}
+        style={StyleSheet.absoluteFill}
       />
       
       <View style={[styles.topAccent, dynamicStyles.topAccent]}>
@@ -305,9 +305,7 @@ export default function BiomarkerLoadingScreen({ onComplete }: BiomarkerLoadingS
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: Colors.background,
     zIndex: 100,
   },
