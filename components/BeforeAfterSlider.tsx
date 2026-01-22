@@ -111,11 +111,11 @@ export default function BeforeAfterSlider({
           cachePolicy="none"
         />
 
-        <View style={showAfter ? styles.labelAfter : styles.labelBefore}>
-          <Text style={showAfter ? styles.labelTextGold : styles.labelText}>
-            {showAfter ? 'AFTER' : 'BEFORE'}
-          </Text>
-        </View>
+        {!showAfter && (
+          <View style={styles.labelBefore}>
+            <Text style={styles.labelText}>BEFORE</Text>
+          </View>
+        )}
 
         {isSameImage && !isSimulationPending && (
           <View style={styles.simulationUnavailable}>
