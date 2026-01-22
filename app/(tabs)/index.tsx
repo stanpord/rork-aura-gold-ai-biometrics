@@ -97,7 +97,8 @@ export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [introPhase, setIntroPhase] = useState<'biomarkers' | 'facescan' | 'complete' | 'loading'>('loading');
+  const [introPhase, setIntroPhase] = useState<'biomarkers' | 'facescan' | 'complete'>('biomarkers');
+  const [biomarkersComplete, setBiomarkersComplete] = useState(false);
 
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [isLeadSaved, setIsLeadSaved] = useState(false);
@@ -339,16 +340,25 @@ export default function ScanScreen() {
   React.useEffect(() => {
     if (isCameraActive && isGuidedCaptureActive) {
       isBrightnessCheckingRef.current = false;
+      let checkCount = 0;
+      const maxChecks = 3;
       
       const initialDelay = setTimeout(() => {
-        checkCameraBrightness();
-      }, 800);
-      
-      brightnessCheckRef.current = setInterval(() => {
-        if (!isBrightnessCheckingRef.current && !isCapturingRef.current) {
+        if (!isCapturingRef.current && checkCount < maxChecks) {
+          checkCount++;
           checkCameraBrightness();
         }
-      }, 2500);
+      }, 1200);
+      
+      brightnessCheckRef.current = setInterval(() => {
+        if (!isBrightnessCheckingRef.current && !isCapturingRef.current && checkCount < maxChecks) {
+          checkCount++;
+          checkCameraBrightness();
+        } else if (checkCount >= maxChecks && brightnessCheckRef.current) {
+          clearInterval(brightnessCheckRef.current);
+          brightnessCheckRef.current = null;
+        }
+      }, 4000);
       
       return () => {
         clearTimeout(initialDelay);
@@ -1041,34 +1051,38 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
   };
 
   React.useEffect(() => {
-    if (!isLoadingIntro) {
-      if (hasCompletedIntro) {
-        setIntroPhase('complete');
-      } else {
-        setIntroPhase('biomarkers');
-      }
+    if (hasCompletedIntro) {
+      setIntroPhase('complete');
+      setBiomarkersComplete(true);
     }
-  }, [isLoadingIntro, hasCompletedIntro]);
-
-  if (introPhase === 'loading' || isLoadingIntro) {
-    return (
-      <View style={styles.container} />
-    );
-  }
+  }, [hasCompletedIntro]);
 
   if (introPhase === 'biomarkers' && !hasCompletedIntro) {
     return (
       <BiomarkerLoadingScreen onComplete={() => {
+        console.log('[Intro] Biomarkers complete, moving to facescan');
+        setBiomarkersComplete(true);
         setIntroPhase('facescan');
       }} />
     );
   }
 
-  if (introPhase === 'facescan' && !hasCompletedIntro) {
+  if (introPhase === 'facescan' && !hasCompletedIntro && biomarkersComplete) {
     return (
       <BiometricIntroScan onComplete={() => {
+        console.log('[Intro] Facescan complete, finishing intro');
         completeIntro();
         setIntroPhase('complete');
+      }} />
+    );
+  }
+
+  if (!hasCompletedIntro && !biomarkersComplete) {
+    return (
+      <BiomarkerLoadingScreen onComplete={() => {
+        console.log('[Intro] Biomarkers complete (fallback), moving to facescan');
+        setBiomarkersComplete(true);
+        setIntroPhase('facescan');
       }} />
     );
   }
