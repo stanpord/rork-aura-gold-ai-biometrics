@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -168,9 +169,14 @@ export default function BiomarkerLoadingScreen({ onComplete }: BiomarkerLoadingS
             <View style={styles.sectionLine} />
           </View>
           
-          <View style={styles.biomarkersGrid}>
+          <ScrollView 
+            style={styles.biomarkersScrollView}
+            contentContainerStyle={styles.biomarkersGrid}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
             {renderBiomarkerGrid()}
-          </View>
+          </ScrollView>
         </View>
 
         <View style={styles.footer}>
@@ -184,9 +190,8 @@ export default function BiomarkerLoadingScreen({ onComplete }: BiomarkerLoadingS
                 }
               ]} 
             />
-            <Text style={styles.scanningText}>Initializing Analysis Engine</Text>
+            <Text style={styles.scanningText}>Initializing</Text>
           </View>
-          <Text style={styles.tagline}>Advanced Regenerative Aesthetics</Text>
         </View>
       </View>
     </View>
@@ -266,6 +271,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingTop: isVerySmallScreen ? 2 : isSmallScreen ? 4 : 8,
     paddingBottom: 0,
+    marginBottom: 4,
+  },
+  biomarkersScrollView: {
+    flex: 1,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -333,9 +342,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    gap: isVerySmallScreen ? 1 : isSmallScreen ? 2 : 4,
-    paddingTop: 0,
-    marginTop: 0,
+    paddingVertical: isVerySmallScreen ? 4 : 6,
   },
   scanningIndicator: {
     flexDirection: 'row',
@@ -349,16 +356,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.gold,
   },
   scanningText: {
-    fontSize: isVerySmallScreen ? 9 : 10,
+    fontSize: isVerySmallScreen ? 8 : 9,
     fontWeight: '500' as const,
     color: Colors.textMuted,
     letterSpacing: 1,
-  },
-  tagline: {
-    fontSize: isVerySmallScreen ? 7 : 8,
-    fontWeight: '400' as const,
-    color: 'rgba(255, 255, 255, 0.25)',
-    letterSpacing: 2,
-    textTransform: 'uppercase' as const,
   },
 });
