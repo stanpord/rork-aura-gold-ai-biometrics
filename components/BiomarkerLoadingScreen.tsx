@@ -27,7 +27,9 @@ const BIOMARKERS = [
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const isSmallScreen = SCREEN_HEIGHT < 700;
 const isVerySmallScreen = SCREEN_HEIGHT < 600;
-const COLUMNS = 3;
+const isTablet = SCREEN_WIDTH >= 768;
+const isLargeTablet = SCREEN_WIDTH >= 1024;
+const COLUMNS = isLargeTablet ? 5 : isTablet ? 4 : 3;
 
 interface BiomarkerLoadingScreenProps {
   onComplete?: () => void;
@@ -213,7 +215,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: isVerySmallScreen ? 12 : 16,
+    paddingHorizontal: isTablet ? 40 : isVerySmallScreen ? 12 : 16,
     justifyContent: 'space-between',
   },
   header: {
@@ -221,24 +223,24 @@ const styles = StyleSheet.create({
     marginBottom: isSmallScreen ? 4 : 8,
   },
   logoContainer: {
-    width: isSmallScreen ? 36 : 48,
-    height: isSmallScreen ? 36 : 48,
+    width: isTablet ? 64 : isSmallScreen ? 36 : 48,
+    height: isTablet ? 64 : isSmallScreen ? 36 : 48,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: isSmallScreen ? 4 : 8,
+    marginBottom: isTablet ? 12 : isSmallScreen ? 4 : 8,
   },
   logoRing: {
     position: 'absolute',
-    width: isSmallScreen ? 36 : 48,
-    height: isSmallScreen ? 36 : 48,
-    borderRadius: isSmallScreen ? 18 : 24,
+    width: isTablet ? 64 : isSmallScreen ? 36 : 48,
+    height: isTablet ? 64 : isSmallScreen ? 36 : 48,
+    borderRadius: isTablet ? 32 : isSmallScreen ? 18 : 24,
     borderWidth: 1,
     borderColor: Colors.gold,
   },
   logoInner: {
-    width: isSmallScreen ? 28 : 36,
-    height: isSmallScreen ? 28 : 36,
-    borderRadius: isSmallScreen ? 14 : 18,
+    width: isTablet ? 48 : isSmallScreen ? 28 : 36,
+    height: isTablet ? 48 : isSmallScreen ? 28 : 36,
+    borderRadius: isTablet ? 24 : isSmallScreen ? 14 : 18,
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(245, 158, 11, 0.3)',
@@ -246,23 +248,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoText: {
-    fontSize: isSmallScreen ? 14 : 18,
+    fontSize: isTablet ? 24 : isSmallScreen ? 14 : 18,
     fontWeight: '300' as const,
     color: Colors.gold,
     letterSpacing: 2,
   },
   title: {
-    fontSize: isSmallScreen ? 14 : 18,
+    fontSize: isTablet ? 28 : isSmallScreen ? 14 : 18,
     fontWeight: '200' as const,
     color: Colors.white,
-    letterSpacing: 5,
-    marginBottom: isSmallScreen ? 2 : 4,
+    letterSpacing: isTablet ? 8 : 5,
+    marginBottom: isTablet ? 8 : isSmallScreen ? 2 : 4,
   },
   subtitle: {
-    fontSize: isSmallScreen ? 8 : 9,
+    fontSize: isTablet ? 12 : isSmallScreen ? 8 : 9,
     fontWeight: '500' as const,
     color: Colors.textMuted,
-    letterSpacing: 2,
+    letterSpacing: isTablet ? 3 : 2,
     textTransform: 'uppercase' as const,
   },
   biomarkersSection: {
@@ -287,53 +289,53 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 1,
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    maxWidth: 60,
+    maxWidth: isTablet ? 100 : 60,
   },
   sectionTitle: {
-    fontSize: 9,
+    fontSize: isTablet ? 14 : 9,
     fontWeight: '600' as const,
     color: Colors.gold,
-    letterSpacing: 4,
+    letterSpacing: isTablet ? 6 : 4,
   },
   biomarkersGrid: {
-    gap: isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
+    gap: isTablet ? 10 : isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
+    gap: isTablet ? 10 : isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
   },
   biomarkerItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 5,
-    paddingHorizontal: isVerySmallScreen ? 3 : isSmallScreen ? 4 : 6,
-    paddingVertical: isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
+    borderRadius: isTablet ? 8 : 5,
+    paddingHorizontal: isTablet ? 12 : isVerySmallScreen ? 3 : isSmallScreen ? 4 : 6,
+    paddingVertical: isTablet ? 10 : isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.04)',
-    minWidth: (SCREEN_WIDTH - 40) / 3,
-    maxWidth: (SCREEN_WIDTH - 40) / 3,
+    minWidth: isLargeTablet ? (SCREEN_WIDTH - 100) / 5 : isTablet ? (SCREEN_WIDTH - 80) / 4 : (SCREEN_WIDTH - 40) / 3,
+    maxWidth: isLargeTablet ? (SCREEN_WIDTH - 100) / 5 : isTablet ? (SCREEN_WIDTH - 80) / 4 : (SCREEN_WIDTH - 40) / 3,
   },
   biomarkerItemActive: {
     backgroundColor: 'rgba(245, 158, 11, 0.08)',
     borderColor: 'rgba(245, 158, 11, 0.25)',
   },
   biomarkerDot: {
-    width: isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
-    height: isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
-    borderRadius: 2,
+    width: isTablet ? 6 : isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
+    height: isTablet ? 6 : isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
+    borderRadius: isTablet ? 3 : 2,
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    marginRight: isVerySmallScreen ? 3 : isSmallScreen ? 4 : 6,
+    marginRight: isTablet ? 10 : isVerySmallScreen ? 3 : isSmallScreen ? 4 : 6,
   },
   biomarkerDotActive: {
     backgroundColor: Colors.gold,
   },
   biomarkerText: {
-    fontSize: isVerySmallScreen ? 6 : isSmallScreen ? 7 : 8,
+    fontSize: isTablet ? 13 : isVerySmallScreen ? 6 : isSmallScreen ? 7 : 8,
     fontWeight: '500' as const,
     color: 'rgba(255, 255, 255, 0.4)',
-    letterSpacing: 0.2,
+    letterSpacing: isTablet ? 0.5 : 0.2,
     flex: 1,
   },
   biomarkerTextActive: {
@@ -350,15 +352,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   scanningDot: {
-    width: isVerySmallScreen ? 6 : 7,
-    height: isVerySmallScreen ? 6 : 7,
-    borderRadius: isVerySmallScreen ? 3 : 3.5,
+    width: isTablet ? 10 : isVerySmallScreen ? 6 : 7,
+    height: isTablet ? 10 : isVerySmallScreen ? 6 : 7,
+    borderRadius: isTablet ? 5 : isVerySmallScreen ? 3 : 3.5,
     backgroundColor: Colors.gold,
   },
   scanningText: {
-    fontSize: isVerySmallScreen ? 8 : 9,
+    fontSize: isTablet ? 14 : isVerySmallScreen ? 8 : 9,
     fontWeight: '500' as const,
     color: Colors.textMuted,
-    letterSpacing: 1,
+    letterSpacing: isTablet ? 2 : 1,
   },
 });
