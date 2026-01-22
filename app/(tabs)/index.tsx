@@ -252,7 +252,7 @@ export default function ScanScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [3, 4],
-        quality: 0.8,
+        quality: 0.6,
       });
 
       if (!result.canceled && result.assets[0]) {
@@ -433,8 +433,8 @@ export default function ScanScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       }
       const photo = await cameraRef.current.takePictureAsync({
-        base64: true,
-        quality: 0.8,
+        quality: 0.6,
+        skipProcessing: true,
       });
       if (photo) {
         setCapturedImage(photo.uri);
@@ -522,10 +522,14 @@ CRITICAL:
       console.log(`Starting AI treatment simulation (attempt ${retryCount + 1}/${maxRetries + 1})...`);
       console.log(`Treatments to simulate:`, treatments.join(', '));
       
+      // Resize image before sending to API - significantly reduces upload time
+      const resizedUri = await resizeImageForAnalysis(imageUri);
+      console.log('Image resized for simulation upload');
+      
       let base64Image = '';
       
       if (Platform.OS === 'web') {
-        const response = await fetch(imageUri);
+        const response = await fetch(resizedUri);
         const blob = await response.blob();
         base64Image = await new Promise<string>((resolve) => {
           const reader = new FileReader();
@@ -536,7 +540,7 @@ CRITICAL:
           reader.readAsDataURL(blob);
         });
       } else {
-        const file = new File(imageUri);
+        const file = new File(resizedUri);
         base64Image = await file.base64();
       }
 
@@ -580,7 +584,7 @@ CRITICAL:
       
       return null;
     }
-  }, []);
+  }, [resizeImageForAnalysis]);
 
   const analysisSchema = useMemo(() => z.object({
       auraScore: z.number().min(300).max(1000).describe('Overall aesthetic score based on facial harmony, skin quality, and structural balance. Higher scores indicate better baseline aesthetics.'),
@@ -625,15 +629,15 @@ CRITICAL:
 
   const resizeImageForAnalysis = useCallback(async (imageUri: string): Promise<string> => {
     const MAX_DIMENSION = 800;
-    console.log('Resizing image for faster AI analysis...');
+    console.log('Resizing image for faster AI processing...');
     
     try {
       const manipResult = await ImageManipulator.manipulateAsync(
         imageUri,
         [{ resize: { width: MAX_DIMENSION } }],
-        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
       );
-      console.log('Image resized successfully to ~800px width');
+      console.log('Image resized successfully to ~800px width, ~60% quality');
       return manipResult.uri;
     } catch (error) {
       console.log('Image resize failed, using original:', error);
