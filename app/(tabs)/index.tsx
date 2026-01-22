@@ -742,75 +742,20 @@ const analyzeImageWithAI = useCallback(async (imageUri: string): Promise<Analysi
               content: [
                 {
                   type: 'text',
-                  text: `You are performing a REAL clinical skin assessment. Your recommendations MUST match what you ACTUALLY SEE.
+                  text: `Clinical skin assessment. Match recommendations to VISIBLE findings only.
 
-## STEP 1: EXAMINE THE IMAGE FIRST
-Before ANY recommendations, identify:
-- WRINKLES: Where exactly? (forehead, glabella, periorbital, perioral) How deep? Static or dynamic?
-- TEXTURE: Pore size? Where? Roughness? Congestion?
-- PIGMENTATION: Sun spots? Melasma? Redness? Where specifically?
-- VOLUME: Systematically assess ALL facial zones for hollowing, deflation, or volume loss:
-  * UPPER FACE: Temples (temporal hollowing), Forehead (brow bone), Brows (lateral brow)
-  * MIDFACE: Periorbital/Tear Troughs, Upper Cheeks (malar fat pad), Lower Cheeks (submalar hollowing)
-  * LOWER FACE: Nasolabial Folds, Marionette Lines, Lips (volume/vermillion), Perioral area, Chin/Mentum, Jawline/Pre-jowl sulcus
-  * NECK: Platysmal bands, submental fullness
-- LAXITY: Any jowling, neck bands, brow ptosis? (MUST be visible for Morpheus8)
+TREATMENT RULES:
+- Morpheus8/RF: ONLY for visible jowling/sagging
+- Botox: ONLY for visible forehead lines/crows feet/frown lines
+- IPL: For pigmentation, redness, sun spots
+- DiamondGlow/Peels/Facials: For texture, pores (ALWAYS include one)
+- Filler: ONLY for visible volume loss
 
-## STEP 2: TREATMENT MATCHING - STRICT RULES
+clinicalReason: State exact location + specific observation (e.g. "dilated pores on nasal sidewalls")
 
-**MORPHEUS8**: ONLY recommend if you see VISIBLE jowling, neck laxity, or significant skin sagging. NOT for "prevention" or "tightening" without visible laxity.
+VOLUME ZONES to assess: Temples, Periorbital, Upper/Lower Cheeks, Nasolabial, Marionette, Lips, Chin, Jawline. Include zones with any loss (5%+).
 
-**BOTOX**: ONLY recommend if you see VISIBLE dynamic wrinkles - horizontal forehead lines, vertical frown lines (11s), or crow's feet. NOT for smooth foreheads.
-
-**DIAMONDGLOW/CHEMICAL PEELS/FACIALS**: Recommend for texture, pores, dullness, mild congestion. MOST patients benefit from these.
-
-**IPL/STELLAR IPL**: Recommend for visible pigmentation, sun spots, redness, broken capillaries.
-
-**CLEAR+BRILLIANT/MOXI**: For fine lines, early sun damage, overall skin quality.
-
-**DERMAL FILLER**: ONLY for VISIBLE volume loss in specific areas.
-
-## STEP 3: DIVERSIFY BY CONCERN TYPE
-
-- Young healthy skin (20s-30s, minimal concerns): DiamondGlow, Facials, Chemical Peels, LED Therapy
-- Pigmentation/redness: IPL, Stellar IPL, Clear+Brilliant
-- Texture/pores: DiamondGlow, Chemical Peels, Microdermabrasion, Dermaplaning
-- Fine lines: MOXI Laser, Light Peels, Microneedling
-- Deep wrinkles: Botox (if dynamic), Fillers (if static)
-- Volume loss: Dermal Filler, Sculptra, Radiesse
-- Visible sagging: RF Microneedling, Morpheus8, PDO Threads
-
-## CLINICAL REASON REQUIREMENTS
-Each clinicalReason MUST include:
-1. EXACT anatomical location (e.g., "lateral canthi", "glabellar region", "nasal sidewalls")
-2. SPECIFIC observation (e.g., "visible horizontal rhytids", "dilated pores", "hyperpigmented macules")
-
-EXAMPLE GOOD: "Visible periorbital rhytids (crow's feet) with fine lines extending 1cm laterally"
-EXAMPLE BAD: "Signs of aging around the eyes" (too vague)
-
-## MANDATORY SURFACE TREATMENT
-ALWAYS include at least ONE of: DiamondGlow, Chemical Peels, Facials, or Dermaplaning.
-
-## VOLUME ASSESSMENT REQUIREMENTS
-You MUST analyze ALL facial zones for volume:
-1. TEMPLES - Look for temporal hollowing, shadow above cheekbone
-2. FOREHEAD/BROWS - Assess brow position, lateral brow volume
-3. PERIORBITAL - Tear trough depth, under-eye hollowing, orbital rim
-4. UPPER CHEEKS (MALAR) - Malar fat pad fullness, cheekbone projection
-5. LOWER CHEEKS (SUBMALAR) - Submalar hollowing, midface deflation
-6. NASOLABIAL FOLDS - Depth of fold, fat descent
-7. MARIONETTE LINES - Oral commissure to chin shadow
-8. LIPS - Vermillion volume, perioral lines, philtrum definition
-9. CHIN/MENTUM - Chin projection, pogonion volume
-10. JAWLINE - Pre-jowl sulcus, mandibular definition, jowl formation
-
-Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is completely full.
-
-## OUTPUT
-- auraScore: Based on overall skin health and facial harmony
-- clinicalRoadmap: 2-4 treatments for young/healthy, 4-6 for significant concerns
-- volumeAssessment: COMPREHENSIVE assessment of ALL facial zones - minimum 5 zones
-- fitzpatrickAssessment: Accurate skin type for treatment safety`
+Fitzpatrick: Assess accurately for treatment safety (V-VI = high IPL risk).`
                 },
                 {
                   type: 'image',
