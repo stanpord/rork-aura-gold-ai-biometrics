@@ -1050,14 +1050,9 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
     return null;
   };
 
-  React.useEffect(() => {
-    if (hasCompletedIntro) {
-      setIntroPhase('complete');
-      setBiomarkersComplete(true);
-    }
-  }, [hasCompletedIntro]);
 
-  if (introPhase === 'biomarkers' && !hasCompletedIntro) {
+
+  if (introPhase === 'biomarkers') {
     return (
       <BiomarkerLoadingScreen onComplete={() => {
         console.log('[Intro] Biomarkers complete, moving to facescan');
@@ -1067,22 +1062,12 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
     );
   }
 
-  if (introPhase === 'facescan' && !hasCompletedIntro && biomarkersComplete) {
+  if (introPhase === 'facescan' && biomarkersComplete) {
     return (
       <BiometricIntroScan onComplete={() => {
         console.log('[Intro] Facescan complete, finishing intro');
         completeIntro();
         setIntroPhase('complete');
-      }} />
-    );
-  }
-
-  if (!hasCompletedIntro && !biomarkersComplete) {
-    return (
-      <BiomarkerLoadingScreen onComplete={() => {
-        console.log('[Intro] Biomarkers complete (fallback), moving to facescan');
-        setBiomarkersComplete(true);
-        setIntroPhase('facescan');
       }} />
     );
   }
