@@ -24,12 +24,10 @@ const BIOMARKERS = [
   'Bone Structure', 'Tissue Integrity',
 ];
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const isSmallScreen = SCREEN_HEIGHT < 700;
-const isVerySmallScreen = SCREEN_HEIGHT < 600;
-const isTablet = SCREEN_WIDTH >= 768;
-const isLargeTablet = SCREEN_WIDTH >= 1024;
-const COLUMNS = isLargeTablet ? 5 : isTablet ? 4 : 3;
+const getScreenDimensions = () => {
+  const { width, height } = Dimensions.get('window');
+  return { width, height };
+};
 
 interface BiomarkerLoadingScreenProps {
   onComplete?: () => void;
@@ -40,6 +38,22 @@ export default function BiomarkerLoadingScreen({ onComplete }: BiomarkerLoadingS
   const fadeAnims = useRef(BIOMARKERS.map(() => new Animated.Value(0))).current;
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
   const [activeBiomarker, setActiveBiomarker] = useState(0);
+  const [dimensions, setDimensions] = useState(getScreenDimensions());
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDimensions({ width: window.width, height: window.height });
+    });
+    return () => subscription?.remove();
+  }, []);
+
+  const SCREEN_WIDTH = dimensions.width;
+  const SCREEN_HEIGHT = dimensions.height;
+  const isSmallScreen = SCREEN_HEIGHT < 700;
+  const isVerySmallScreen = SCREEN_HEIGHT < 600;
+  const isTablet = SCREEN_WIDTH >= 768;
+  const isLargeTablet = SCREEN_WIDTH >= 1024;
+  const COLUMNS = isLargeTablet ? 5 : isTablet ? 4 : 3;
 
   useEffect(() => {
     console.log('[BiomarkerLoadingScreen] Starting biomarker animation sequence');
@@ -99,7 +113,7 @@ export default function BiomarkerLoadingScreen({ onComplete }: BiomarkerLoadingS
     for (let i = 0; i < BIOMARKERS.length; i += COLUMNS) {
       const rowItems = BIOMARKERS.slice(i, i + COLUMNS);
       rows.push(
-        <View key={i} style={styles.row}>
+        <View key={i} style={[styles.row, dynamicStyles.row]}>
           {rowItems.map((biomarker, index) => {
             const actualIndex = i + index;
             const isActive = actualIndex === activeBiomarker;
@@ -120,11 +134,12 @@ export default function BiomarkerLoadingScreen({ onComplete }: BiomarkerLoadingS
                     ],
                   },
                   isActive && styles.biomarkerItemActive,
+                  dynamicStyles.biomarkerItem,
                 ]}
               >
-                <View style={[styles.biomarkerDot, isActive && styles.biomarkerDotActive]} />
+                <View style={[styles.biomarkerDot, dynamicStyles.biomarkerDot, isActive && styles.biomarkerDotActive]} />
                 <Text
-                  style={[styles.biomarkerText, isActive && styles.biomarkerTextActive]}
+                  style={[styles.biomarkerText, dynamicStyles.biomarkerText, isActive && styles.biomarkerTextActive]}
                   numberOfLines={1}
                 >
                   {biomarker}
@@ -138,42 +153,129 @@ export default function BiomarkerLoadingScreen({ onComplete }: BiomarkerLoadingS
     return rows;
   };
 
+  const dynamicStyles = {
+    content: {
+      paddingHorizontal: isTablet ? 40 : isVerySmallScreen ? 12 : 16,
+    },
+    header: {
+      marginBottom: isSmallScreen ? 4 : 8,
+    },
+    logoContainer: {
+      width: isTablet ? 64 : isSmallScreen ? 36 : 48,
+      height: isTablet ? 64 : isSmallScreen ? 36 : 48,
+      marginBottom: isTablet ? 12 : isSmallScreen ? 4 : 8,
+    },
+    logoRing: {
+      width: isTablet ? 64 : isSmallScreen ? 36 : 48,
+      height: isTablet ? 64 : isSmallScreen ? 36 : 48,
+      borderRadius: isTablet ? 32 : isSmallScreen ? 18 : 24,
+    },
+    logoInner: {
+      width: isTablet ? 48 : isSmallScreen ? 28 : 36,
+      height: isTablet ? 48 : isSmallScreen ? 28 : 36,
+      borderRadius: isTablet ? 24 : isSmallScreen ? 14 : 18,
+    },
+    logoText: {
+      fontSize: isTablet ? 24 : isSmallScreen ? 14 : 18,
+    },
+    title: {
+      fontSize: isTablet ? 28 : isSmallScreen ? 14 : 18,
+      letterSpacing: isTablet ? 8 : 5,
+      marginBottom: isTablet ? 8 : isSmallScreen ? 2 : 4,
+    },
+    subtitle: {
+      fontSize: isTablet ? 12 : isSmallScreen ? 8 : 9,
+      letterSpacing: isTablet ? 3 : 2,
+    },
+    biomarkersSection: {
+      paddingTop: isVerySmallScreen ? 2 : isSmallScreen ? 4 : 8,
+    },
+    sectionHeader: {
+      marginBottom: isSmallScreen ? 8 : 12,
+    },
+    sectionLine: {
+      maxWidth: isTablet ? 100 : 60,
+    },
+    sectionTitle: {
+      fontSize: isTablet ? 14 : 9,
+      letterSpacing: isTablet ? 6 : 4,
+    },
+    biomarkersGrid: {
+      gap: isTablet ? 10 : isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
+    },
+    row: {
+      gap: isTablet ? 10 : isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
+    },
+    biomarkerItem: {
+      minWidth: isLargeTablet ? (SCREEN_WIDTH - 100) / 5 : isTablet ? (SCREEN_WIDTH - 80) / 4 : (SCREEN_WIDTH - 40) / 3,
+      maxWidth: isLargeTablet ? (SCREEN_WIDTH - 100) / 5 : isTablet ? (SCREEN_WIDTH - 80) / 4 : (SCREEN_WIDTH - 40) / 3,
+      borderRadius: isTablet ? 8 : 5,
+      paddingHorizontal: isTablet ? 12 : isVerySmallScreen ? 3 : isSmallScreen ? 4 : 6,
+      paddingVertical: isTablet ? 10 : isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
+    },
+    biomarkerDot: {
+      width: isTablet ? 6 : isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
+      height: isTablet ? 6 : isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
+      borderRadius: isTablet ? 3 : 2,
+      marginRight: isTablet ? 10 : isVerySmallScreen ? 3 : isSmallScreen ? 4 : 6,
+    },
+    biomarkerText: {
+      fontSize: isTablet ? 13 : isVerySmallScreen ? 6 : isSmallScreen ? 7 : 8,
+      letterSpacing: isTablet ? 0.5 : 0.2,
+    },
+    footer: {
+      paddingVertical: isVerySmallScreen ? 4 : 6,
+    },
+    scanningDot: {
+      width: isTablet ? 10 : isVerySmallScreen ? 6 : 7,
+      height: isTablet ? 10 : isVerySmallScreen ? 6 : 7,
+      borderRadius: isTablet ? 5 : isVerySmallScreen ? 3 : 3.5,
+    },
+    scanningText: {
+      fontSize: isTablet ? 14 : isVerySmallScreen ? 8 : 9,
+      letterSpacing: isTablet ? 2 : 1,
+    },
+    topAccent: {
+      height: SCREEN_HEIGHT * 0.4,
+    },
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}>
       <LinearGradient
         colors={['#050505', '#0a0808', '#050505']}
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}
       />
       
-      <View style={styles.topAccent}>
+      <View style={[styles.topAccent, dynamicStyles.topAccent]}>
         <LinearGradient
           colors={['rgba(245, 158, 11, 0.08)', 'transparent']}
           style={StyleSheet.absoluteFill}
         />
       </View>
 
-      <View style={[styles.content, { paddingTop: insets.top + (isVerySmallScreen ? 6 : isSmallScreen ? 10 : 20), paddingBottom: insets.bottom + (isVerySmallScreen ? 6 : isSmallScreen ? 10 : 20) }]}>
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Animated.View style={[styles.logoRing, { opacity: pulseAnim }]} />
-            <View style={styles.logoInner}>
-              <Text style={styles.logoText}>A</Text>
+      <View style={[styles.content, dynamicStyles.content, { paddingTop: insets.top + (isVerySmallScreen ? 6 : isSmallScreen ? 10 : 20), paddingBottom: insets.bottom + (isVerySmallScreen ? 6 : isSmallScreen ? 10 : 20) }]}>
+        <View style={[styles.header, dynamicStyles.header]}>
+          <View style={[styles.logoContainer, dynamicStyles.logoContainer]}>
+            <Animated.View style={[styles.logoRing, dynamicStyles.logoRing, { opacity: pulseAnim }]} />
+            <View style={[styles.logoInner, dynamicStyles.logoInner]}>
+              <Text style={[styles.logoText, dynamicStyles.logoText]}>A</Text>
             </View>
           </View>
-          <Text style={styles.title}>AURA GOLD</Text>
-          <Text style={styles.subtitle}>Biometric Analysis Engine</Text>
+          <Text style={[styles.title, dynamicStyles.title]}>AURA GOLD</Text>
+          <Text style={[styles.subtitle, dynamicStyles.subtitle]}>Biometric Analysis Engine</Text>
         </View>
 
-        <View style={styles.biomarkersSection}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionLine} />
-            <Text style={styles.sectionTitle}>47 BIOMARKERS</Text>
-            <View style={styles.sectionLine} />
+        <View style={[styles.biomarkersSection, dynamicStyles.biomarkersSection]}>
+          <View style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>
+            <View style={[styles.sectionLine, dynamicStyles.sectionLine]} />
+            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>47 BIOMARKERS</Text>
+            <View style={[styles.sectionLine, dynamicStyles.sectionLine]} />
           </View>
           
           <ScrollView 
             style={styles.biomarkersScrollView}
-            contentContainerStyle={styles.biomarkersGrid}
+            contentContainerStyle={[styles.biomarkersGrid, dynamicStyles.biomarkersGrid]}
             showsVerticalScrollIndicator={false}
             bounces={false}
           >
@@ -181,18 +283,19 @@ export default function BiomarkerLoadingScreen({ onComplete }: BiomarkerLoadingS
           </ScrollView>
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, dynamicStyles.footer]}>
           <View style={styles.scanningIndicator}>
             <Animated.View 
               style={[
-                styles.scanningDot, 
+                styles.scanningDot,
+                dynamicStyles.scanningDot,
                 { 
                   opacity: pulseAnim,
                   transform: [{ scale: pulseAnim }] 
                 }
               ]} 
             />
-            <Text style={styles.scanningText}>Initializing</Text>
+            <Text style={[styles.scanningText, dynamicStyles.scanningText]}>Initializing</Text>
           </View>
         </View>
       </View>
@@ -202,7 +305,9 @@ export default function BiomarkerLoadingScreen({ onComplete }: BiomarkerLoadingS
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
     backgroundColor: Colors.background,
     zIndex: 100,
   },
@@ -211,36 +316,35 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: SCREEN_HEIGHT * 0.4,
   },
   content: {
     flex: 1,
-    paddingHorizontal: isTablet ? 40 : isVerySmallScreen ? 12 : 16,
+    paddingHorizontal: 16,
     justifyContent: 'space-between',
   },
   header: {
     alignItems: 'center',
-    marginBottom: isSmallScreen ? 4 : 8,
+    marginBottom: 8,
   },
   logoContainer: {
-    width: isTablet ? 64 : isSmallScreen ? 36 : 48,
-    height: isTablet ? 64 : isSmallScreen ? 36 : 48,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: isTablet ? 12 : isSmallScreen ? 4 : 8,
+    marginBottom: 8,
   },
   logoRing: {
     position: 'absolute',
-    width: isTablet ? 64 : isSmallScreen ? 36 : 48,
-    height: isTablet ? 64 : isSmallScreen ? 36 : 48,
-    borderRadius: isTablet ? 32 : isSmallScreen ? 18 : 24,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: Colors.gold,
   },
   logoInner: {
-    width: isTablet ? 48 : isSmallScreen ? 28 : 36,
-    height: isTablet ? 48 : isSmallScreen ? 28 : 36,
-    borderRadius: isTablet ? 24 : isSmallScreen ? 14 : 18,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(245, 158, 11, 0.3)',
@@ -248,30 +352,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoText: {
-    fontSize: isTablet ? 24 : isSmallScreen ? 14 : 18,
+    fontSize: 18,
     fontWeight: '300' as const,
     color: Colors.gold,
     letterSpacing: 2,
   },
   title: {
-    fontSize: isTablet ? 28 : isSmallScreen ? 14 : 18,
+    fontSize: 18,
     fontWeight: '200' as const,
     color: Colors.white,
-    letterSpacing: isTablet ? 8 : 5,
-    marginBottom: isTablet ? 8 : isSmallScreen ? 2 : 4,
+    letterSpacing: 5,
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: isTablet ? 12 : isSmallScreen ? 8 : 9,
+    fontSize: 9,
     fontWeight: '500' as const,
     color: Colors.textMuted,
-    letterSpacing: isTablet ? 3 : 2,
+    letterSpacing: 2,
     textTransform: 'uppercase' as const,
   },
   biomarkersSection: {
     flex: 1,
     justifyContent: 'flex-start',
     overflow: 'hidden',
-    paddingTop: isVerySmallScreen ? 2 : isSmallScreen ? 4 : 8,
+    paddingTop: 8,
     paddingBottom: 0,
     marginBottom: 4,
   },
@@ -282,60 +386,58 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: isSmallScreen ? 8 : 12,
+    marginBottom: 12,
     gap: 10,
   },
   sectionLine: {
     flex: 1,
     height: 1,
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    maxWidth: isTablet ? 100 : 60,
+    maxWidth: 60,
   },
   sectionTitle: {
-    fontSize: isTablet ? 14 : 9,
+    fontSize: 9,
     fontWeight: '600' as const,
     color: Colors.gold,
-    letterSpacing: isTablet ? 6 : 4,
+    letterSpacing: 4,
   },
   biomarkersGrid: {
-    gap: isTablet ? 10 : isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
+    gap: 4,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: isTablet ? 10 : isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
+    gap: 4,
   },
   biomarkerItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: isTablet ? 8 : 5,
-    paddingHorizontal: isTablet ? 12 : isVerySmallScreen ? 3 : isSmallScreen ? 4 : 6,
-    paddingVertical: isTablet ? 10 : isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
+    borderRadius: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.04)',
-    minWidth: isLargeTablet ? (SCREEN_WIDTH - 100) / 5 : isTablet ? (SCREEN_WIDTH - 80) / 4 : (SCREEN_WIDTH - 40) / 3,
-    maxWidth: isLargeTablet ? (SCREEN_WIDTH - 100) / 5 : isTablet ? (SCREEN_WIDTH - 80) / 4 : (SCREEN_WIDTH - 40) / 3,
   },
   biomarkerItemActive: {
     backgroundColor: 'rgba(245, 158, 11, 0.08)',
     borderColor: 'rgba(245, 158, 11, 0.25)',
   },
   biomarkerDot: {
-    width: isTablet ? 6 : isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
-    height: isTablet ? 6 : isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
-    borderRadius: isTablet ? 3 : 2,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    marginRight: isTablet ? 10 : isVerySmallScreen ? 3 : isSmallScreen ? 4 : 6,
+    marginRight: 6,
   },
   biomarkerDotActive: {
     backgroundColor: Colors.gold,
   },
   biomarkerText: {
-    fontSize: isTablet ? 13 : isVerySmallScreen ? 6 : isSmallScreen ? 7 : 8,
+    fontSize: 8,
     fontWeight: '500' as const,
     color: 'rgba(255, 255, 255, 0.4)',
-    letterSpacing: isTablet ? 0.5 : 0.2,
+    letterSpacing: 0.2,
     flex: 1,
   },
   biomarkerTextActive: {
@@ -344,7 +446,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    paddingVertical: isVerySmallScreen ? 4 : 6,
+    paddingVertical: 6,
   },
   scanningIndicator: {
     flexDirection: 'row',
@@ -352,15 +454,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   scanningDot: {
-    width: isTablet ? 10 : isVerySmallScreen ? 6 : 7,
-    height: isTablet ? 10 : isVerySmallScreen ? 6 : 7,
-    borderRadius: isTablet ? 5 : isVerySmallScreen ? 3 : 3.5,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
     backgroundColor: Colors.gold,
   },
   scanningText: {
-    fontSize: isTablet ? 14 : isVerySmallScreen ? 8 : 9,
+    fontSize: 9,
     fontWeight: '500' as const,
     color: Colors.textMuted,
-    letterSpacing: isTablet ? 2 : 1,
+    letterSpacing: 1,
   },
 });

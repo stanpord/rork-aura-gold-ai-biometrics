@@ -15,7 +15,10 @@ import Colors from '@/constants/colors';
 // Beautiful model with biometric scanning overlay - ideal for medspa diagnostic
 const FACE_IMAGE = 'https://r2-pub.rork.com/generated-images/475a6908-3419-4157-b237-ce96bff62622.png';
 
-const { height } = Dimensions.get('window');
+const getScreenDimensions = () => {
+  const { width, height } = Dimensions.get('window');
+  return { width, height };
+};
 
 interface BiometricIntroScanProps {
   onComplete: () => void;
@@ -25,6 +28,17 @@ interface BiometricIntroScanProps {
 
 export default function BiometricIntroScan({ onComplete }: BiometricIntroScanProps) {
   const [currentPhase, setCurrentPhase] = useState(0);
+  const [dimensions, setDimensions] = useState(getScreenDimensions());
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDimensions({ width: window.width, height: window.height });
+    });
+    return () => subscription?.remove();
+  }, []);
+
+  const SCREEN_WIDTH = dimensions.width;
+  const SCREEN_HEIGHT = dimensions.height;
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -158,6 +172,8 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
       style={[
         styles.container,
         {
+          width: SCREEN_WIDTH,
+          height: SCREEN_HEIGHT,
           opacity: Animated.multiply(fadeAnim, exitAnim),
         },
       ]}
@@ -206,7 +222,7 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
                 {
                   translateY: scanLineAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [0, height],
+                    outputRange: [0, SCREEN_HEIGHT],
                   }),
                 },
               ],
@@ -236,7 +252,9 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
     backgroundColor: '#000',
     zIndex: 100,
   },
