@@ -24,6 +24,8 @@ const BIOMARKERS = [
 ];
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const isSmallScreen = SCREEN_HEIGHT < 700;
+const isVerySmallScreen = SCREEN_HEIGHT < 600;
 const COLUMNS = 3;
 
 interface BiomarkerLoadingScreenProps {
@@ -147,7 +149,7 @@ export default function BiomarkerLoadingScreen({ onComplete }: BiomarkerLoadingS
         />
       </View>
 
-      <View style={[styles.content, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
+      <View style={[styles.content, { paddingTop: insets.top + (isVerySmallScreen ? 6 : isSmallScreen ? 10 : 20), paddingBottom: insets.bottom + (isVerySmallScreen ? 6 : isSmallScreen ? 10 : 20) }]}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <Animated.View style={[styles.logoRing, { opacity: pulseAnim }]} />
@@ -193,8 +195,9 @@ export default function BiomarkerLoadingScreen({ onComplete }: BiomarkerLoadingS
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: Colors.background,
+    zIndex: 100,
   },
   topAccent: {
     position: 'absolute',
@@ -205,32 +208,32 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: isVerySmallScreen ? 12 : 16,
     justifyContent: 'space-between',
   },
   header: {
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: isSmallScreen ? 4 : 8,
   },
   logoContainer: {
-    width: 48,
-    height: 48,
+    width: isSmallScreen ? 36 : 48,
+    height: isSmallScreen ? 36 : 48,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: isSmallScreen ? 4 : 8,
   },
   logoRing: {
     position: 'absolute',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: isSmallScreen ? 36 : 48,
+    height: isSmallScreen ? 36 : 48,
+    borderRadius: isSmallScreen ? 18 : 24,
     borderWidth: 1,
     borderColor: Colors.gold,
   },
   logoInner: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: isSmallScreen ? 28 : 36,
+    height: isSmallScreen ? 28 : 36,
+    borderRadius: isSmallScreen ? 14 : 18,
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(245, 158, 11, 0.3)',
@@ -238,20 +241,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoText: {
-    fontSize: 18,
+    fontSize: isSmallScreen ? 14 : 18,
     fontWeight: '300' as const,
     color: Colors.gold,
     letterSpacing: 2,
   },
   title: {
-    fontSize: 18,
+    fontSize: isSmallScreen ? 14 : 18,
     fontWeight: '200' as const,
     color: Colors.white,
     letterSpacing: 5,
-    marginBottom: 4,
+    marginBottom: isSmallScreen ? 2 : 4,
   },
   subtitle: {
-    fontSize: 9,
+    fontSize: isSmallScreen ? 8 : 9,
     fontWeight: '500' as const,
     color: Colors.textMuted,
     letterSpacing: 2,
@@ -259,14 +262,14 @@ const styles = StyleSheet.create({
   },
   biomarkersSection: {
     flex: 1,
-    justifyContent: 'flex-start',
-    paddingTop: 8,
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: isSmallScreen ? 8 : 12,
     gap: 10,
   },
   sectionLine: {
@@ -282,44 +285,44 @@ const styles = StyleSheet.create({
     letterSpacing: 4,
   },
   biomarkersGrid: {
-    gap: 5,
+    gap: isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 5,
+    gap: isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
   },
   biomarkerItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 5,
+    borderRadius: 5,
+    paddingHorizontal: isVerySmallScreen ? 3 : isSmallScreen ? 4 : 6,
+    paddingVertical: isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.04)',
-    minWidth: (SCREEN_WIDTH - 56) / 3,
-    maxWidth: (SCREEN_WIDTH - 56) / 3,
+    minWidth: (SCREEN_WIDTH - 40) / 3,
+    maxWidth: (SCREEN_WIDTH - 40) / 3,
   },
   biomarkerItemActive: {
     backgroundColor: 'rgba(245, 158, 11, 0.08)',
     borderColor: 'rgba(245, 158, 11, 0.25)',
   },
   biomarkerDot: {
-    width: 4,
-    height: 4,
+    width: isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
+    height: isVerySmallScreen ? 2 : isSmallScreen ? 3 : 4,
     borderRadius: 2,
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    marginRight: 6,
+    marginRight: isVerySmallScreen ? 3 : isSmallScreen ? 4 : 6,
   },
   biomarkerDotActive: {
     backgroundColor: Colors.gold,
   },
   biomarkerText: {
-    fontSize: 8,
+    fontSize: isVerySmallScreen ? 6 : isSmallScreen ? 7 : 8,
     fontWeight: '500' as const,
     color: 'rgba(255, 255, 255, 0.4)',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
     flex: 1,
   },
   biomarkerTextActive: {
@@ -328,8 +331,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    gap: 8,
-    paddingTop: 8,
+    gap: isSmallScreen ? 4 : 8,
+    paddingTop: isSmallScreen ? 4 : 8,
   },
   scanningIndicator: {
     flexDirection: 'row',
