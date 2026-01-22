@@ -340,25 +340,15 @@ export default function ScanScreen() {
   React.useEffect(() => {
     if (isCameraActive && isGuidedCaptureActive) {
       isBrightnessCheckingRef.current = false;
-      let checkCount = 0;
-      const maxChecks = 3;
+      let hasChecked = false;
       
+      // Only do ONE brightness check after initial delay - no repeated checks
       const initialDelay = setTimeout(() => {
-        if (!isCapturingRef.current && checkCount < maxChecks) {
-          checkCount++;
+        if (!isCapturingRef.current && !hasChecked) {
+          hasChecked = true;
           checkCameraBrightness();
         }
-      }, 1200);
-      
-      brightnessCheckRef.current = setInterval(() => {
-        if (!isBrightnessCheckingRef.current && !isCapturingRef.current && checkCount < maxChecks) {
-          checkCount++;
-          checkCameraBrightness();
-        } else if (checkCount >= maxChecks && brightnessCheckRef.current) {
-          clearInterval(brightnessCheckRef.current);
-          brightnessCheckRef.current = null;
-        }
-      }, 4000);
+      }, 1500);
       
       return () => {
         clearTimeout(initialDelay);
