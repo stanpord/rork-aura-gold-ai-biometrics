@@ -53,6 +53,7 @@ import BiometricIntroScan from '@/components/BiometricIntroScan';
 import BiomarkerLoadingScreen from '@/components/BiomarkerLoadingScreen';
 import GuidedCaptureOverlay from '@/components/GuidedCaptureOverlay';
 import HealthQuestionnaire from '@/components/HealthQuestionnaire';
+import PatientResultsModal from '@/components/PatientResultsModal';
 
 import { AnalysisResult, PatientHealthProfile, ClinicalProcedure, PeptideTherapy, IVOptimization, PatientConsent } from '@/types';
 import { checkTreatmentSafety, getExplainableReason } from '@/constants/contraindications';
@@ -104,6 +105,7 @@ export default function ScanScreen() {
   const [isLeadSaved, setIsLeadSaved] = useState(false);
   const [showHealthQuestionnaire, setShowHealthQuestionnaire] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
+  const [showPreviousResultsModal, setShowPreviousResultsModal] = useState(false);
   const [isSimulationPending, setIsSimulationPending] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [isEmailSaved, setIsEmailSaved] = useState(false);
@@ -1155,6 +1157,21 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
                   </View>
                   <Text style={styles.optionText}>UPLOAD PHOTO</Text>
                 </TouchableOpacity>
+
+                <View style={styles.optionDivider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>OR</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                <TouchableOpacity
+                  style={styles.returningPatientButton}
+                  onPress={() => setShowPreviousResultsModal(true)}
+                  activeOpacity={0.8}
+                >
+                  <RefreshCw size={18} color={Colors.gold} />
+                  <Text style={styles.returningPatientText}>RETURNING PATIENT?</Text>
+                </TouchableOpacity>
               </View>
             )}
           </View>
@@ -1169,6 +1186,11 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
             </Text>
           </TouchableOpacity>
         </ScrollView>
+
+        <PatientResultsModal
+          visible={showPreviousResultsModal}
+          onClose={() => setShowPreviousResultsModal(false)}
+        />
 
         <Modal
           visible={showDevPrompt}
@@ -2514,5 +2536,23 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: Colors.black,
     textAlign: 'center',
+  },
+  returningPatientButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  returningPatientText: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: Colors.gold,
+    letterSpacing: 1,
   },
 });
