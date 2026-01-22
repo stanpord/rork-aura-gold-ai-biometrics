@@ -136,6 +136,8 @@ export default function ScanScreen() {
   const [isEmailSaved, setIsEmailSaved] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<'front' | 'back'>('front');
   const [isGuidedCaptureActive, setIsGuidedCaptureActive] = useState(false);
+  const [prewarmedImage, setPrewarmedImage] = useState<string | null>(null);
+  const [isPrewarming, setIsPrewarming] = useState(false);
   const [isLightingAcceptable, setIsLightingAcceptable] = useState(false);
   const [measuredBrightness, setMeasuredBrightness] = useState(0);
   const brightnessCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -474,6 +476,47 @@ export default function ScanScreen() {
     }
   }, []);
 
+  const prewarmImageForAnalysis = useCallback(async (imageUri: string) => {
+    console.log('[Prewarm] Starting image preparation in background...');
+    setIsPrewarming(true);
+    const startTime = Date.now();
+    
+    try {
+      const resizedUri = await resizeImageForAnalysis(imageUri, false);
+      
+      let base64Image = '';
+      if (Platform.OS === 'web') {
+        const response = await fetch(resizedUri);
+        const blob = await response.blob();
+        base64Image = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1]);
+          };
+          reader.readAsDataURL(blob);
+        });
+      } else {
+        const file = new File(resizedUri);
+        base64Image = await file.base64();
+      }
+      
+      console.log(`[Prewarm] Image ready in ${Date.now() - startTime}ms, ~${Math.round(base64Image.length / 1024)}KB`);
+      setPrewarmedImage(base64Image);
+    } catch (error) {
+      console.log('[Prewarm] Failed:', error);
+      setPrewarmedImage(null);
+    } finally {
+      setIsPrewarming(false);
+    }
+  }, [resizeImageForAnalysis]);
+
+  React.useEffect(() => {
+    if (capturedImage && !prewarmedImage && !isPrewarming) {
+      prewarmImageForAnalysis(capturedImage);
+    }
+  }, [capturedImage, prewarmedImage, isPrewarming, prewarmImageForAnalysis]);
+
   const buildCumulativeTreatmentPrompt = useCallback((treatments: string[]): string => {
     const treatmentEffects: string[] = [];
     const matchedTreatments: string[] = [];
@@ -655,28 +698,36 @@ const analyzeImageWithAI = useCallback(async (imageUri: string): Promise<Analysi
     console.log('Starting AI clinical analysis of captured image...');
     const totalStartTime = Date.now();
     
-    const resizedUri = await resizeImageForAnalysis(imageUri, false);
-    console.log(`Image prep complete, starting base64 conversion...`);
-    
     let base64Image = '';
     
-    const b64StartTime = Date.now();
-    if (Platform.OS === 'web') {
-      const response = await fetch(resizedUri);
-      const blob = await response.blob();
-      base64Image = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          resolve(result.split(',')[1]);
-        };
-        reader.readAsDataURL(blob);
-      });
+    // Use prewarmed image if available (saves 1-3 seconds)
+    if (prewarmedImage) {
+      console.log('[Analysis] Using prewarmed image - skipping resize/base64 conversion');
+      base64Image = prewarmedImage;
     } else {
-      const file = new File(resizedUri);
-      base64Image = await file.base64();
+      console.log('[Analysis] No prewarmed image, processing now...');
+      const resizedUri = await resizeImageForAnalysis(imageUri, false);
+      
+      const b64StartTime = Date.now();
+      if (Platform.OS === 'web') {
+        const response = await fetch(resizedUri);
+        const blob = await response.blob();
+        base64Image = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1]);
+          };
+          reader.readAsDataURL(blob);
+        });
+      } else {
+        const file = new File(resizedUri);
+        base64Image = await file.base64();
+      }
+      console.log(`Base64 conversion took ${Date.now() - b64StartTime}ms`);
     }
-    console.log(`Base64 conversion took ${Date.now() - b64StartTime}ms, payload ~${Math.round(base64Image.length / 1024)}KB`);
+    
+    console.log(`Image ready, payload ~${Math.round(base64Image.length / 1024)}KB`);
 
     const maxRetries = 2;
 
@@ -1052,6 +1103,7 @@ Include ALL zones with ANY volume loss (even 5-10%). Only omit if zone is comple
     resetScan();
     clearHealthProfile();
     clearPatientConsent();
+    setPrewarmedImage(null);
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
