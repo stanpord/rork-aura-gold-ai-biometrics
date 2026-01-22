@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     overflow: 'hidden',
     paddingTop: isVerySmallScreen ? 2 : isSmallScreen ? 4 : 8,
-    paddingBottom: isVerySmallScreen ? 4 : isSmallScreen ? 6 : 10,
+    paddingBottom: 0,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -333,9 +333,9 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    gap: isSmallScreen ? 2 : 6,
-    paddingTop: isVerySmallScreen ? 2 : isSmallScreen ? 4 : 8,
-    marginTop: isVerySmallScreen ? 2 : isSmallScreen ? 4 : 6,
+    gap: isVerySmallScreen ? 1 : isSmallScreen ? 2 : 4,
+    paddingTop: 0,
+    marginTop: 0,
   },
   scanningIndicator: {
     flexDirection: 'row',
@@ -343,19 +343,19 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   scanningDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: isVerySmallScreen ? 6 : 7,
+    height: isVerySmallScreen ? 6 : 7,
+    borderRadius: isVerySmallScreen ? 3 : 3.5,
     backgroundColor: Colors.gold,
   },
   scanningText: {
-    fontSize: 11,
+    fontSize: isVerySmallScreen ? 9 : 10,
     fontWeight: '500' as const,
     color: Colors.textMuted,
     letterSpacing: 1,
   },
   tagline: {
-    fontSize: 9,
+    fontSize: isVerySmallScreen ? 7 : 8,
     fontWeight: '400' as const,
     color: 'rgba(255, 255, 255, 0.25)',
     letterSpacing: 2,
