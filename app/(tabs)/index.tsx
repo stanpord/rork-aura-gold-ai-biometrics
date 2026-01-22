@@ -451,6 +451,24 @@ export default function ScanScreen() {
     }
   }, [setCapturedImage, patientBasicInfo?.email, isLightingAcceptable]);
 
+  const resizeImageForAnalysis = useCallback(async (imageUri: string): Promise<string> => {
+    const MAX_DIMENSION = 800;
+    console.log('Resizing image for faster AI processing...');
+    
+    try {
+      const manipResult = await ImageManipulator.manipulateAsync(
+        imageUri,
+        [{ resize: { width: MAX_DIMENSION } }],
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      console.log('Image resized successfully to ~800px width, ~60% quality');
+      return manipResult.uri;
+    } catch (error) {
+      console.log('Image resize failed, using original:', error);
+      return imageUri;
+    }
+  }, []);
+
   const buildCumulativeTreatmentPrompt = useCallback((treatments: string[]): string => {
     const treatmentEffects: string[] = [];
     const matchedTreatments: string[] = [];
@@ -584,7 +602,7 @@ CRITICAL:
       
       return null;
     }
-  }, [resizeImageForAnalysis]);
+  }, [resizeImageForAnalysis, buildCumulativeTreatmentPrompt]);
 
   const analysisSchema = useMemo(() => z.object({
       auraScore: z.number().min(300).max(1000).describe('Overall aesthetic score based on facial harmony, skin quality, and structural balance. Higher scores indicate better baseline aesthetics.'),
@@ -627,25 +645,7 @@ CRITICAL:
       }).describe('CRITICAL: Accurately assess the Fitzpatrick skin type from the image. This affects treatment safety for IPL, lasers, and other light-based therapies. Types V and VI have HIGH RISK for burns with IPL.'),
   }), []);
 
-  const resizeImageForAnalysis = useCallback(async (imageUri: string): Promise<string> => {
-    const MAX_DIMENSION = 800;
-    console.log('Resizing image for faster AI processing...');
-    
-    try {
-      const manipResult = await ImageManipulator.manipulateAsync(
-        imageUri,
-        [{ resize: { width: MAX_DIMENSION } }],
-        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
-      );
-      console.log('Image resized successfully to ~800px width, ~60% quality');
-      return manipResult.uri;
-    } catch (error) {
-      console.log('Image resize failed, using original:', error);
-      return imageUri;
-    }
-  }, []);
-
-  const analyzeImageWithAI = useCallback(async (imageUri: string): Promise<AnalysisResult> => {
+const analyzeImageWithAI = useCallback(async (imageUri: string): Promise<AnalysisResult> => {
     console.log('Starting AI clinical analysis of captured image...');
     
     const resizedUri = await resizeImageForAnalysis(imageUri);
