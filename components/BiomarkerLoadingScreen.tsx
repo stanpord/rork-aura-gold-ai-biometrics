@@ -263,7 +263,7 @@ export default function BiomarkerLoadingScreen({ onComplete }: BiomarkerLoadingS
             </View>
           </View>
           <Text style={[styles.title, dynamicStyles.title]}>AURA GOLD</Text>
-          <Text style={[styles.subtitle, dynamicStyles.subtitle]}>Biometric Analysis Engine</Text>
+          <Text style={[styles.subtitle, dynamicStyles.subtitle]}>Clinical-Grade Facial Analysis</Text>
         </View>
 
         <View style={[styles.biomarkersSection, dynamicStyles.biomarkersSection]}>

@@ -1168,7 +1168,7 @@ Fitzpatrick: Assess accurately for treatment safety (V-VI = high IPL risk).`
               </Text>
             </View>
             <Text style={styles.heroSubtitle}>
-              AI-Powered Biometric Analysis for Regenerative Aesthetics
+              Rapid analysis while you consult
             </Text>
             <Text style={styles.patentPending}>Patent Pending</Text>
           </View>
@@ -1464,7 +1464,7 @@ Fitzpatrick: Assess accurately for treatment safety (V-VI = high IPL risk).`
           <View style={styles.scoreInfo}>
             <Text style={styles.faceType}>{currentAnalysis.faceType}</Text>
             <Text style={styles.scoreDescription}>
-              Structural biometrics identified. We have curated a holistic protocol to optimize your Aura Index.
+              Comprehensive biometric assessment complete. Personalized treatment roadmap generated to maximize patient outcomes and practice revenue.
             </Text>
             <View style={styles.skinIQTags}>
               {Object.entries(currentAnalysis.skinIQ).map(([key, value]) => (
