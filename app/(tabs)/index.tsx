@@ -41,6 +41,7 @@ import {
   FileText,
   SwitchCamera,
   Eye,
+  Sparkles,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
@@ -48,6 +49,7 @@ import AuraScoreGauge from '@/components/AuraScoreGauge';
 import BiometricScanOverlay from '@/components/BiometricScanOverlay';
 import LeadCaptureModal from '@/components/LeadCaptureModal';
 import EmailCaptureModal from '@/components/EmailCaptureModal';
+import BeforeAfterSlider from '@/components/BeforeAfterSlider';
 
 import BiometricIntroScan from '@/components/BiometricIntroScan';
 import BiomarkerLoadingScreen from '@/components/BiomarkerLoadingScreen';
@@ -132,6 +134,8 @@ export default function ScanScreen() {
 
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [isEmailSaved, setIsEmailSaved] = useState(false);
+  const [simulatedImage, setSimulatedImage] = useState<string | null>(null);
+  const [isGeneratingSimulation, setIsGeneratingSimulation] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<'front' | 'back'>('front');
   const [isGuidedCaptureActive, setIsGuidedCaptureActive] = useState(false);
   const [prewarmedImage, setPrewarmedImage] = useState<string | null>(null);
@@ -964,20 +968,34 @@ Fitzpatrick: Assess accurately for treatment safety (V-VI = high IPL risk).`
     }
 
     setIsAnalyzing(true);
+    setIsGeneratingSimulation(true);
 
     try {
       const aiAnalysisResult = await analyzeImageWithAI(capturedImage);
       
-      console.log('Analysis complete - simulation will be generated when treatment is selected');
-
       const safetyCheckedAnalysis = applyContraindicationChecks(aiAnalysisResult);
       setCurrentAnalysis(safetyCheckedAnalysis);
       console.log('AI analysis with safety checks:', JSON.stringify(safetyCheckedAnalysis, null, 2));
+      
+      // Generate simulation with all recommended treatments
+      const availableTreatments = safetyCheckedAnalysis.clinicalRoadmap
+        .filter(proc => !proc.safetyStatus?.isBlocked)
+        .map(proc => proc.name);
+      
+      if (availableTreatments.length > 0) {
+        console.log('Generating cumulative simulation for:', availableTreatments.join(', '));
+        const simulation = await generateTreatmentSimulation(capturedImage, availableTreatments);
+        if (simulation) {
+          setSimulatedImage(simulation);
+          console.log('Simulation generated successfully');
+        }
+      }
     } catch (error) {
       console.log('Analysis error:', error);
       Alert.alert('Analysis Error', 'Unable to complete facial analysis. Please try again.');
     } finally {
       setIsAnalyzing(false);
+      setIsGeneratingSimulation(false);
     }
     
     if (Platform.OS !== 'web') {
@@ -1027,6 +1045,7 @@ Fitzpatrick: Assess accurately for treatment safety (V-VI = high IPL risk).`
     clearHealthProfile();
     clearPatientConsent();
     setPrewarmedImage(null);
+    setSimulatedImage(null);
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
@@ -1420,6 +1439,21 @@ Fitzpatrick: Assess accurately for treatment safety (V-VI = high IPL risk).`
                 {currentAnalysis.fitzpatrickAssessment.detectedIndicators.join(', ')}
               </Text>
             </View>
+          </View>
+        )}
+
+        {capturedImage && (simulatedImage || isGeneratingSimulation) && (
+          <View style={styles.sliderSection}>
+            <View style={styles.sliderHeader}>
+              <Sparkles size={14} color={Colors.gold} />
+              <Text style={styles.sliderTitle}>AI TREATMENT SIMULATION</Text>
+            </View>
+            <BeforeAfterSlider
+              beforeImage={capturedImage}
+              afterImage={simulatedImage || capturedImage}
+              height={380}
+              isSimulationPending={isGeneratingSimulation}
+            />
           </View>
         )}
 
