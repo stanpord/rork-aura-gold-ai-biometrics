@@ -27,7 +27,6 @@ import {
   Zap,
   Lock,
   Syringe,
-  Wand2,
   CheckCircle,
   RefreshCw,
   Droplets,
@@ -49,7 +48,7 @@ import AuraScoreGauge from '@/components/AuraScoreGauge';
 import BiometricScanOverlay from '@/components/BiometricScanOverlay';
 import LeadCaptureModal from '@/components/LeadCaptureModal';
 import EmailCaptureModal from '@/components/EmailCaptureModal';
-import BeforeAfterSlider from '@/components/BeforeAfterSlider';
+
 import BiometricIntroScan from '@/components/BiometricIntroScan';
 import BiomarkerLoadingScreen from '@/components/BiomarkerLoadingScreen';
 import GuidedCaptureOverlay from '@/components/GuidedCaptureOverlay';
@@ -62,7 +61,6 @@ import { checkTreatmentSafety, getExplainableReason } from '@/constants/contrain
 import PatientConsentModal from '@/components/PatientConsentModal';
 
 const MAX_CONTENT_WIDTH = 600;
-const MAX_SLIDER_WIDTH = 500;
 
 const TREATMENT_VISUAL_EFFECTS: Record<string, string> = {
   'Botox': '- Completely smooth forehead lines making the forehead appear glass-smooth\n- Eliminate frown lines (11s) between the eyebrows completely\n- Soften crow\'s feet around the eyes significantly\n- Keep natural facial expressions - refreshed but not frozen',
@@ -90,16 +88,14 @@ const TREATMENT_VISUAL_EFFECTS: Record<string, string> = {
 };
 
 export default function ScanScreen() {
-  const { width: windowWidth } = useWindowDimensions();
-  const isTablet = windowWidth > 768;
+  useWindowDimensions();
   
   const {
     currentAnalysis,
     setCurrentAnalysis,
     capturedImage,
     setCapturedImage,
-    simulatedImage,
-    setSimulatedImage,
+
     hasUnlockedResults,
     addLead,
     resetScan,
@@ -117,8 +113,7 @@ export default function ScanScreen() {
     patientBasicInfo,
     savePatientBasicInfo,
     updatePatientEmail,
-    hasCompletedIntro,
-    isLoadingIntro,
+
     completeIntro,
   } = useApp();
 
@@ -134,7 +129,7 @@ export default function ScanScreen() {
   const [showHealthQuestionnaire, setShowHealthQuestionnaire] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [showPreviousResultsModal, setShowPreviousResultsModal] = useState(false);
-  const [isSimulationPending, setIsSimulationPending] = useState(false);
+
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [isEmailSaved, setIsEmailSaved] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<'front' | 'back'>('front');
@@ -969,31 +964,11 @@ Fitzpatrick: Assess accurately for treatment safety (V-VI = high IPL risk).`
     }
 
     setIsAnalyzing(true);
-    setIsSimulationPending(true);
 
     try {
       const aiAnalysisResult = await analyzeImageWithAI(capturedImage);
       
-      const recommendedTreatments = aiAnalysisResult.clinicalRoadmap
-        .filter(proc => !proc.safetyStatus?.isBlocked)
-        .map(proc => proc.name);
-      
-      console.log('Generating cumulative simulation for treatments:', recommendedTreatments.join(', '));
-      
-      generateTreatmentSimulation(capturedImage, recommendedTreatments)
-        .then((simulatedResult) => {
-          setIsSimulationPending(false);
-          if (simulatedResult) {
-            setSimulatedImage(simulatedResult);
-            console.log('Cumulative treatment simulation set successfully');
-          } else {
-            console.log('Simulation failed after retries, using original image');
-          }
-        })
-        .catch(() => {
-          setIsSimulationPending(false);
-          console.log('Simulation promise rejected');
-        });
+      console.log('Analysis complete - simulation will be generated when treatment is selected');
 
       const safetyCheckedAnalysis = applyContraindicationChecks(aiAnalysisResult);
       setCurrentAnalysis(safetyCheckedAnalysis);
@@ -1413,20 +1388,6 @@ Fitzpatrick: Assess accurately for treatment safety (V-VI = high IPL risk).`
         contentContainerStyle={styles.resultsScrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.sliderSection, isTablet && styles.tabletCentered]}>
-          <View style={styles.sliderHeader}>
-            <Wand2 size={14} color={Colors.gold} />
-            <Text style={styles.sliderTitle}>TREATMENT COMPARISON</Text>
-          </View>
-          <BeforeAfterSlider
-            beforeImage={capturedImage}
-            afterImage={simulatedImage || capturedImage}
-            height={isTablet ? 500 : 420}
-            maxWidth={MAX_SLIDER_WIDTH}
-            isSimulationPending={isSimulationPending}
-          />
-        </View>
-
         {currentAnalysis.fitzpatrickAssessment && (currentAnalysis.fitzpatrickAssessment.riskLevel === 'high' || currentAnalysis.fitzpatrickAssessment.riskLevel === 'caution') && (
           <View style={[
             styles.fitzpatrickWarningBanner,
