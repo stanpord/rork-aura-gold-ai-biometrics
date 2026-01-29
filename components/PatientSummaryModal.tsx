@@ -65,7 +65,7 @@ export default function PatientSummaryModal({ visible, onClose, lead }: PatientS
     text += `Patient: ${lead.name}\n`;
     text += `Phone: ${lead.phone}\n`;
     text += `Date: ${formatDate(lead.createdAt)}\n`;
-    text += `Aura Score: ${lead.auraScore}/100\n\n`;
+    text += `Aura Score: ${lead.auraScore}/1000\n\n`;
 
     if (lead.skinIQ) {
       text += `SKIN ANALYSIS\n`;
