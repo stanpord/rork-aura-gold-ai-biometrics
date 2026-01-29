@@ -41,6 +41,7 @@ import {
   AlertCircle,
   FileText,
   SwitchCamera,
+  Eye,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
@@ -54,6 +55,7 @@ import BiomarkerLoadingScreen from '@/components/BiomarkerLoadingScreen';
 import GuidedCaptureOverlay from '@/components/GuidedCaptureOverlay';
 import HealthQuestionnaire from '@/components/HealthQuestionnaire';
 import PatientResultsModal from '@/components/PatientResultsModal';
+import TreatmentVisualizationModal from '@/components/TreatmentVisualizationModal';
 
 import { AnalysisResult, PatientHealthProfile, ClinicalProcedure, PeptideTherapy, IVOptimization, PatientConsent } from '@/types';
 import { checkTreatmentSafety, getExplainableReason } from '@/constants/contraindications';
@@ -128,6 +130,7 @@ export default function ScanScreen() {
 
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [isLeadSaved, setIsLeadSaved] = useState(false);
+  const [selectedTreatmentPreview, setSelectedTreatmentPreview] = useState<string | null>(null);
   const [showHealthQuestionnaire, setShowHealthQuestionnaire] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [showPreviousResultsModal, setShowPreviousResultsModal] = useState(false);
@@ -1500,6 +1503,21 @@ Fitzpatrick: Assess accurately for treatment safety (V-VI = high IPL risk).`
                   <Text style={styles.clinicalReasonText}>{proc.clinicalReason}</Text>
                 </View>
                 {renderSafetyWarning(proc.safetyStatus)}
+                {!proc.safetyStatus?.isBlocked && capturedImage && (
+                  <TouchableOpacity
+                    style={styles.previewResultsButton}
+                    onPress={() => {
+                      setSelectedTreatmentPreview(proc.name);
+                      if (Platform.OS !== 'web') {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Eye size={14} color={Colors.gold} />
+                    <Text style={styles.previewResultsButtonText}>PREVIEW RESULTS</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ))}
           </View>
@@ -1620,7 +1638,12 @@ Fitzpatrick: Assess accurately for treatment safety (V-VI = high IPL risk).`
         </TouchableOpacity>
       </ScrollView>
 
-
+      <TreatmentVisualizationModal
+        visible={!!selectedTreatmentPreview}
+        onClose={() => setSelectedTreatmentPreview(null)}
+        treatmentName={selectedTreatmentPreview || ''}
+        originalImage={capturedImage || ''}
+      />
     </View>
   );
 }
@@ -2085,6 +2108,24 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.textMuted,
     lineHeight: 16,
+  },
+  previewResultsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.25)',
+  },
+  previewResultsButtonText: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: Colors.gold,
+    letterSpacing: 1.5,
   },
   therapyGrid: {
     gap: 12,
