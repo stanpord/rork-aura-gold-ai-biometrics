@@ -1503,16 +1503,18 @@ Fitzpatrick: Assess accurately for treatment safety (V-VI = high IPL risk).`
                   <Text style={styles.clinicalReasonText}>{proc.clinicalReason}</Text>
                 </View>
                 {renderSafetyWarning(proc.safetyStatus)}
-                {!proc.safetyStatus?.isBlocked && capturedImage && (
+                {!proc.safetyStatus?.isBlocked && (
                   <TouchableOpacity
                     style={styles.previewResultsButton}
                     onPress={() => {
+                      console.log('Preview button pressed for:', proc.name);
                       setSelectedTreatmentPreview(proc.name);
                       if (Platform.OS !== 'web') {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       }
                     }}
                     activeOpacity={0.8}
+                    testID={`preview-button-${proc.name}`}
                   >
                     <Eye size={14} color={Colors.gold} />
                     <Text style={styles.previewResultsButtonText}>PREVIEW RESULTS</Text>
