@@ -6,66 +6,10 @@ import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import ClinicLoginModal from '@/components/ClinicLoginModal';
 
-export default function TabLayout() {
-  const { isStaffAuthenticated, authenticateStaff } = useApp();
-  const [showLoginModal, setShowLoginModal] = useState(false);
-
-  const handleLogin = async (passcode: string): Promise<boolean> => {
-    const success = await authenticateStaff(passcode);
-    if (success) {
-      setShowLoginModal(false);
-    }
-    return success;
-  };
-
-  return (
-    <>
-      <Tabs
-        screenOptions={{
-          tabBarActiveTintColor: Colors.gold,
-          tabBarInactiveTintColor: Colors.textMuted,
-          tabBarStyle: styles.tabBar,
-          tabBarLabelStyle: styles.tabBarLabel,
-          headerStyle: styles.header,
-          headerTitleStyle: styles.headerTitle,
-          headerTintColor: Colors.white,
-        }}
-      >
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: 'Scan',
-            headerTitle: 'AURA AI BIOMETRICS',
-            tabBarIcon: ({ color, size }) => <Sparkles size={size} color={color} />,
-            headerLeft: () => (
-              <TouchableOpacity
-                style={styles.headerButtonLeft}
-                onPress={() => setShowLoginModal(true)}
-              >
-                <Lock size={18} color={isStaffAuthenticated ? Colors.gold : Colors.textMuted} />
-              </TouchableOpacity>
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="clinic"
-          options={{
-            title: 'Clinic',
-            headerTitle: 'ADMIN PORTAL',
-            tabBarIcon: ({ color, size }) => <LayoutDashboard size={size} color={color} />,
-            tabBarBadge: isStaffAuthenticated ? undefined : '🔒',
-          }}
-        />
-      </Tabs>
-
-      <ClinicLoginModal
-        visible={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-        onLogin={handleLogin}
-      />
-    </>
-  );
-}
+/* -----------------------------
+   STYLES DEFINED FIRST
+   (Prevents TDZ initialization bug)
+------------------------------ */
 
 const styles = StyleSheet.create({
   tabBar: {
@@ -96,3 +40,80 @@ const styles = StyleSheet.create({
     padding: 8,
   },
 });
+
+/* -----------------------------
+   COMPONENT
+------------------------------ */
+
+export default function TabLayout() {
+  const { isStaffAuthenticated, authenticateStaff } = useApp();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  const handleLogin = async (passcode: string): Promise<boolean> => {
+    const success = await authenticateStaff(passcode);
+    if (success) {
+      setShowLoginModal(false);
+    }
+    return success;
+  };
+
+  return (
+    <>
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: Colors.gold,
+          tabBarInactiveTintColor: Colors.textMuted,
+          tabBarStyle: styles.tabBar,
+          tabBarLabelStyle: styles.tabBarLabel,
+          headerStyle: styles.header,
+          headerTitleStyle: styles.headerTitle,
+          headerTintColor: Colors.white,
+        }}
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Scan',
+            headerTitle: 'AURA AI BIOMETRICS',
+            tabBarIcon: ({ color, size }) => (
+              <Sparkles size={size} color={color} />
+            ),
+            headerLeft: () => (
+              <TouchableOpacity
+                style={styles.headerButtonLeft}
+                onPress={() => setShowLoginModal(true)}
+              >
+                <Lock
+                  size={18}
+                  color={
+                    isStaffAuthenticated
+                      ? Colors.gold
+                      : Colors.textMuted
+                  }
+                />
+              </TouchableOpacity>
+            ),
+          }}
+        />
+
+        <Tabs.Screen
+          name="clinic"
+          options={{
+            title: 'Clinic',
+            headerTitle: 'ADMIN PORTAL',
+            tabBarIcon: ({ color, size }) => (
+              <LayoutDashboard size={size} color={color} />
+            ),
+            tabBarBadge: isStaffAuthenticated ? undefined : '🔒',
+          }}
+        />
+      </Tabs>
+
+      <ClinicLoginModal
+        visible={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLogin={handleLogin}
+      />
+    </>
+  );
+}
