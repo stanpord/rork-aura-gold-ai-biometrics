@@ -1,12 +1,5 @@
 import React, { useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Camera } from 'lucide-react-native';
@@ -18,7 +11,7 @@ import BiometricIntroScan from '@/components/BiometricIntroScan';
 
 const GOLD = Colors.gold || '#F59E0B';
 
-// --- STYLES DEFINED AT TOP TO PREVENT INITIALIZATION ERROR ---
+// --- STYLES DEFINED AT TOP ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -80,10 +73,8 @@ export default function ScanScreen() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const { isLoadingIntro, completeIntro } = useApp();
   
-  // Create a reference to the CameraView to access native methods
   const cameraRef = useRef<CameraView>(null);
 
-  // Logic to handle the 12-second biometric handshake completion
   if (isLoadingIntro) {
     return <BiometricIntroScan onComplete={completeIntro} />;
   }
@@ -99,18 +90,16 @@ export default function ScanScreen() {
     setIsCameraActive(true);
   };
 
-  // The function triggered by the Overlay once stability is met
   const handleCapture = async () => {
     if (cameraRef.current) {
       try {
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.8,
-          skipProcessing: true, // Optimized for Android performance
+          skipProcessing: true,
         });
-        console.log('Biometric Data Captured:', photo?.uri);
-        // Navigate to results or process Aura Index here
+        console.log('Capture Success:', photo?.uri);
       } catch (error) {
-        console.error('Capture failed:', error);
+        console.error('Capture Error:', error);
       }
     }
   };
@@ -132,7 +121,6 @@ export default function ScanScreen() {
               style={styles.camera} 
               facing="front"
             >
-              {/* Pass the capture handler to the overlay logic */}
               <BiometricScanOverlay onReadyToCapture={handleCapture} />
             </CameraView>
           ) : (
