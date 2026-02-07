@@ -30,6 +30,7 @@ export default function BiometricScanOverlay() {
   const CurrentIcon = ANALYSIS_STAGES[stageIndex].icon;
 
   useEffect(() => {
+    // Scan line animation
     const scanAnim = Animated.loop(
       Animated.sequence([
         Animated.timing(scanLineY, { toValue: 1, duration: 2000, useNativeDriver: true }),
@@ -37,6 +38,7 @@ export default function BiometricScanOverlay() {
       ])
     );
 
+    // Pulsing effect
     const pulseAnim = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseOpacity, { toValue: 1, duration: 800, useNativeDriver: true }),
@@ -44,54 +46,41 @@ export default function BiometricScanOverlay() {
       ])
     );
 
+    // Icon scale animation
     const iconAnim = Animated.loop(
       Animated.sequence([
-        Animated.timing(iconScale, { toValue: 1.15, duration: 600, useNativeDriver: true }),
+        Animated.timing(iconScale, { toValue: 1.1, duration: 600, useNativeDriver: true }),
         Animated.timing(iconScale, { toValue: 1, duration: 600, useNativeDriver: true }),
       ])
     );
 
-    const dotsAnim = Animated.loop(
-      Animated.stagger(200, dotAnims.map(anim => 
-        Animated.sequence([
-          Animated.timing(anim, { toValue: 1, duration: 300, useNativeDriver: true }),
-          Animated.timing(anim, { toValue: 0, duration: 300, useNativeDriver: true }),
-        ])
-      ))
-    );
-
+    // Start progress bar
     Animated.timing(progress, {
       toValue: 100,
       duration: 12000,
       useNativeDriver: false,
     }).start();
 
+    // Stage switching logic
     const stageTimer = setInterval(() => {
-      Animated.sequence([
-        Animated.timing(textOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
-        Animated.timing(textOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
-      ]).start();
-
       setStageIndex((prev) => (prev + 1) % ANALYSIS_STAGES.length);
     }, 2400);
 
     scanAnim.start();
     pulseAnim.start();
     iconAnim.start();
-    dotsAnim.start();
 
     return () => {
       scanAnim.stop();
       pulseAnim.stop();
       iconAnim.stop();
-      dotsAnim.stop();
       clearInterval(stageTimer);
     };
   }, []);
 
   const scanLineTranslateY = scanLineY.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, SCREEN_HEIGHT * 0.62],
+    outputRange: [0, SCREEN_HEIGHT * 0.6],
   });
 
   const progressWidth = progress.interpolate({
@@ -120,7 +109,7 @@ export default function BiometricScanOverlay() {
         ))}
       </View>
 
-      {/* Brackets now use the fixed styles */}
+      {/* Applied the base style + corner specific style */}
       <View style={[styles.cornerBase, styles.cornerTL]} />
       <View style={[styles.cornerBase, styles.cornerTR]} />
       <View style={[styles.cornerBase, styles.cornerBL]} />
@@ -133,32 +122,14 @@ export default function BiometricScanOverlay() {
           <CurrentIcon size={28} color={Colors.gold} />
         </Animated.View>
 
-        <Animated.View style={[styles.textBlock, { opacity: textOpacity }]}>
-          <View style={styles.textRow}>
-            <Text style={styles.mainText}>{ANALYSIS_STAGES[stageIndex].text}</Text>
-            <div style={{ flexDirection: 'row', marginLeft: 6 }}>
-              {dotAnims.map((anim, i) => (
-                <Animated.View key={i} style={[styles.dot, { opacity: anim, marginLeft: 4 }]} />
-              ))}
-            </div>
-          </View>
+        <View style={styles.textBlock}>
+          <Text style={styles.mainText}>{ANALYSIS_STAGES[stageIndex].text}</Text>
           <Text style={styles.subText}>{ANALYSIS_STAGES[stageIndex].subtext}</Text>
-        </Animated.View>
+        </View>
 
         <View style={styles.progressSection}>
           <View style={styles.progressBg}>
             <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
-          </View>
-          <View style={styles.stageDots}>
-            {ANALYSIS_STAGES.map((_, idx) => (
-              <View
-                key={idx}
-                style={[
-                  styles.stageDot,
-                  idx <= stageIndex && styles.stageDotActive,
-                ]}
-              />
-            ))}
           </View>
         </View>
       </View>
@@ -166,8 +137,8 @@ export default function BiometricScanOverlay() {
   );
 }
 
-// Separate base styles to avoid circular reference
-const cornerBase = {
+// 1. Define shared styles OUTSIDE the main StyleSheet
+const CORNER_BASE = {
   position: 'absolute' as const,
   width: 32,
   height: 32,
@@ -188,7 +159,7 @@ const styles = StyleSheet.create({
   },
   gridOverlay: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.11,
+    opacity: 0.1,
   },
   gridLineH: {
     position: 'absolute',
@@ -204,7 +175,8 @@ const styles = StyleSheet.create({
     width: 1,
     backgroundColor: Colors.gold,
   },
-  cornerBase,
+  // 2. Reference the constant here
+  cornerBase: CORNER_BASE,
   cornerTL: { top: 40, left: 40, borderTopWidth: 2, borderLeftWidth: 2 },
   cornerTR: { top: 40, right: 40, borderTopWidth: 2, borderRightWidth: 2 },
   cornerBL: { bottom: 40, left: 40, borderBottomWidth: 2, borderLeftWidth: 2 },
@@ -219,55 +191,41 @@ const styles = StyleSheet.create({
     height: 160,
     borderRadius: 60,
     borderWidth: 1.5,
-    borderColor: 'rgba(245, 158, 11, 0.35)',
+    borderColor: 'rgba(245, 158, 11, 0.3)',
   },
   statusPanel: {
     position: 'absolute',
-    bottom: 64,
-    left: 24,
-    right: 24,
+    bottom: 60,
+    left: 20,
+    right: 20,
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.68)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
     borderRadius: 20,
-    paddingVertical: 20,
-    paddingHorizontal: 16,
+    padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.28)',
+    borderColor: 'rgba(245,158,11,0.3)',
   },
   iconWrapper: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(245,158,11,0.14)',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(245,158,11,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.38)',
+    marginBottom: 10,
   },
   textBlock: {
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  textRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginBottom: 15,
   },
   mainText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: -0.2,
-  },
-  dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: Colors.gold,
+    color: '#FFF',
   },
   subText: {
     fontSize: 12,
-    color: '#9CA3AF', // Colors.textMuted
+    color: '#AAA',
     marginTop: 4,
   },
   progressSection: {
@@ -275,28 +233,12 @@ const styles = StyleSheet.create({
   },
   progressBg: {
     height: 4,
-    backgroundColor: 'rgba(255,255,255,0.09)',
+    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 2,
     overflow: 'hidden',
-    marginBottom: 12,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: Colors.gold,
-    borderRadius: 2,
-  },
-  stageDots: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  stageDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    marginHorizontal: 4,
-  },
-  stageDotActive: {
     backgroundColor: Colors.gold,
   },
 });
