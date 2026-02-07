@@ -12,8 +12,65 @@ import * as Haptics from 'expo-haptics';
 import { CheckCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
-// Beautiful model with biometric scanning overlay - ideal for medspa diagnostic
+// --- 1. CONSTANTS & STYLES AT TOP (Initialization Guard) ---
 const FACE_IMAGE = 'https://r2-pub.rork.com/generated-images/475a6908-3419-4157-b237-ce96bff62622.png';
+
+const styles = StyleSheet.create({
+  container: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000',
+    zIndex: 100,
+  },
+  faceContainer: {
+    flex: 1,
+  },
+  faceImageContainer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  faceImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+  },
+  faceGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  scanLinesOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  scanLineH: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(245, 158, 11, 0.05)',
+  },
+  scanLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 3,
+  },
+  scanLineGradient: {
+    flex: 1,
+  },
+  completeOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completeBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(16, 185, 129, 0.5)',
+  },
+});
 
 const getScreenDimensions = () => {
   const { width, height } = Dimensions.get('window');
@@ -24,8 +81,7 @@ interface BiometricIntroScanProps {
   onComplete: () => void;
 }
 
-
-
+// --- 2. COMPONENT LOGIC ---
 export default function BiometricIntroScan({ onComplete }: BiometricIntroScanProps) {
   const [currentPhase, setCurrentPhase] = useState(0);
   const [dimensions, setDimensions] = useState(getScreenDimensions());
@@ -46,12 +102,10 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
   const gridOpacity = useRef(new Animated.Value(0)).current;
   const faceOutlineScale = useRef(new Animated.Value(0.8)).current;
   const faceOutlineOpacity = useRef(new Animated.Value(0)).current;
-
   const exitAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     startIntroSequence();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const startIntroSequence = () => {
@@ -93,16 +147,8 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
+        Animated.timing(pulseAnim, { toValue: 1.1, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
       ])
     ).start();
 
@@ -113,19 +159,11 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
   };
 
   const runPhase2 = () => {
-    // Start scan line animation
+    
     Animated.loop(
       Animated.sequence([
-        Animated.timing(scanLineAnim, {
-          toValue: 1,
-          duration: 3500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scanLineAnim, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
+        Animated.timing(scanLineAnim, { toValue: 1, duration: 3500, useNativeDriver: true }),
+        Animated.timing(scanLineAnim, { toValue: 0, duration: 0, useNativeDriver: true }),
       ])
     ).start();
 
@@ -163,10 +201,6 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
     }, 1000);
   };
 
-
-
-
-
   return (
     <Animated.View
       style={[
@@ -176,16 +210,13 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
         },
       ]}
     >
-      {/* Face-only centered image */}
       <View style={styles.faceContainer}>
         <Animated.View
           style={[
             styles.faceImageContainer,
             {
               opacity: faceOutlineOpacity,
-              transform: [
-                { scale: faceOutlineScale },
-              ],
+              transform: [{ scale: faceOutlineScale }],
             },
           ]}
         >
@@ -195,7 +226,6 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
             contentFit="cover"
             contentPosition="center"
           />
-          {/* Subtle scan overlay */}
           <LinearGradient
             colors={['rgba(0, 0, 0, 0.4)', 'rgba(245, 158, 11, 0.05)', 'rgba(0, 0, 0, 0.4)']}
             style={styles.faceGradient}
@@ -209,9 +239,6 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
           </View>
         </Animated.View>
 
-
-
-        {/* Scan line */}
         <Animated.View
           style={[
             styles.scanLine,
@@ -234,75 +261,15 @@ export default function BiometricIntroScan({ onComplete }: BiometricIntroScanPro
             end={{ x: 1, y: 0 }}
           />
         </Animated.View>
-
       </View>
 
       {currentPhase === 3 && (
         <Animated.View style={[styles.completeOverlay, { opacity: exitAnim }]}>
           <View style={styles.completeBadge}>
-            <CheckCircle size={24} color={Colors.success} />
+            <CheckCircle size={24} color={Colors.success || '#10B981'} />
           </View>
         </Animated.View>
       )}
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#000',
-    zIndex: 100,
-  },
-  faceContainer: {
-    flex: 1,
-  },
-  faceImageContainer: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  faceImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
-  },
-  faceGradient: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  scanLinesOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  scanLineH: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'rgba(245, 158, 11, 0.05)',
-  },
-
-  scanLine: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    height: 3,
-  },
-  scanLineGradient: {
-    flex: 1,
-  },
-
-  completeOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  completeBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(16, 185, 129, 0.5)',
-  },
-});

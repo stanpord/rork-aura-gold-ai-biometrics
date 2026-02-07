@@ -6,6 +6,38 @@ import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import ClinicLoginModal from '@/components/ClinicLoginModal';
 
+// --- 1. STYLES DEFINED AT TOP TO PREVENT INITIALIZATION ERROR ---
+const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: Colors.surface,
+    borderTopColor: Colors.border,
+    borderTopWidth: 1,
+    paddingTop: 8,
+    height: 88,
+  },
+  tabBarLabel: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    letterSpacing: 0.5,
+  },
+  header: {
+    backgroundColor: Colors.background,
+    borderBottomColor: Colors.border,
+    borderBottomWidth: 1,
+  },
+  headerTitle: {
+    fontSize: 14,
+    fontWeight: '900' as const,
+    color: Colors.white,
+    letterSpacing: 2,
+  },
+  headerButtonLeft: {
+    marginLeft: 16,
+    padding: 8,
+  },
+});
+
+// --- 2. COMPONENT FUNCTION FOLLOWS ---
 export default function TabLayout() {
   const { isStaffAuthenticated, authenticateStaff } = useApp();
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -42,7 +74,10 @@ export default function TabLayout() {
                 style={styles.headerButtonLeft}
                 onPress={() => setShowLoginModal(true)}
               >
-                <Lock size={18} color={isStaffAuthenticated ? Colors.gold : Colors.textMuted} />
+                <Lock 
+                  size={18} 
+                  color={isStaffAuthenticated ? Colors.gold : Colors.textMuted} 
+                />
               </TouchableOpacity>
             ),
           }}
@@ -53,7 +88,8 @@ export default function TabLayout() {
             title: 'Clinic',
             headerTitle: 'ADMIN PORTAL',
             tabBarIcon: ({ color, size }) => <LayoutDashboard size={size} color={color} />,
-            tabBarBadge: isStaffAuthenticated ? undefined : '🔒',
+            // Using a clearer lock indicator or removing the badge if authenticated
+            tabBarBadge: isStaffAuthenticated ? undefined : '!',
           }}
         />
       </Tabs>
@@ -66,33 +102,3 @@ export default function TabLayout() {
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: Colors.surface,
-    borderTopColor: Colors.border,
-    borderTopWidth: 1,
-    paddingTop: 8,
-    height: 88,
-  },
-  tabBarLabel: {
-    fontSize: 10,
-    fontWeight: '700' as const,
-    letterSpacing: 0.5,
-  },
-  header: {
-    backgroundColor: Colors.background,
-    borderBottomColor: Colors.border,
-    borderBottomWidth: 1,
-  },
-  headerTitle: {
-    fontSize: 14,
-    fontWeight: '900' as const,
-    color: Colors.white,
-    letterSpacing: 2,
-  },
-  headerButtonLeft: {
-    marginLeft: 16,
-    padding: 8,
-  },
-});

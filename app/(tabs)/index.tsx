@@ -9,14 +9,22 @@ import BiometricIntroScan from '@/components/BiometricIntroScan';
 
 const GOLD = Colors.gold || '#F59E0B';
 
-// --- STYLES DEFINED AT TOP TO PREVENT INITIALIZATION ERROR ---
+// --- STYLES DEFINED AT TOP ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   scrollContent: { padding: 24, alignItems: 'center' },
   heroSection: { marginTop: 60, marginBottom: 40, alignItems: 'center' },
   heroTitle: { fontSize: 32, fontWeight: '900', color: '#FFF', textAlign: 'center' },
   heroTitleGold: { color: GOLD },
-  cameraWrapper: { width: '100%', aspectRatio: 3 / 4, borderRadius: 40, overflow: 'hidden', backgroundColor: '#111' },
+  cameraWrapper: { 
+    width: '100%', 
+    aspectRatio: 3 / 4, 
+    borderRadius: 40, 
+    overflow: 'hidden', 
+    backgroundColor: '#111',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)'
+  },
   camera: { flex: 1 },
   placeholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   iconCircle: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
@@ -27,6 +35,8 @@ export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraActive, setIsCameraActive] = useState(false);
   const { isLoadingIntro, completeIntro } = useApp();
+  
+  // Camera reference to trigger the hardware shutter
   const cameraRef = useRef<CameraView>(null);
 
   if (isLoadingIntro) return <BiometricIntroScan onComplete={completeIntro} />;
@@ -42,10 +52,14 @@ export default function ScanScreen() {
   const handleCapture = async () => {
     if (cameraRef.current) {
       try {
-        const photo = await cameraRef.current.takePictureAsync({ quality: 0.8, skipProcessing: true });
-        console.log('Biometric Capture Success:', photo?.uri);
-      } catch (e) {
-        console.error('Biometric Capture Failed:', e);
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.8,
+          skipProcessing: true,
+        });
+        console.log('Aura Index Captured:', photo?.uri);
+        // You can now navigate to your results page with the URI
+      } catch (error) {
+        console.error('Failed to capture biometric photo:', error);
       }
     }
   };
@@ -54,11 +68,19 @@ export default function ScanScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.heroSection}>
-          <Text style={styles.heroTitle}>REVEAL YOUR {'\n'}<Text style={styles.heroTitleGold}>AURA INDEX</Text></Text>
+          <Text style={styles.heroTitle}>
+            REVEAL YOUR{'\n'}
+            <Text style={styles.heroTitleGold}>AURA INDEX</Text>
+          </Text>
         </View>
+
         <View style={styles.cameraWrapper}>
           {isCameraActive ? (
-            <CameraView ref={cameraRef} style={styles.camera} facing="front">
+            <CameraView 
+              ref={cameraRef} 
+              style={styles.camera} 
+              facing="front"
+            >
               <BiometricScanOverlay onReadyToCapture={handleCapture} />
             </CameraView>
           ) : (

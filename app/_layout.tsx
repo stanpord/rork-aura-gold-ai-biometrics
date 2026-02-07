@@ -5,17 +5,16 @@ import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
-
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 import { AppProvider, useApp } from '@/contexts/AppContext';
 import BiometricIntroScan from '@/components/BiometricIntroScan';
 import Colors from '@/constants/colors';
 import BiomarkerLoadingScreen from '@/components/BiomarkerLoadingScreen';
 
-SplashScreen.preventAutoHideAsync();
-
-ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {
-  console.log('Screen orientation lock not supported on this platform');
+// Prevent splash screen from hiding until we are ready
+SplashScreen.preventAutoHideAsync().catch(() => {
+  /* handle error */
 });
 
 const queryClient = new QueryClient();
@@ -25,7 +24,7 @@ function RootLayoutNav() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: Colors.background },
+        contentStyle: { backgroundColor: Colors.background || '#000' },
       }}
     >
       <Stack.Screen name="(tabs)" />
@@ -33,6 +32,7 @@ function RootLayoutNav() {
         name="modal"
         options={{
           presentation: 'modal',
+          animation: 'slide_from_bottom',
         }}
       />
     </Stack>
@@ -44,12 +44,29 @@ function AppContent() {
   const [showIntro, setShowIntro] = useState(false);
 
   useEffect(() => {
-    if (!isLoadingIntro) {
-      SplashScreen.hideAsync();
-      if (!hasCompletedIntro) {
-        setShowIntro(true);
+    // Lock orientation to portrait for clinical facial scanning accuracy
+    const lockOrientation = async () => {
+      try {
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+      } catch (e) {
+        console.warn('Orientation lock not supported');
+      }
+    };
+    lockOrientation();
+  }, []);
+
+  useEffect(() => {
+    async function prepare() {
+      if (!isLoadingIntro) {
+        // Subtle delay to ensure the IntroScan component is mounted
+        // before we pull the curtain back on the Splash screen
+        if (!hasCompletedIntro) {
+          setShowIntro(true);
+        }
+        await SplashScreen.hideAsync();
       }
     }
+    prepare();
   }, [isLoadingIntro, hasCompletedIntro]);
 
   const handleIntroComplete = () => {
@@ -57,6 +74,7 @@ function AppContent() {
     completeIntro();
   };
 
+  // While the AppContext is fetching the initial auth/session state
   if (isLoadingIntro) {
     return <BiomarkerLoadingScreen />;
   }
@@ -65,6 +83,9 @@ function AppContent() {
     <>
       <StatusBar style="light" />
       <RootLayoutNav />
+      {/* Intro Overlay is rendered on top of the stack 
+        to ensure a smooth transition into the Aura Scan 
+      */}
       {showIntro && <BiometricIntroScan onComplete={handleIntroComplete} />}
     </>
   );

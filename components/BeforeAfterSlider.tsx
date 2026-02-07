@@ -14,7 +14,7 @@ import { Image } from 'expo-image';
 import { Sparkles, RotateCcw } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
-// --- CONSTANTS (Usually in @/constants/colors) ---
+// --- 1. CONSTANTS & STYLES AT TOP (Initialization Guard) ---
 const Colors = {
   gold: '#F59E0B',
   goldLight: '#FBBF24',
@@ -25,6 +25,36 @@ const Colors = {
   textMuted: '#94A3B8',
 };
 
+const styles = StyleSheet.create({
+  container: { width: '100%', borderRadius: 32, overflow: 'hidden', backgroundColor: '#1E293B', alignSelf: 'center' },
+  imageContainer: { flex: 1, position: 'relative', overflow: 'hidden', borderRadius: 32 }, // Fixed: Added border radius here too
+  image: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  labelBefore: { position: 'absolute', top: 20, left: 20, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, zIndex: 15 },
+  labelAfter: { position: 'absolute', top: 20, left: 20, backgroundColor: 'rgba(0,0,0,0.85)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: Colors.gold, zIndex: 15 },
+  labelText: { fontSize: 10, fontWeight: '800', color: '#FFF', letterSpacing: 1 },
+  labelTextGold: { fontSize: 10, fontWeight: '800', color: Colors.gold, letterSpacing: 1 },
+  buttonContainer: { position: 'absolute', bottom: 20, left: 20, right: 20, alignItems: 'center', zIndex: 30 },
+  toggleButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.gold, paddingHorizontal: 32, paddingVertical: 16, borderRadius: 30 },
+  toggleButtonDisabled: { backgroundColor: 'rgba(255,255,255,0.1)' },
+  toggleButtonText: { fontSize: 13, fontWeight: '900', color: Colors.black, letterSpacing: 1 },
+  toggleButtonTextDisabled: { color: Colors.textMuted },
+  toggleButtonOutline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,0.8)', paddingHorizontal: 32, paddingVertical: 16, borderRadius: 30, borderWidth: 1, borderColor: Colors.gold },
+  toggleButtonOutlineText: { fontSize: 13, fontWeight: '900', color: Colors.gold, letterSpacing: 1 },
+  shimmerOverlay: { ...StyleSheet.absoluteFillObject, overflow: 'hidden', zIndex: 10 },
+  shimmerGradient: { position: 'absolute', top: 0, bottom: 0, width: 250, left: '50%' },
+  shimmerGradientInner: { flex: 1, width: '100%' },
+  simulationLoading: { position: 'absolute', top: '40%', left: '10%', right: '10%', backgroundColor: 'rgba(0,0,0,0.9)', padding: 24, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)', alignItems: 'center', zIndex: 20 },
+  loadingIconContainer: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(245,158,11,0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  simulationLoadingText: { fontSize: 11, fontWeight: '800', color: Colors.gold, letterSpacing: 1.5, marginBottom: 16 },
+  progressContainer: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 12 },
+  progressBar: { flex: 1, height: 4, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 2 },
+  progressFill: { height: '100%', backgroundColor: Colors.gold, borderRadius: 2 },
+  progressText: { fontSize: 12, fontWeight: '700', color: Colors.gold, width: 35 },
+  simulationUnavailable: { position: 'absolute', bottom: 100, left: '10%', right: '10%', backgroundColor: 'rgba(0,0,0,0.7)', padding: 16, borderRadius: 16, alignItems: 'center', zIndex: 20 },
+  simulationUnavailableText: { fontSize: 12, fontWeight: '800', color: Colors.gold, marginBottom: 4 },
+  simulationUnavailableSubtext: { fontSize: 12, color: '#FFF', opacity: 0.8 }
+});
+
 interface BeforeAfterSliderProps {
   beforeImage: string;
   afterImage: string;
@@ -33,10 +63,6 @@ interface BeforeAfterSliderProps {
   isSimulationPending?: boolean;
 }
 
-/**
- * BEFORE AFTER SLIDER COMPONENT
- * Handles the visual transition between original and AI-simulated results.
- */
 export default function BeforeAfterSlider({
   beforeImage,
   afterImage,
@@ -44,6 +70,7 @@ export default function BeforeAfterSlider({
   maxWidth = 500,
   isSimulationPending = false,
 }: BeforeAfterSliderProps) {
+  // Logic remains mostly the same, ensuring variables are initialized
   const isSameImage = beforeImage === afterImage;
   const { width: windowWidth } = useWindowDimensions();
   const [containerWidth, setContainerWidth] = useState(Math.min(windowWidth - 40, maxWidth));
@@ -52,11 +79,10 @@ export default function BeforeAfterSlider({
   const shimmerAnim = useRef(new Animated.Value(0)).current;
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // --- ANIMATION LOGIC ---
   useEffect(() => {
     if (isSimulationPending) {
       setProgress(0);
-      setShowAfter(false); // Reset to before view during generation
+      setShowAfter(false);
       
       Animated.loop(
         Animated.timing(shimmerAnim, {
@@ -82,7 +108,6 @@ export default function BeforeAfterSlider({
       }
       if (progress > 0 && progress < 100) {
         setProgress(100);
-        // Delay clearing progress so the user sees "100%" briefly
         setTimeout(() => setProgress(0), 800);
       }
     }
@@ -117,17 +142,15 @@ export default function BeforeAfterSlider({
   return (
     <View style={[styles.container, { height, maxWidth }]} onLayout={onLayout}>
       <View style={styles.imageContainer}>
-        {/* Main Image View */}
         <Image
           key={currentImage}
           source={{ uri: currentImage }}
           style={styles.image}
           contentFit="cover"
           cachePolicy="none"
-          transition={400} // Smooth crossfade on image swap
+          transition={400}
         />
 
-        {/* Labels */}
         {!isSimulationPending && (
           <View style={showAfter ? styles.labelAfter : styles.labelBefore}>
             <Text style={showAfter ? styles.labelTextGold : styles.labelText}>
@@ -136,7 +159,6 @@ export default function BeforeAfterSlider({
           </View>
         )}
 
-        {/* Simulation Processing Overlay */}
         {isSimulationPending && (
           <>
             <View style={styles.shimmerOverlay}>
@@ -170,7 +192,6 @@ export default function BeforeAfterSlider({
           </>
         )}
 
-        {/* Unavailable State */}
         {isSameImage && !isSimulationPending && progress === 0 && (
           <View style={styles.simulationUnavailable}>
             <Text style={styles.simulationUnavailableText}>AI SIMULATION READY</Text>
@@ -179,7 +200,6 @@ export default function BeforeAfterSlider({
         )}
       </View>
 
-      {/* Control Button */}
       <View style={styles.buttonContainer}>
         {!showAfter ? (
           <TouchableOpacity
@@ -207,34 +227,3 @@ export default function BeforeAfterSlider({
     </View>
   );
 }
-
-// --- STYLES ---
-const styles = StyleSheet.create({
-  container: { width: '100%', borderRadius: 32, overflow: 'hidden', backgroundColor: '#1E293B', alignSelf: 'center' },
-  imageContainer: { flex: 1, position: 'relative', overflow: 'hidden' },
-  image: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
-  labelBefore: { position: 'absolute', top: 20, left: 20, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  labelAfter: { position: 'absolute', top: 20, left: 20, backgroundColor: 'rgba(0,0,0,0.85)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: Colors.gold },
-  labelText: { fontSize: 10, fontWeight: '800', color: '#FFF', letterSpacing: 1 },
-  labelTextGold: { fontSize: 10, fontWeight: '800', color: Colors.gold, letterSpacing: 1 },
-  buttonContainer: { position: 'absolute', bottom: 20, left: 20, right: 20, alignItems: 'center' },
-  toggleButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.gold, paddingHorizontal: 32, paddingVertical: 16, borderRadius: 30 },
-  toggleButtonDisabled: { backgroundColor: 'rgba(255,255,255,0.1)' },
-  toggleButtonText: { fontSize: 13, fontWeight: '900', color: Colors.black, letterSpacing: 1 },
-  toggleButtonTextDisabled: { color: Colors.textMuted },
-  toggleButtonOutline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,0.8)', paddingHorizontal: 32, paddingVertical: 16, borderRadius: 30, borderWidth: 1, borderColor: Colors.gold },
-  toggleButtonOutlineText: { fontSize: 13, fontWeight: '900', color: Colors.gold, letterSpacing: 1 },
-  shimmerOverlay: { ...StyleSheet.absoluteFillObject, overflow: 'hidden', zIndex: 10 },
-  shimmerGradient: { position: 'absolute', top: 0, bottom: 0, width: 250, left: '50%' },
-  shimmerGradientInner: { flex: 1, width: '100%' },
-  simulationLoading: { position: 'absolute', top: '40%', left: '10%', right: '10%', backgroundColor: 'rgba(0,0,0,0.9)', padding: 24, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)', alignItems: 'center', zIndex: 20 },
-  loadingIconContainer: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(245,158,11,0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  simulationLoadingText: { fontSize: 11, fontWeight: '800', color: Colors.gold, letterSpacing: 1.5, marginBottom: 16 },
-  progressContainer: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 12 },
-  progressBar: { flex: 1, height: 4, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 2 },
-  progressFill: { height: '100%', backgroundColor: Colors.gold, borderRadius: 2 },
-  progressText: { fontSize: 12, fontWeight: '700', color: Colors.gold, width: 35 },
-  simulationUnavailable: { position: 'absolute', bottom: 100, left: '10%', right: '10%', backgroundColor: 'rgba(0,0,0,0.7)', padding: 16, borderRadius: 16, alignItems: 'center' },
-  simulationUnavailableText: { fontSize: 12, fontWeight: '800', color: Colors.gold, marginBottom: 4 },
-  simulationUnavailableSubtext: { fontSize: 12, color: '#FFF', opacity: 0.8 }
-});
