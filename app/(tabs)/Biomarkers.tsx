@@ -16,6 +16,7 @@ const ANALYSIS_STAGES = [
   { icon: Sparkles, text: 'Finalizing Aura Index...', subtext: 'Computing score' },
 ];
 
+// --- CRITICAL: Styles defined BEFORE the component function ---
 const styles = StyleSheet.create({
   container: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000', zIndex: 999 },
   scanLine: { position: 'absolute', width: '100%', height: 2, backgroundColor: GOLD },
@@ -37,21 +38,21 @@ export default function BiomarkerLoadingScreen({ onComplete }: { onComplete?: ()
   useEffect(() => {
     const scanLoop = Animated.loop(
       Animated.sequence([
-        Animated.timing(scanLineY, { toValue: 1, duration: 2500, useNativeDriver: true }),
-        Animated.timing(scanLineY, { toValue: 0, duration: 2500, useNativeDriver: true }),
+        Animated.timing(scanLineY, { toValue: 1, duration: 2500, useNativeDriver: false }),
+        Animated.timing(scanLineY, { toValue: 0, duration: 2500, useNativeDriver: false }),
       ])
     );
 
     const pulseLoop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseOpacity, { toValue: 1, duration: 1000, useNativeDriver: true }),
-        Animated.timing(pulseOpacity, { toValue: 0.3, duration: 1000, useNativeDriver: true }),
+        Animated.timing(pulseOpacity, { toValue: 1, duration: 1000, useNativeDriver: false }),
+        Animated.timing(pulseOpacity, { toValue: 0.3, duration: 1000, useNativeDriver: false }),
       ])
     );
 
     const progressAnim = Animated.timing(progress, {
       toValue: 100,
-      duration: 12000, // 12 seconds
+      duration: 12000, // Sync with Aura Gold 12s handshake
       useNativeDriver: false,
     });
 
@@ -71,7 +72,7 @@ export default function BiomarkerLoadingScreen({ onComplete }: { onComplete?: ()
       progressAnim.stop();
       clearInterval(timer);
     };
-  }, []);
+  }, [onComplete]);
 
   const translateY = scanLineY.interpolate({
     inputRange: [0, 1],
@@ -86,12 +87,14 @@ export default function BiomarkerLoadingScreen({ onComplete }: { onComplete?: ()
   const CurrentIcon = ANALYSIS_STAGES[stageIndex].icon;
 
   return (
-    <View style={styles.container} pointerEvents="none">
+    <View style={styles.container}>
       <Animated.View style={[styles.scanLine, { transform: [{ translateY }], opacity: pulseOpacity }]} />
+      {/* Corner Brackets */}
       <View style={[styles.cornerBase, { top: 60, left: 40, borderTopWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS }]} />
       <View style={[styles.cornerBase, { top: 60, right: 40, borderTopWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS }]} />
       <View style={[styles.cornerBase, { bottom: 60, left: 40, borderBottomWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS }]} />
       <View style={[styles.cornerBase, { bottom: 60, right: 40, borderBottomWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS }]} />
+      
       <View style={styles.panel}>
         <CurrentIcon size={32} color={GOLD} />
         <View style={styles.textContainer}>
