@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, Modal, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Info, ShieldAlert, CheckCircle2, ChevronRight, X } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
-import AuraScoreGauge from './AuraScoreGauge'; // Your gauge component
 import Colors from '@/constants/colors';
 
 const PatientResultsModal = ({ analysis, onClose }) => {
