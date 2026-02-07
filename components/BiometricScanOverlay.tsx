@@ -14,182 +14,168 @@ const ANALYSIS_STAGES = [
 ];
 
 export default function BiometricScanOverlay() {
-  const scanLinePosition = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(0.3)).current;
-  const textFadeAnim = useRef(new Animated.Value(1)).current;
-  const iconScaleAnim = useRef(new Animated.Value(1)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const dotAnim1 = useRef(new Animated.Value(0)).current;
-  const dotAnim2 = useRef(new Animated.Value(0)).current;
-  const dotAnim3 = useRef(new Animated.Value(0)).current;
-  const [currentStage, setCurrentStage] = useState(0);
+  const scanLineY = useRef(new Animated.Value(0)).current;
+  const pulseOpacity = useRef(new Animated.Value(0.3)).current;
+  const textOpacity = useRef(new Animated.Value(1)).current;
+  const iconScale = useRef(new Animated.Value(1)).current;
+  const progress = useRef(new Animated.Value(0)).current;
+
+  const dotAnims = [
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+  ];
+
+  const [stageIndex, setStageIndex] = useState(0);
+
+  const CurrentIcon = ANALYSIS_STAGES[stageIndex].icon;
+
+  // ────────────────────────────────────────────────
+  //  Reusable animation helpers
+  // ────────────────────────────────────────────────
+  const createLoop = (sequence: Animated.CompositeAnimation) =>
+    Animated.loop(sequence);
+
+  const createBounce = (value: Animated.Value, toHigh: number, toLow: number, duration: number) =>
+    createLoop(
+      Animated.sequence([
+        Animated.timing(value, { toValue: toHigh, duration, useNativeDriver: true }),
+        Animated.timing(value, { toValue: toLow, duration, useNativeDriver: true }),
+      ])
+    );
+
+  const createDotSequence = (anim: Animated.Value) =>
+    Animated.sequence([
+      Animated.timing(anim, { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.timing(anim, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]);
 
   useEffect(() => {
-    const scanAnimation = Animated.loop(
+    // Scan line up & down
+    const scanAnim = createLoop(
       Animated.sequence([
-        Animated.timing(scanLinePosition, {
-          toValue: 1,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scanLinePosition, {
-          toValue: 0,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
+        Animated.timing(scanLineY, { toValue: 1, duration: 2000, useNativeDriver: true }),
+        Animated.timing(scanLineY, { toValue: 0, duration: 2000, useNativeDriver: true }),
       ])
     );
 
-    const pulseAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 0.3,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ])
+    // General pulsing glow
+    const pulseAnim = createBounce(pulseOpacity, 1, 0.3, 800);
+
+    // Icon subtle breathing
+    const iconAnim = createBounce(iconScale, 1.15, 1, 600);
+
+    // Loading dots stagger
+    const dotsAnim = createLoop(
+      Animated.stagger(200, dotAnims.map(createDotSequence))
     );
 
-    const iconPulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(iconScaleAnim, {
-          toValue: 1.15,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(iconScaleAnim, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    const dotsAnimation = Animated.loop(
-      Animated.stagger(200, [
-        Animated.sequence([
-          Animated.timing(dotAnim1, { toValue: 1, duration: 300, useNativeDriver: true }),
-          Animated.timing(dotAnim1, { toValue: 0, duration: 300, useNativeDriver: true }),
-        ]),
-        Animated.sequence([
-          Animated.timing(dotAnim2, { toValue: 1, duration: 300, useNativeDriver: true }),
-          Animated.timing(dotAnim2, { toValue: 0, duration: 300, useNativeDriver: true }),
-        ]),
-        Animated.sequence([
-          Animated.timing(dotAnim3, { toValue: 1, duration: 300, useNativeDriver: true }),
-          Animated.timing(dotAnim3, { toValue: 0, duration: 300, useNativeDriver: true }),
-        ]),
-      ])
-    );
-
-    scanAnimation.start();
-    pulseAnimation.start();
-    iconPulse.start();
-    dotsAnimation.start();
-
-    Animated.timing(progressAnim, {
+    // Overall progress bar (12 seconds total)
+    Animated.timing(progress, {
       toValue: 100,
       duration: 12000,
       useNativeDriver: false,
     }).start();
 
-    const stageInterval = setInterval(() => {
+    // Stage cycling + text crossfade
+    const stageTimer = setInterval(() => {
       Animated.sequence([
-        Animated.timing(textFadeAnim, {
-          toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-        Animated.timing(textFadeAnim, {
-          toValue: 1,
-          duration: 150,
-          useNativeDriver: true,
-        }),
+        Animated.timing(textOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+        Animated.timing(textOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
       ]).start();
-      
-      setCurrentStage(prev => (prev + 1) % ANALYSIS_STAGES.length);
+
+      setStageIndex((prev) => (prev + 1) % ANALYSIS_STAGES.length);
     }, 2400);
 
-    return () => {
-      scanAnimation.stop();
-      pulseAnimation.stop();
-      iconPulse.stop();
-      dotsAnimation.stop();
-      clearInterval(stageInterval);
-    };
-  }, [scanLinePosition, pulseAnim, textFadeAnim, iconScaleAnim, progressAnim, dotAnim1, dotAnim2, dotAnim3]);
+    // Start everything
+    scanAnim.start();
+    pulseAnim.start();
+    iconAnim.start();
+    dotsAnim.start();
 
-  const translateY = scanLinePosition.interpolate({
+    return () => {
+      scanAnim.stop();
+      pulseAnim.stop();
+      iconAnim.stop();
+      dotsAnim.stop();
+      clearInterval(stageTimer);
+    };
+  }, []); // ← no deps needed — all values are refs or stable
+
+  // Interpolations
+  const scanLineTranslateY = scanLineY.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, SCREEN_HEIGHT * 0.6],
+    outputRange: [0, SCREEN_HEIGHT * 0.62],
   });
 
-  const progressWidth = progressAnim.interpolate({
+  const progressWidth = progress.interpolate({
     inputRange: [0, 100],
     outputRange: ['0%', '100%'],
   });
 
-  const CurrentIcon = ANALYSIS_STAGES[currentStage].icon;
-
   return (
     <View style={styles.container} pointerEvents="none">
+      {/* Scanning line */}
       <Animated.View
         style={[
           styles.scanLine,
           {
-            transform: [{ translateY }],
-            opacity: pulseAnim,
+            transform: [{ translateY: scanLineTranslateY }],
+            opacity: pulseOpacity,
           },
         ]}
       />
+
+      {/* Subtle grid background */}
       <View style={styles.gridOverlay}>
         {[...Array(8)].map((_, i) => (
-          <View key={`h-${i}`} style={[styles.gridLineH, { top: `${(i + 1) * 12}%` }]} />
+          <View key={`h-${i}`} style={[styles.gridLineH, { top: `${(i + 1) * 12.5}%` }]} />
         ))}
         {[...Array(6)].map((_, i) => (
-          <View key={`v-${i}`} style={[styles.gridLineV, { left: `${(i + 1) * 16}%` }]} />
+          <View key={`v-${i}`} style={[styles.gridLineV, { left: `${(i + 1) * 16.7}%` }]} />
         ))}
       </View>
+
+      {/* Corner brackets */}
       <View style={styles.cornerTL} />
       <View style={styles.cornerTR} />
       <View style={styles.cornerBL} />
       <View style={styles.cornerBR} />
-      <Animated.View style={[styles.targetCircle, { opacity: pulseAnim }]} />
-      
-      <View style={styles.statusContainer}>
-        <Animated.View style={[styles.iconContainer, { transform: [{ scale: iconScaleAnim }] }]}>
+
+      {/* Target ellipse (static, subtle) */}
+      <View style={styles.targetEllipse} />
+
+      {/* Bottom status panel */}
+      <View style={styles.statusPanel}>
+        <Animated.View style={[styles.iconWrapper, { transform: [{ scale: iconScale }] }]}>
           <CurrentIcon size={28} color={Colors.gold} />
         </Animated.View>
-        
-        <Animated.View style={[styles.textContainer, { opacity: textFadeAnim }]}>
+
+        <Animated.View style={[styles.textBlock, { opacity: textOpacity }]}>
           <View style={styles.textRow}>
-            <Text style={styles.statusText}>{ANALYSIS_STAGES[currentStage].text}</Text>
-            <View style={styles.dotsContainer}>
-              <Animated.View style={[styles.dot, { opacity: dotAnim1 }]} />
-              <Animated.View style={[styles.dot, { opacity: dotAnim2 }]} />
-              <Animated.View style={[styles.dot, { opacity: dotAnim3 }]} />
+            <Text style={styles.mainText}>{ANALYSIS_STAGES[stageIndex].text}</Text>
+            <View style={styles.dotsRow}>
+              {dotAnims.map((anim, i) => (
+                <Animated.View key={i} style={[styles.dot, { opacity: anim }]} />
+              ))}
             </View>
           </View>
-          <Text style={styles.subtextText}>{ANALYSIS_STAGES[currentStage].subtext}</Text>
+          <Text style={styles.subText}>{ANALYSIS_STAGES[stageIndex].subtext}</Text>
         </Animated.View>
-        
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBackground}>
+
+        <View style={styles.progressSection}>
+          <View style={styles.progressBg}>
             <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
           </View>
-          <View style={styles.stageIndicators}>
-            {ANALYSIS_STAGES.map((_, index) => (
-              <View 
-                key={index} 
+
+          <View style={styles.stageDots}>
+            {ANALYSIS_STAGES.map((_, idx) => (
+              <View
+                key={idx}
                 style={[
-                  styles.stageIndicator,
-                  index <= currentStage && styles.stageIndicatorActive
-                ]} 
+                  styles.stageDot,
+                  idx <= stageIndex && styles.stageDotActive,
+                ]}
               />
             ))}
           </View>
@@ -212,12 +198,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.gold,
     shadowColor: Colors.gold,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 20,
+    shadowOpacity: 0.9,
+    shadowRadius: 16,
   },
   gridOverlay: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.12,
+    opacity: 0.11,
   },
   gridLineH: {
     position: 'absolute',
@@ -233,47 +219,17 @@ const styles = StyleSheet.create({
     width: 1,
     backgroundColor: Colors.gold,
   },
-  cornerTL: {
+  cornerTL: { ...styles.cornerBase, top: 40, left: 40, borderTopWidth: 2, borderLeftWidth: 2 },
+  cornerTR: { ...styles.cornerBase, top: 40, right: 40, borderTopWidth: 2, borderRightWidth: 2 },
+  cornerBL: { ...styles.cornerBase, bottom: 40, left: 40, borderBottomWidth: 2, borderLeftWidth: 2 },
+  cornerBR: { ...styles.cornerBase, bottom: 40, right: 40, borderBottomWidth: 2, borderRightWidth: 2 },
+  cornerBase: {
     position: 'absolute',
-    top: 40,
-    left: 40,
-    width: 30,
-    height: 30,
-    borderTopWidth: 2,
-    borderLeftWidth: 2,
+    width: 32,
+    height: 32,
     borderColor: Colors.gold,
   },
-  cornerTR: {
-    position: 'absolute',
-    top: 40,
-    right: 40,
-    width: 30,
-    height: 30,
-    borderTopWidth: 2,
-    borderRightWidth: 2,
-    borderColor: Colors.gold,
-  },
-  cornerBL: {
-    position: 'absolute',
-    bottom: 40,
-    left: 40,
-    width: 30,
-    height: 30,
-    borderBottomWidth: 2,
-    borderLeftWidth: 2,
-    borderColor: Colors.gold,
-  },
-  cornerBR: {
-    position: 'absolute',
-    bottom: 40,
-    right: 40,
-    width: 30,
-    height: 30,
-    borderBottomWidth: 2,
-    borderRightWidth: 2,
-    borderColor: Colors.gold,
-  },
-  targetCircle: {
+  targetEllipse: {
     position: 'absolute',
     top: '35%',
     left: '50%',
@@ -282,33 +238,34 @@ const styles = StyleSheet.create({
     width: 120,
     height: 160,
     borderRadius: 60,
-    borderWidth: 2,
-    borderColor: 'rgba(245, 158, 11, 0.4)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(245, 158, 11, 0.35)',
   },
-  statusContainer: {
+  statusPanel: {
     position: 'absolute',
-    bottom: 60,
-    left: 20,
-    right: 20,
+    bottom: 64,
+    left: 24,
+    right: 24,
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0,0,0,0.68)',
     borderRadius: 20,
-    padding: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderColor: 'rgba(245,158,11,0.28)',
   },
-  iconContainer: {
+  iconWrapper: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    backgroundColor: 'rgba(245,158,11,0.14)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.4)',
+    borderColor: 'rgba(245,158,11,0.38)',
   },
-  textContainer: {
+  textBlock: {
     alignItems: 'center',
     marginBottom: 16,
   },
@@ -316,55 +273,55 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  statusText: {
+  mainText: {
     fontSize: 15,
-    fontWeight: '700' as const,
+    fontWeight: '700',
     color: Colors.white,
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
-  dotsContainer: {
+  dotsRow: {
     flexDirection: 'row',
-    marginLeft: 4,
-    gap: 3,
+    marginLeft: 6,
+    gap: 4,
   },
   dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: Colors.gold,
   },
-  subtextText: {
+  subText: {
     fontSize: 12,
     color: Colors.textMuted,
     marginTop: 4,
   },
-  progressContainer: {
+  progressSection: {
     width: '100%',
   },
-  progressBackground: {
+  progressBg: {
     height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255,255,255,0.09)',
     borderRadius: 2,
     overflow: 'hidden',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   progressFill: {
     height: '100%',
     backgroundColor: Colors.gold,
     borderRadius: 2,
   },
-  stageIndicators: {
+  stageDots: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 8,
+    gap: 9,
   },
-  stageIndicator: {
+  stageDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
-  stageIndicatorActive: {
+  stageDotActive: {
     backgroundColor: Colors.gold,
   },
 });
