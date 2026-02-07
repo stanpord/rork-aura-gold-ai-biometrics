@@ -27,57 +27,45 @@ export default function BiometricScanOverlay() {
   ];
 
   const [stageIndex, setStageIndex] = useState(0);
-
   const CurrentIcon = ANALYSIS_STAGES[stageIndex].icon;
 
-  // ────────────────────────────────────────────────
-  //  Reusable animation helpers
-  // ────────────────────────────────────────────────
-  const createLoop = (sequence: Animated.CompositeAnimation) =>
-    Animated.loop(sequence);
-
-  const createBounce = (value: Animated.Value, toHigh: number, toLow: number, duration: number) =>
-    createLoop(
-      Animated.sequence([
-        Animated.timing(value, { toValue: toHigh, duration, useNativeDriver: true }),
-        Animated.timing(value, { toValue: toLow, duration, useNativeDriver: true }),
-      ])
-    );
-
-  const createDotSequence = (anim: Animated.Value) =>
-    Animated.sequence([
-      Animated.timing(anim, { toValue: 1, duration: 300, useNativeDriver: true }),
-      Animated.timing(anim, { toValue: 0, duration: 300, useNativeDriver: true }),
-    ]);
-
   useEffect(() => {
-    // Scan line up & down
-    const scanAnim = createLoop(
+    const scanAnim = Animated.loop(
       Animated.sequence([
         Animated.timing(scanLineY, { toValue: 1, duration: 2000, useNativeDriver: true }),
         Animated.timing(scanLineY, { toValue: 0, duration: 2000, useNativeDriver: true }),
       ])
     );
 
-    // General pulsing glow
-    const pulseAnim = createBounce(pulseOpacity, 1, 0.3, 800);
-
-    // Icon subtle breathing
-    const iconAnim = createBounce(iconScale, 1.15, 1, 600);
-
-    // Loading dots stagger
-    const dotsAnim = createLoop(
-      Animated.stagger(200, dotAnims.map(createDotSequence))
+    const pulseAnim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseOpacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseOpacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ])
     );
 
-    // Overall progress bar (12 seconds total)
+    const iconAnim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(iconScale, { toValue: 1.15, duration: 600, useNativeDriver: true }),
+        Animated.timing(iconScale, { toValue: 1, duration: 600, useNativeDriver: true }),
+      ])
+    );
+
+    const dotsAnim = Animated.loop(
+      Animated.stagger(200, dotAnims.map(anim => 
+        Animated.sequence([
+          Animated.timing(anim, { toValue: 1, duration: 300, useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 0, duration: 300, useNativeDriver: true }),
+        ])
+      ))
+    );
+
     Animated.timing(progress, {
       toValue: 100,
       duration: 12000,
       useNativeDriver: false,
     }).start();
 
-    // Stage cycling + text crossfade
     const stageTimer = setInterval(() => {
       Animated.sequence([
         Animated.timing(textOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
@@ -87,7 +75,6 @@ export default function BiometricScanOverlay() {
       setStageIndex((prev) => (prev + 1) % ANALYSIS_STAGES.length);
     }, 2400);
 
-    // Start everything
     scanAnim.start();
     pulseAnim.start();
     iconAnim.start();
@@ -100,9 +87,8 @@ export default function BiometricScanOverlay() {
       dotsAnim.stop();
       clearInterval(stageTimer);
     };
-  }, []); // ← no deps needed — all values are refs or stable
+  }, []);
 
-  // Interpolations
   const scanLineTranslateY = scanLineY.interpolate({
     inputRange: [0, 1],
     outputRange: [0, SCREEN_HEIGHT * 0.62],
@@ -115,7 +101,6 @@ export default function BiometricScanOverlay() {
 
   return (
     <View style={styles.container} pointerEvents="none">
-      {/* Scanning line */}
       <Animated.View
         style={[
           styles.scanLine,
@@ -126,7 +111,6 @@ export default function BiometricScanOverlay() {
         ]}
       />
 
-      {/* Subtle grid background */}
       <View style={styles.gridOverlay}>
         {[...Array(8)].map((_, i) => (
           <View key={`h-${i}`} style={[styles.gridLineH, { top: `${(i + 1) * 12.5}%` }]} />
@@ -136,16 +120,14 @@ export default function BiometricScanOverlay() {
         ))}
       </View>
 
-      {/* Corner brackets */}
-      <View style={styles.cornerTL} />
-      <View style={styles.cornerTR} />
-      <View style={styles.cornerBL} />
-      <View style={styles.cornerBR} />
+      {/* Brackets now use the fixed styles */}
+      <View style={[styles.cornerBase, styles.cornerTL]} />
+      <View style={[styles.cornerBase, styles.cornerTR]} />
+      <View style={[styles.cornerBase, styles.cornerBL]} />
+      <View style={[styles.cornerBase, styles.cornerBR]} />
 
-      {/* Target ellipse (static, subtle) */}
       <View style={styles.targetEllipse} />
 
-      {/* Bottom status panel */}
       <View style={styles.statusPanel}>
         <Animated.View style={[styles.iconWrapper, { transform: [{ scale: iconScale }] }]}>
           <CurrentIcon size={28} color={Colors.gold} />
@@ -154,11 +136,11 @@ export default function BiometricScanOverlay() {
         <Animated.View style={[styles.textBlock, { opacity: textOpacity }]}>
           <View style={styles.textRow}>
             <Text style={styles.mainText}>{ANALYSIS_STAGES[stageIndex].text}</Text>
-            <View style={styles.dotsRow}>
+            <div style={{ flexDirection: 'row', marginLeft: 6 }}>
               {dotAnims.map((anim, i) => (
-                <Animated.View key={i} style={[styles.dot, { opacity: anim }]} />
+                <Animated.View key={i} style={[styles.dot, { opacity: anim, marginLeft: 4 }]} />
               ))}
-            </View>
+            </div>
           </View>
           <Text style={styles.subText}>{ANALYSIS_STAGES[stageIndex].subtext}</Text>
         </Animated.View>
@@ -167,7 +149,6 @@ export default function BiometricScanOverlay() {
           <View style={styles.progressBg}>
             <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
           </View>
-
           <View style={styles.stageDots}>
             {ANALYSIS_STAGES.map((_, idx) => (
               <View
@@ -185,6 +166,14 @@ export default function BiometricScanOverlay() {
   );
 }
 
+// Separate base styles to avoid circular reference
+const cornerBase = {
+  position: 'absolute' as const,
+  width: 32,
+  height: 32,
+  borderColor: Colors.gold,
+};
+
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
@@ -196,10 +185,6 @@ const styles = StyleSheet.create({
     right: 0,
     height: 3,
     backgroundColor: Colors.gold,
-    shadowColor: Colors.gold,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 16,
   },
   gridOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -219,16 +204,11 @@ const styles = StyleSheet.create({
     width: 1,
     backgroundColor: Colors.gold,
   },
-  cornerTL: { ...styles.cornerBase, top: 40, left: 40, borderTopWidth: 2, borderLeftWidth: 2 },
-  cornerTR: { ...styles.cornerBase, top: 40, right: 40, borderTopWidth: 2, borderRightWidth: 2 },
-  cornerBL: { ...styles.cornerBase, bottom: 40, left: 40, borderBottomWidth: 2, borderLeftWidth: 2 },
-  cornerBR: { ...styles.cornerBase, bottom: 40, right: 40, borderBottomWidth: 2, borderRightWidth: 2 },
-  cornerBase: {
-    position: 'absolute',
-    width: 32,
-    height: 32,
-    borderColor: Colors.gold,
-  },
+  cornerBase,
+  cornerTL: { top: 40, left: 40, borderTopWidth: 2, borderLeftWidth: 2 },
+  cornerTR: { top: 40, right: 40, borderTopWidth: 2, borderRightWidth: 2 },
+  cornerBL: { bottom: 40, left: 40, borderBottomWidth: 2, borderLeftWidth: 2 },
+  cornerBR: { bottom: 40, right: 40, borderBottomWidth: 2, borderRightWidth: 2 },
   targetEllipse: {
     position: 'absolute',
     top: '35%',
@@ -276,13 +256,8 @@ const styles = StyleSheet.create({
   mainText: {
     fontSize: 15,
     fontWeight: '700',
-    color: Colors.white,
+    color: '#FFFFFF',
     letterSpacing: -0.2,
-  },
-  dotsRow: {
-    flexDirection: 'row',
-    marginLeft: 6,
-    gap: 4,
   },
   dot: {
     width: 5,
@@ -292,7 +267,7 @@ const styles = StyleSheet.create({
   },
   subText: {
     fontSize: 12,
-    color: Colors.textMuted,
+    color: '#9CA3AF', // Colors.textMuted
     marginTop: 4,
   },
   progressSection: {
@@ -313,13 +288,13 @@ const styles = StyleSheet.create({
   stageDots: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 9,
   },
   stageDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: 'rgba(255,255,255,0.18)',
+    marginHorizontal: 4,
   },
   stageDotActive: {
     backgroundColor: Colors.gold,
