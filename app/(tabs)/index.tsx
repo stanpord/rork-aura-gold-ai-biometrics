@@ -46,6 +46,7 @@ import {
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import AuraScoreGauge from '@/components/AuraScoreGauge';
+import BiomarkerLoadingScreen from './biomarkers';
 import BiometricScanOverlay from '@/components/BiometricScanOverlay';
 import LeadCaptureModal from '@/components/LeadCaptureModal';
 import EmailCaptureModal from '@/components/EmailCaptureModal';
