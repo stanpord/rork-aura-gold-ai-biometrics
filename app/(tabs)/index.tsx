@@ -46,18 +46,15 @@ import {
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import AuraScoreGauge from '@/components/AuraScoreGauge';
-import BiomarkerLoadingScreen from './biomarkers';
 import BiometricScanOverlay from '@/components/BiometricScanOverlay';
 import LeadCaptureModal from '@/components/LeadCaptureModal';
 import EmailCaptureModal from '@/components/EmailCaptureModal';
 import BeforeAfterSlider from '@/components/BeforeAfterSlider';
-
 import BiometricIntroScan from '@/components/BiometricIntroScan';
 import GuidedCaptureOverlay from '@/components/GuidedCaptureOverlay';
 import HealthQuestionnaire from '@/components/HealthQuestionnaire';
 import PatientResultsModal from '@/components/PatientResultsModal';
 import TreatmentVisualizationModal from '@/components/TreatmentVisualizationModal';
-
 import { AnalysisResult, PatientHealthProfile, ClinicalProcedure, PeptideTherapy, IVOptimization, PatientConsent } from '@/types';
 import { checkTreatmentSafety, getExplainableReason } from '@/constants/contraindications';
 import PatientConsentModal from '@/components/PatientConsentModal';
