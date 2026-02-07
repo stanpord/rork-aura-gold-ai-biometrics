@@ -10,7 +10,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppProvider, useApp } from '@/contexts/AppContext';
 import BiometricIntroScan from '@/components/BiometricIntroScan';
 import Colors from '@/constants/colors';
-import BiomarkerLoadingScreen from '@/components/BiomarkerLoadingScreen';
 
 SplashScreen.preventAutoHideAsync();
 
