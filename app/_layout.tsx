@@ -2,39 +2,71 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { trpc, trpcClient } from '@/lib/trpc';
 import * as SplashScreen from 'expo-splash-screen';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
+
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppProvider, useApp } from '@/contexts/AppContext';
 import BiometricIntroScan from '@/components/BiometricIntroScan';
 import Colors from '@/constants/colors';
+import BiomarkerLoadingScreen from '@/components/BiomarkerLoadingScreen';
+
+SplashScreen.preventAutoHideAsync();
+
+ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {
+  console.log('Screen orientation lock not supported on this platform');
+});
 
 const queryClient = new QueryClient();
 
-// Keep the splash screen visible while we fetch personal data and encryption status
-SplashScreen.preventAutoHideAsync();
+function RootLayoutNav() {
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: Colors.background },
+      }}
+    >
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen
+        name="modal"
+        options={{
+          presentation: 'modal',
+        }}
+      />
+    </Stack>
+  );
+}
 
 function AppContent() {
-  const { isLoadingIntro } = useApp();
+  const { hasCompletedIntro, isLoadingIntro, completeIntro } = useApp();
+  const [showIntro, setShowIntro] = useState(false);
 
   useEffect(() => {
-    // Lock orientation for biometric accuracy as required by the Aura Gold patent
-    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-    
-    // Hide splash screen once the AppContext has hydrated
-    SplashScreen.hideAsync();
-  }, []);
+    if (!isLoadingIntro) {
+      SplashScreen.hideAsync();
+      if (!hasCompletedIntro) {
+        setShowIntro(true);
+      }
+    }
+  }, [isLoadingIntro, hasCompletedIntro]);
 
-  // Use the new integrated biometric component for the initial boot
+  const handleIntroComplete = () => {
+    setShowIntro(false);
+    completeIntro();
+  };
+
   if (isLoadingIntro) {
-    return <BiometricIntroScan />;
+    return <BiomarkerLoadingScreen />;
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-    </Stack>
+    <>
+      <StatusBar style="light" />
+      <RootLayoutNav />
+      {showIntro && <BiometricIntroScan onComplete={handleIntroComplete} />}
+    </>
   );
 }
 
@@ -42,12 +74,11 @@ export default function RootLayout() {
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        <AppProvider>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <StatusBar style="light" />
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <AppProvider>
             <AppContent />
-          </GestureHandlerRootView>
-        </AppProvider>
+          </AppProvider>
+        </GestureHandlerRootView>
       </QueryClientProvider>
     </trpc.Provider>
   );
