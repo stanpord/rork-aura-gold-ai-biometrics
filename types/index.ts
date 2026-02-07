@@ -1,3 +1,10 @@
+/**
+ * Aura Gold AI Biometrics - Type Definitions
+ * Focus: Clinical Aesthetics, PHI Security, and AI-Driven Diagnostics
+ */
+
+// --- 1. Biometric & Analysis Types ---
+
 export interface SkinIQ {
   texture: string;
   pores: string;
@@ -14,6 +21,33 @@ export interface FitzpatrickAssessment {
   detectedIndicators: string[];
 }
 
+export interface VolumeZoneAnalysis {
+  zone: string;
+  volumeLoss: number; // 0-100 scale
+  ageRelatedCause: string;
+  recommendation: string;
+}
+
+export interface AnalysisResult {
+  auraScore: number;
+  faceType: string;
+  skinIQ: SkinIQ;
+  fitzpatrickAssessment: FitzpatrickAssessment;
+  clinicalRoadmap: ClinicalProcedure[];
+  peptideTherapy: PeptideTherapy[];
+  ivOptimization: IVOptimization[];
+  volumeAssessment: VolumeZoneAnalysis[];
+}
+
+export interface BiometricProfile {
+  faceEmbedding?: string; // Vector representation for identity verification
+  capturedAt: Date;
+  deviceInfo?: string;
+  verificationLevel: 'basic' | 'verified' | 'enhanced';
+}
+
+// --- 2. Safety & Clinical Status ---
+
 export interface SafetyStatus {
   isBlocked: boolean;
   blockedReasons: string[];
@@ -25,6 +59,21 @@ export interface SafetyStatus {
   conditionalMessage?: string;
   explainableReason?: string;
 }
+
+export interface SafetyInterlock {
+  type: 'cleared' | 'warning' | 'blocked';
+  label: string;
+  detected: boolean;
+}
+
+export interface TransparencyData {
+  clinicalCriteria: string;
+  dataSource: string;
+  safetyInterlocks: SafetyInterlock[];
+  guidelinesReference?: string;
+}
+
+// --- 3. Treatment & Therapy Definitions ---
 
 export interface ClinicalProcedure {
   name: string;
@@ -50,32 +99,27 @@ export interface IVOptimization {
   safetyStatus?: SafetyStatus;
 }
 
-export interface VolumeZoneAnalysis {
-  zone: string;
-  volumeLoss: number;
-  ageRelatedCause: string;
-  recommendation: string;
+export interface TreatmentDosingSettings {
+  depth?: string;
+  energy?: string;
+  passes?: string;
+  units?: string;
+  volume?: string;
+  dilution?: string;
+  injectionSites?: string;
+  customNotes?: string;
 }
 
-export interface AnalysisResult {
-  auraScore: number;
-  faceType: string;
-  skinIQ: SkinIQ;
-  fitzpatrickAssessment: FitzpatrickAssessment;
-  clinicalRoadmap: ClinicalProcedure[];
-  peptideTherapy: PeptideTherapy[];
-  ivOptimization: IVOptimization[];
-  volumeAssessment: VolumeZoneAnalysis[];
+export interface SelectedTreatment {
+  treatment: ClinicalProcedure | PeptideTherapy | IVOptimization;
+  treatmentType: 'procedure' | 'peptide' | 'iv';
+  dosing: TreatmentDosingSettings;
+  selectedAt: Date;
+  selectedBy?: string;
+  complianceSignOff?: ComplianceSignOff;
 }
 
-export interface SignatureRecord {
-  type: 'patient_consent' | 'treatment_signoff';
-  patientSignature?: string;
-  practitionerSignature: string;
-  treatmentName?: string;
-  signedAt: Date;
-  timestamp: string;
-}
+// --- 4. Records & History ---
 
 export interface ScanRecord {
   id: string;
@@ -100,12 +144,72 @@ export interface ScanComparison {
   changeAmount?: number;
 }
 
-export interface BiometricProfile {
-  faceEmbedding?: string;
-  capturedAt: Date;
-  deviceInfo?: string;
-  verificationLevel: 'basic' | 'verified' | 'enhanced';
+export interface SignatureRecord {
+  type: 'patient_consent' | 'treatment_signoff';
+  patientSignature?: string;
+  practitionerSignature: string;
+  treatmentName?: string;
+  signedAt: Date;
+  timestamp: string;
 }
+
+// --- 5. Legal, Consent & Health Profiling ---
+
+export interface PatientHealthProfile {
+  conditions: string[];
+  hasRecentLabWork: boolean;
+  labWorkDate?: string;
+  completedAt: Date;
+}
+
+export interface PatientBasicInfo {
+  name: string;
+  phone: string;
+  email?: string;
+  dateOfBirth?: string;
+}
+
+export interface PatientConsent {
+  patientName: string;
+  patientSignature: string;
+  providerSignature: string;
+  consentedAt: Date;
+  timestamp: string;
+  acknowledgedSections: {
+    aiDisclosure: boolean;
+    aiRole: boolean;
+    dataPrivacy: boolean;
+    risksLimitations: boolean;
+    humanOnlyRight: boolean;
+  };
+  optedOutOfAI: boolean;
+}
+
+export interface TermsOfServiceAcknowledgment {
+  acknowledgedAt: Date;
+  timestamp: string;
+  acknowledgedSections: {
+    humanInTheLoop: boolean;
+    regulatoryDisclosures: boolean;
+    recommendationLimitations: boolean;
+    dataPrivacy: boolean;
+  };
+  practitionerSignature: string;
+  practitionerCredentials: string;
+  clinicName?: string;
+  stateJurisdiction: string;
+}
+
+export interface ComplianceSignOff {
+  acknowledged: boolean;
+  practitionerSignature: string;
+  signedAt: Date;
+  timestamp: string;
+}
+
+// --- 6. Lead & CRM Management ---
+
+export type ViewMode = 'client' | 'clinic';
 
 export interface Lead {
   id: string;
@@ -134,12 +238,15 @@ export interface Lead {
   healthProfile?: PatientHealthProfile;
 }
 
-export interface TreatmentRecurrence {
-  treatmentName: string;
-  intervalMonths: number;
-  annualSessions: number;
-  pricePerSession: number;
-  annualRecurringValue: number;
+// --- 7. Configuration & Maps ---
+
+export interface TreatmentConfig {
+  id: string;
+  name: string;
+  category: 'procedure' | 'peptide' | 'iv';
+  enabled: boolean;
+  customPrice?: string;
+  defaultPrice: string;
 }
 
 export const TREATMENT_RECURRENCE_MAP: Record<string, { intervalMonths: number; description: string }> = {
@@ -181,7 +288,7 @@ export const TREATMENT_RECURRENCE_MAP: Record<string, { intervalMonths: number; 
   'Endolift': { intervalMonths: 24, description: 'Every 2-3 years' },
   'Kybella': { intervalMonths: 0, description: 'Permanent results (2-4 sessions total)' },
   'Exosome Therapy': { intervalMonths: 3, description: 'Every 3 months for maintenance' },
-  // Anti-Aging
+  // Anti-Aging & IV
   'Anti-Aging Treatments': { intervalMonths: 1, description: 'Varies by treatment' },
   'Glow Drip': { intervalMonths: 1, description: 'Monthly' },
   'NAD+ Infusion': { intervalMonths: 0.5, description: 'Every 2 weeks initially, then monthly' },
@@ -195,140 +302,6 @@ export const TREATMENT_RECURRENCE_MAP: Record<string, { intervalMonths: number; 
   'Thymosin Alpha-1': { intervalMonths: 3, description: 'Ongoing or cycled' },
 };
 
-export interface PatientHealthProfile {
-  conditions: string[];
-  hasRecentLabWork: boolean;
-  labWorkDate?: string;
-  completedAt: Date;
-}
-
-export interface PatientBasicInfo {
-  name: string;
-  phone: string;
-  email?: string;
-  dateOfBirth?: string;
-}
-
-export type ViewMode = 'client' | 'clinic';
-
-export interface TreatmentDosingSettings {
-  depth?: string;
-  energy?: string;
-  passes?: string;
-  units?: string;
-  volume?: string;
-  dilution?: string;
-  injectionSites?: string;
-  customNotes?: string;
-}
-
-export interface SelectedTreatment {
-  treatment: ClinicalProcedure | PeptideTherapy | IVOptimization;
-  treatmentType: 'procedure' | 'peptide' | 'iv';
-  dosing: TreatmentDosingSettings;
-  selectedAt: Date;
-  selectedBy?: string;
-  complianceSignOff?: ComplianceSignOff;
-}
-
-export interface ComplianceSignOff {
-  acknowledged: boolean;
-  practitionerSignature: string;
-  signedAt: Date;
-  timestamp: string;
-}
-
-export interface TransparencyData {
-  clinicalCriteria: string;
-  dataSource: string;
-  safetyInterlocks: SafetyInterlock[];
-  guidelinesReference?: string;
-}
-
-export interface SafetyInterlock {
-  type: 'cleared' | 'warning' | 'blocked';
-  label: string;
-  detected: boolean;
-}
-
-export interface PatientConsent {
-  patientName: string;
-  patientSignature: string;
-  providerSignature: string;
-  consentedAt: Date;
-  timestamp: string;
-  acknowledgedSections: {
-    aiDisclosure: boolean;
-    aiRole: boolean;
-    dataPrivacy: boolean;
-    risksLimitations: boolean;
-    humanOnlyRight: boolean;
-  };
-  optedOutOfAI: boolean;
-}
-
-export interface TermsOfServiceAcknowledgment {
-  acknowledgedAt: Date;
-  timestamp: string;
-  acknowledgedSections: {
-    humanInTheLoop: boolean;
-    regulatoryDisclosures: boolean;
-    recommendationLimitations: boolean;
-    dataPrivacy: boolean;
-  };
-  practitionerSignature: string;
-  practitionerCredentials: string;
-  clinicName?: string;
-  stateJurisdiction: string;
-}
-
-export interface TreatmentConfig {
-  id: string;
-  name: string;
-  category: 'procedure' | 'peptide' | 'iv';
-  enabled: boolean;
-  customPrice?: string;
-  defaultPrice: string;
-}
-
 export const DEFAULT_TREATMENT_CONFIGS: Omit<TreatmentConfig, 'enabled' | 'customPrice'>[] = [
   { id: 'morpheus8', name: 'Morpheus8', category: 'procedure', defaultPrice: '$800-1,200' },
-  { id: 'botox', name: 'Botox Cosmetic', category: 'procedure', defaultPrice: '$12-15/unit' },
-  { id: 'baby_botox', name: 'Baby Botox', category: 'procedure', defaultPrice: '$200-400' },
-  { id: 'lip_flip', name: 'Lip Flip', category: 'procedure', defaultPrice: '$150-200' },
-  { id: 'wrinkle_relaxers', name: 'Wrinkle Relaxers', category: 'procedure', defaultPrice: '$10-15/unit' },
-  { id: 'dermal_filler', name: 'Dermal Filler', category: 'procedure', defaultPrice: '$650-900/syringe' },
-  { id: 'lip_filler', name: 'Lip Filler', category: 'procedure', defaultPrice: '$500-800' },
-  { id: 'plasma_biofiller', name: 'Plasma BioFiller', category: 'procedure', defaultPrice: '$900-1,500' },
-  { id: 'sculptra', name: 'Sculptra', category: 'procedure', defaultPrice: '$900-1,200/vial' },
-  { id: 'radiesse', name: 'Radiesse', category: 'procedure', defaultPrice: '$700-1,000/syringe' },
-  { id: 'stellar_ipl', name: 'Stellar IPL', category: 'procedure', defaultPrice: '$300-500' },
-  { id: 'resurfx', name: 'ResurFX', category: 'procedure', defaultPrice: '$500-800' },
-  { id: 'rf_microneedling', name: 'RF Microneedling', category: 'procedure', defaultPrice: '$600-1,000' },
-  { id: 'endolift', name: 'Endolift', category: 'procedure', defaultPrice: '$2,000-4,000' },
-  { id: 'pdo_threads', name: 'PDO Thread Lift', category: 'procedure', defaultPrice: '$1,500-3,000' },
-  { id: 'kybella', name: 'Kybella', category: 'procedure', defaultPrice: '$600-1,200' },
-  { id: 'diamondglow', name: 'DiamondGlow', category: 'procedure', defaultPrice: '$150-250' },
-  { id: 'hydrafacial', name: 'HydraFacial', category: 'procedure', defaultPrice: '$150-300' },
-  { id: 'facials', name: 'Facials', category: 'procedure', defaultPrice: '$100-200' },
-  { id: 'chemical_peels', name: 'Chemical Peels', category: 'procedure', defaultPrice: '$150-400' },
-  { id: 'microneedling', name: 'Microneedling', category: 'procedure', defaultPrice: '$300-500' },
-  { id: 'microdermabrasion', name: 'Microdermabrasion', category: 'procedure', defaultPrice: '$100-200' },
-  { id: 'clear_brilliant', name: 'Clear + Brilliant', category: 'procedure', defaultPrice: '$400-600' },
-  { id: 'moxi_laser', name: 'MOXI Laser', category: 'procedure', defaultPrice: '$500-800' },
-  { id: 'red_light_therapy', name: 'Red Light Therapy', category: 'procedure', defaultPrice: '$50-100' },
-  { id: 'led_therapy', name: 'LED Therapy', category: 'procedure', defaultPrice: '$50-100' },
-  { id: 'exosome_therapy', name: 'Exosome Therapy', category: 'procedure', defaultPrice: '$500-1,000' },
-  { id: 'anti_aging', name: 'Anti-Aging Treatments', category: 'procedure', defaultPrice: '$200-500' },
-  { id: 'bpc157', name: 'BPC-157', category: 'peptide', defaultPrice: '$300-500/month' },
-  { id: 'ghkcu', name: 'GHK-Cu', category: 'peptide', defaultPrice: '$250-400/month' },
-  { id: 'epithalon', name: 'Epithalon', category: 'peptide', defaultPrice: '$400-600/cycle' },
-  { id: 'tb500', name: 'TB-500', category: 'peptide', defaultPrice: '$300-500/month' },
-  { id: 'thymosin_alpha1', name: 'Thymosin Alpha-1', category: 'peptide', defaultPrice: '$350-550/month' },
-  { id: 'ipamorelin', name: 'Ipamorelin', category: 'peptide', defaultPrice: '$400-600/month' },
-  { id: 'glow_drip', name: 'Glow Drip', category: 'iv', defaultPrice: '$200-350' },
-  { id: 'nad_infusion', name: 'NAD+ Infusion', category: 'iv', defaultPrice: '$400-800' },
-  { id: 'myers_cocktail', name: 'Myers Cocktail', category: 'iv', defaultPrice: '$150-275' },
-  { id: 'glutathione_push', name: 'Glutathione Push', category: 'iv', defaultPrice: '$50-100' },
-  { id: 'vitamin_c_drip', name: 'Vitamin C Drip', category: 'iv', defaultPrice: '$150-250' },
-];
+  { id: 'botox', name: 'Botox
