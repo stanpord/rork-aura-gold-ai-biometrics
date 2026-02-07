@@ -5,7 +5,7 @@ import Colors from '@/constants/colors';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// Shared constants (safe at top)
+// Constants first (safe)
 const GOLD = Colors.gold || '#F59E0B';
 const CORNER_SIZE = 32;
 const CORNER_THICKNESS = 2;
@@ -19,7 +19,7 @@ const ANALYSIS_STAGES = [
 ];
 
 // ────────────────────────────────────────────────
-// MOVE STYLES HERE — BEFORE ANY JSX OR COMPONENT LOGIC
+// CRITICAL: Styles MUST be defined BEFORE the component
 // ────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
@@ -84,38 +84,38 @@ export default function BiometricScanOverlay() {
   const [stageIndex, setStageIndex] = useState(0);
 
   useEffect(() => {
-    // Scan Line Animation
     const scanLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(scanLineY, { toValue: 1, duration: 2500, useNativeDriver: true }),
         Animated.timing(scanLineY, { toValue: 0, duration: 2500, useNativeDriver: true }),
       ])
     );
-    scanLoop.start();
 
-    // Pulse Animation
     const pulseLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseOpacity, { toValue: 1, duration: 1000, useNativeDriver: true }),
         Animated.timing(pulseOpacity, { toValue: 0.3, duration: 1000, useNativeDriver: true }),
       ])
     );
-    pulseLoop.start();
 
-    // Progress Bar
-    Animated.timing(progress, {
+    const progressAnim = Animated.timing(progress, {
       toValue: 100,
       duration: 12000,
       useNativeDriver: false,
-    }).start();
+    });
 
     const timer = setInterval(() => {
       setStageIndex((prev) => (prev + 1) % ANALYSIS_STAGES.length);
     }, 2400);
 
+    scanLoop.start();
+    pulseLoop.start();
+    progressAnim.start();
+
     return () => {
       scanLoop.stop();
       pulseLoop.stop();
+      progressAnim.stop?.(); // safe if not started
       clearInterval(timer);
     };
   }, []);
@@ -134,7 +134,9 @@ export default function BiometricScanOverlay() {
 
   return (
     <View style={styles.container} pointerEvents="none">
-      <Animated.View style={[styles.scanLine, { transform: [{ translateY }], opacity: pulseOpacity }]} />
+      <Animated.View
+        style={[styles.scanLine, { transform: [{ translateY }], opacity: pulseOpacity }]}
+      />
       <View style={[styles.cornerBase, { top: 60, left: 40, borderTopWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS }]} />
       <View style={[styles.cornerBase, { top: 60, right: 40, borderTopWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS }]} />
       <View style={[styles.cornerBase, { bottom: 60, left: 40, borderBottomWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS }]} />
