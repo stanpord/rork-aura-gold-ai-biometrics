@@ -6,18 +6,16 @@ import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { AppProvider, useApp } from '@/contexts/AppContext';
+import { AppProvider } from '@/contexts/AppContext';
 import BiometricIntroScan from '@/components/BiometricIntroScan';
-import BiomarkerLoadingScreen from '@/components/BiomarkerLoadingScreen'; // ← ADD THIS
+import BiomarkerLoadingScreen from '@/components/BiomarkerLoadingScreen';
 import Colors from '@/constants/colors';
 
-// Prevent splash from auto-hiding
+// Prevent auto-hide
 SplashScreen.preventAutoHideAsync();
 
-// Lock to portrait (optional, catch silently)
-ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {
-  console.log('Screen orientation lock not supported on this platform');
-});
+// Lock orientation (silent catch)
+ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
 
 const queryClient = new QueryClient();
 
@@ -30,12 +28,8 @@ function RootLayoutNav() {
       }}
     >
       <Stack.Screen name="(tabs)" />
-      <Stack.Screen
-        name="modal"
-        options={{
-          presentation: 'modal',
-        }}
-      />
+      {/* Removed unused modal screen – add back only when you create app/modal.tsx */}
+      {/* <Stack.Screen name="modal" options={{ presentation: 'modal' }} /> */}
     </Stack>
   );
 }
@@ -44,31 +38,19 @@ function AppContent() {
   const { hasCompletedIntro, isLoadingIntro, completeIntro } = useApp();
 
   useEffect(() => {
-    // Hide splash once we're ready (intro loaded or skipped)
-    const hideSplash = async () => {
-      try {
-        await SplashScreen.hideAsync();
-      } catch (e) {
-        console.warn('Splash hide failed:', e);
-      }
-    };
-
     if (!isLoadingIntro) {
-      hideSplash();
+      SplashScreen.hideAsync().catch((e) => console.warn('Splash hide failed:', e));
     }
   }, [isLoadingIntro]);
 
-  // If still loading intro data → show loading screen
   if (isLoadingIntro) {
     return <BiomarkerLoadingScreen />;
   }
 
-  // If intro not completed → show intro screen
   if (!hasCompletedIntro) {
     return <BiometricIntroScan onComplete={completeIntro} />;
   }
 
-  // Normal app flow
   return (
     <>
       <StatusBar style="light" />
