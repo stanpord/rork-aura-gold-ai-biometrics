@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
 import { Sparkles, Brain, Microscope, Dna, Activity } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
@@ -15,6 +15,18 @@ const ANALYSIS_STAGES = [
   { icon: Activity, text: 'Generating treatment plan...', subtext: 'Matching protocols' },
   { icon: Sparkles, text: 'Finalizing Aura Index...', subtext: 'Computing score' },
 ];
+
+const styles = StyleSheet.create({
+  container: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000', zIndex: 999 },
+  scanLine: { position: 'absolute', width: '100%', height: 2, backgroundColor: GOLD },
+  cornerBase: { position: 'absolute', width: CORNER_SIZE, height: CORNER_SIZE, borderColor: GOLD },
+  panel: { position: 'absolute', bottom: 80, left: 20, right: 20, backgroundColor: 'rgba(0,0,0,0.85)', borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  textContainer: { alignItems: 'center', marginVertical: 15 },
+  title: { color: '#FFF', fontSize: 18, fontWeight: '700' },
+  subtitle: { color: '#888', fontSize: 14, marginTop: 4 },
+  progressBg: { width: '100%', height: 4, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: GOLD },
+});
 
 export default function BiomarkerLoadingScreen({ onComplete }: { onComplete?: () => void }) {
   const scanLineY = useRef(new Animated.Value(0)).current;
@@ -39,13 +51,13 @@ export default function BiomarkerLoadingScreen({ onComplete }: { onComplete?: ()
 
     const progressAnim = Animated.timing(progress, {
       toValue: 100,
-      duration: 10000, // 10 seconds
+      duration: 12000, // 12 seconds
       useNativeDriver: false,
     });
 
     const timer = setInterval(() => {
       setStageIndex((prev) => (prev + 1) % ANALYSIS_STAGES.length);
-    }, 2000);
+    }, 2400);
 
     scanLoop.start();
     pulseLoop.start();
@@ -63,7 +75,7 @@ export default function BiomarkerLoadingScreen({ onComplete }: { onComplete?: ()
 
   const translateY = scanLineY.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, SCREEN_HEIGHT * 0.7],
+    outputRange: [0, SCREEN_HEIGHT * 0.55],
   });
 
   const barWidth = progress.interpolate({
@@ -74,7 +86,7 @@ export default function BiomarkerLoadingScreen({ onComplete }: { onComplete?: ()
   const CurrentIcon = ANALYSIS_STAGES[stageIndex].icon;
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} pointerEvents="none">
       <Animated.View style={[styles.scanLine, { transform: [{ translateY }], opacity: pulseOpacity }]} />
       <View style={[styles.cornerBase, { top: 60, left: 40, borderTopWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS }]} />
       <View style={[styles.cornerBase, { top: 60, right: 40, borderTopWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS }]} />
@@ -93,15 +105,3 @@ export default function BiomarkerLoadingScreen({ onComplete }: { onComplete?: ()
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000', zIndex: 999 },
-  scanLine: { position: 'absolute', width: '100%', height: 3, backgroundColor: GOLD },
-  cornerBase: { position: 'absolute', width: CORNER_SIZE, height: CORNER_SIZE, borderColor: GOLD },
-  panel: { position: 'absolute', bottom: 100, left: 30, right: 30, backgroundColor: 'rgba(20,20,20,0.9)', borderRadius: 24, padding: 30, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  textContainer: { alignItems: 'center', marginVertical: 20 },
-  title: { color: '#FFF', fontSize: 18, fontWeight: '700', textAlign: 'center' },
-  subtitle: { color: '#888', fontSize: 14, marginTop: 6, textAlign: 'center' },
-  progressBg: { width: '100%', height: 6, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: GOLD },
-});
