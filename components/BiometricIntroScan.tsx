@@ -1,308 +1,140 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  StyleSheet,
-  Animated,
-  Dimensions,
-  Platform,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
-import { CheckCircle } from 'lucide-react-native';
+import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
+import { Sparkles, Brain, Microscope, Dna, Activity } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
-// Beautiful model with biometric scanning overlay - ideal for medspa diagnostic
-const FACE_IMAGE = 'https://r2-pub.rork.com/generated-images/475a6908-3419-4157-b237-ce96bff62622.png';
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const getScreenDimensions = () => {
-  const { width, height } = Dimensions.get('window');
-  return { width, height };
-};
+// 1. Move ALL configuration constants to the very top
+const GOLD = Colors.gold || '#F59E0B';
+const CORNER_SIZE = 32;
+const BORDER_W = 2;
 
-interface BiometricIntroScanProps {
-  onComplete: () => void;
-}
+const ANALYSIS_STAGES = [
+  { icon: Microscope, text: 'Analyzing skin texture...', subtext: 'Detecting pore size' },
+  { icon: Brain, text: 'Processing facial geometry...', subtext: 'Mapping landmarks' },
+  { icon: Dna, text: 'Evaluating aging markers...', subtext: 'Assessing elasticity' },
+  { icon: Activity, text: 'Generating treatment plan...', subtext: 'Matching protocols' },
+  { icon: Sparkles, text: 'Finalizing Aura Index...', subtext: 'Computing score' },
+];
 
 
 
-export default function BiometricIntroScan({ onComplete }: BiometricIntroScanProps) {
-  const [currentPhase, setCurrentPhase] = useState(0);
-  const [dimensions, setDimensions] = useState(getScreenDimensions());
-
-  useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setDimensions({ width: window.width, height: window.height });
-    });
-    return () => subscription?.remove();
-  }, []);
-
-  const SCREEN_WIDTH = dimensions.width;
-  const SCREEN_HEIGHT = dimensions.height;
-
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const scanLineAnim = useRef(new Animated.Value(0)).current;
-  const gridOpacity = useRef(new Animated.Value(0)).current;
-  const faceOutlineScale = useRef(new Animated.Value(0.8)).current;
-  const faceOutlineOpacity = useRef(new Animated.Value(0)).current;
-
-  const exitAnim = useRef(new Animated.Value(1)).current;
+export default function BiometricScanOverlay() {
+  const scanLineY = useRef(new Animated.Value(0)).current;
+  const pulseOpacity = useRef(new Animated.Value(0.3)).current;
+  const progress = useRef(new Animated.Value(0)).current;
+  const [stageIndex, setStageIndex] = useState(0);
 
   useEffect(() => {
-    startIntroSequence();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Animations
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(scanLineY, { toValue: 1, duration: 2500, useNativeDriver: true }),
+        Animated.timing(scanLineY, { toValue: 0, duration: 2500, useNativeDriver: true }),
+      ])
+    ).start();
 
-  const startIntroSequence = () => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: true,
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseOpacity, { toValue: 0.8, duration: 1000, useNativeDriver: true }),
+        Animated.timing(pulseOpacity, { toValue: 0.3, duration: 1000, useNativeDriver: true }),
+      ])
+    ).start();
+
+    Animated.timing(progress, {
+      toValue: 100,
+      duration: 12000,
+      useNativeDriver: false,
     }).start();
 
-    setTimeout(() => {
-      setCurrentPhase(1);
-      runPhase1();
-    }, 500);
-  };
+    const timer = setInterval(() => {
+      setStageIndex((prev) => (prev + 1) % ANALYSIS_STAGES.length);
+    }, 2400);
 
-  const runPhase1 = () => {
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    return () => clearInterval(timer);
+  }, []);
 
-    Animated.parallel([
-      Animated.timing(gridOpacity, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(faceOutlineScale, {
-        toValue: 1,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-      Animated.timing(faceOutlineOpacity, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-    ]).start();
+  const translateY = scanLineY.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, SCREEN_HEIGHT * 0.5],
+  });
 
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
+  const barWidth = progress.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  });
 
-    setTimeout(() => {
-      setCurrentPhase(2);
-      runPhase2();
-    }, 1200);
-  };
-
-  const runPhase2 = () => {
-    // Start scan line animation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(scanLineAnim, {
-          toValue: 1,
-          duration: 3500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scanLineAnim, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    let progress = 0;
-    const progressInterval = setInterval(() => {
-      progress += 3;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(progressInterval);
-      }
-      if (Platform.OS !== 'web' && progress % 10 === 0) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-    }, 100);
-
-    setTimeout(() => {
-      setCurrentPhase(3);
-      runPhase3();
-    }, 4200);
-  };
-
-  const runPhase3 = () => {
-    if (Platform.OS !== 'web') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
-
-    setTimeout(() => {
-      Animated.timing(exitAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }).start(() => {
-        onComplete();
-      });
-    }, 1000);
-  };
-
-
-
-
+  const CurrentIcon = ANALYSIS_STAGES[stageIndex].icon;
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          opacity: Animated.multiply(fadeAnim, exitAnim),
-        },
-      ]}
-    >
-      {/* Face-only centered image */}
-      <View style={styles.faceContainer}>
-        <Animated.View
-          style={[
-            styles.faceImageContainer,
-            {
-              opacity: faceOutlineOpacity,
-              transform: [
-                { scale: faceOutlineScale },
-              ],
-            },
-          ]}
-        >
-          <Image
-            source={{ uri: FACE_IMAGE }}
-            style={styles.faceImage}
-            contentFit="cover"
-            contentPosition="center"
-          />
-          {/* Subtle scan overlay */}
-          <LinearGradient
-            colors={['rgba(0, 0, 0, 0.4)', 'rgba(245, 158, 11, 0.05)', 'rgba(0, 0, 0, 0.4)']}
-            style={styles.faceGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-          />
-          <View style={styles.scanLinesOverlay}>
-            {Array.from({ length: 60 }).map((_, i) => (
-              <View key={`scan-h-${i}`} style={[styles.scanLineH, { top: `${(i / 60) * 100}%` }]} />
-            ))}
-          </View>
-        </Animated.View>
+    <View style={styles.container} pointerEvents="none">
+      <Animated.View style={[styles.scanLine, { transform: [{ translateY }], opacity: pulseOpacity }]} />
 
+      {/* Frame Corners - Handled by combining styles in the array */}
+      <View style={[styles.baseCorner, styles.topL]} />
+      <View style={[styles.baseCorner, styles.topR]} />
+      <View style={[styles.baseCorner, styles.botL]} />
+      <View style={[styles.baseCorner, styles.botR]} />
 
-
-        {/* Scan line */}
-        <Animated.View
-          style={[
-            styles.scanLine,
-            {
-              transform: [
-                {
-                  translateY: scanLineAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, SCREEN_HEIGHT],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          <LinearGradient
-            colors={['transparent', 'rgba(245, 158, 11, 0.6)', 'transparent']}
-            style={styles.scanLineGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          />
-        </Animated.View>
-
+      <View style={styles.panel}>
+        <CurrentIcon size={32} color={GOLD} />
+        <Text style={styles.title}>{ANALYSIS_STAGES[stageIndex].text}</Text>
+        <Text style={styles.subtitle}>{ANALYSIS_STAGES[stageIndex].subtext}</Text>
+        <View style={styles.progressBg}>
+          <Animated.View style={[styles.progressFill, { width: barWidth }]} />
+        </View>
       </View>
-
-      {currentPhase === 3 && (
-        <Animated.View style={[styles.completeOverlay, { opacity: exitAnim }]}>
-          <View style={styles.completeBadge}>
-            <CheckCircle size={24} color={Colors.success} />
-          </View>
-        </Animated.View>
-      )}
-    </Animated.View>
+    </View>
   );
 }
 
+// 2. The Stylesheet: Notice there are NO '...styles.xxx' spreads here!
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#000',
-    zIndex: 100,
+    zIndex: 999,
   },
-  faceContainer: {
-    flex: 1,
-  },
-  faceImageContainer: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  faceImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
-  },
-  faceGradient: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  scanLinesOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  scanLineH: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'rgba(245, 158, 11, 0.05)',
-  },
-
   scanLine: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    height: 3,
+    width: '100%',
+    height: 2,
+    backgroundColor: GOLD,
   },
-  scanLineGradient: {
-    flex: 1,
+  baseCorner: {
+    position: 'absolute',
+    width: CORNER_SIZE,
+    height: CORNER_SIZE,
+    borderColor: GOLD,
   },
-
-  completeOverlay: {
-    ...StyleSheet.absoluteFillObject,
+  topL: { top: 60, left: 40, borderTopWidth: BORDER_W, borderLeftWidth: BORDER_W },
+  topR: { top: 60, right: 40, borderTopWidth: BORDER_W, borderRightWidth: BORDER_W },
+  botL: { bottom: 60, left: 40, borderBottomWidth: BORDER_W, borderLeftWidth: BORDER_W },
+  botR: { bottom: 60, right: 40, borderBottomWidth: BORDER_W, borderRightWidth: BORDER_W },
+  panel: {
+    position: 'absolute',
+    bottom: 100,
+    left: 30,
+    right: 30,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    padding: 25,
+    borderRadius: 20,
     alignItems: 'center',
-    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
-  completeBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(16, 185, 129, 0.5)',
+  title: { color: '#FFF', fontSize: 18, fontWeight: 'bold', marginTop: 15 },
+  subtitle: { color: '#888', fontSize: 14, marginTop: 5 },
+  progressBg: {
+    width: '100%',
+    height: 4,
+    backgroundColor: '#333',
+    borderRadius: 2,
+    marginTop: 20,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: GOLD,
   },
 });
