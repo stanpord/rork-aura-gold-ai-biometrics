@@ -13,32 +13,17 @@ const ANALYSIS_STAGES = [
   { icon: Sparkles, text: 'Finalizing your Aura Index...', subtext: 'Computing personalized score' },
 ];
 
-// 1. Define shared styles OUTSIDE the StyleSheet to avoid initialization errors
-const CORNER_BASE = {
-  position: 'absolute' as const,
-  width: 32,
-  height: 32,
-  borderColor: Colors.gold || '#F59E0B',
-};
+// 1. Define shared constants OUTSIDE to avoid 'styles' initialization issues
+const CORNER_SIZE = 32;
+const CORNER_THICKNESS = 2;
 
 export default function BiometricScanOverlay() {
   const scanLineY = useRef(new Animated.Value(0)).current;
   const pulseOpacity = useRef(new Animated.Value(0.3)).current;
-  const textOpacity = useRef(new Animated.Value(1)).current;
-  const iconScale = useRef(new Animated.Value(1)).current;
   const progress = useRef(new Animated.Value(0)).current;
-
-  const dotAnims = [
-    useRef(new Animated.Value(0)).current,
-    useRef(new Animated.Value(0)).current,
-    useRef(new Animated.Value(0)).current,
-  ];
-
   const [stageIndex, setStageIndex] = useState(0);
-  const CurrentIcon = ANALYSIS_STAGES[stageIndex].icon;
 
   useEffect(() => {
-    // Scan line animation
     const scanAnim = Animated.loop(
       Animated.sequence([
         Animated.timing(scanLineY, { toValue: 1, duration: 2000, useNativeDriver: true }),
@@ -46,7 +31,6 @@ export default function BiometricScanOverlay() {
       ])
     );
 
-    // Pulsing effect
     const pulseAnim = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseOpacity, { toValue: 1, duration: 800, useNativeDriver: true }),
@@ -54,7 +38,6 @@ export default function BiometricScanOverlay() {
       ])
     );
 
-    // Progress bar
     Animated.timing(progress, {
       toValue: 100,
       duration: 12000,
@@ -85,17 +68,11 @@ export default function BiometricScanOverlay() {
     outputRange: ['0%', '100%'],
   });
 
+  const CurrentIcon = ANALYSIS_STAGES[stageIndex].icon;
+
   return (
     <View style={styles.container} pointerEvents="none">
-      <Animated.View
-        style={[
-          styles.scanLine,
-          {
-            transform: [{ translateY: scanLineTranslateY }],
-            opacity: pulseOpacity,
-          },
-        ]}
-      />
+      <Animated.View style={[styles.scanLine, { transform: [{ translateY: scanLineTranslateY }], opacity: pulseOpacity }]} />
 
       <View style={styles.gridOverlay}>
         {[...Array(8)].map((_, i) => (
@@ -103,24 +80,16 @@ export default function BiometricScanOverlay() {
         ))}
       </View>
 
-      {/* Using the array pattern to combine base and specific styles */}
-      <View style={[styles.cornerBase, styles.cornerTL]} />
-      <View style={[styles.cornerBase, styles.cornerTR]} />
-      <View style={[styles.cornerBase, styles.cornerBL]} />
-      <View style={[styles.cornerBase, styles.cornerBR]} />
-
-      <View style={styles.targetEllipse} />
+      {/* 2. Merge styles in the prop rather than the StyleSheet object */}
+      <View style={[styles.cornerBase, { top: 40, left: 40, borderTopWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS }]} />
+      <View style={[styles.cornerBase, { top: 40, right: 40, borderTopWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS }]} />
+      <View style={[styles.cornerBase, { bottom: 40, left: 40, borderBottomWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS }]} />
+      <View style={[styles.cornerBase, { bottom: 40, right: 40, borderBottomWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS }]} />
 
       <View style={styles.statusPanel}>
-        <View style={styles.iconWrapper}>
-          <CurrentIcon size={28} color={Colors.gold || '#F59E0B'} />
-        </View>
-
-        <View style={styles.textBlock}>
-          <Text style={styles.mainText}>{ANALYSIS_STAGES[stageIndex].text}</Text>
-          <Text style={styles.subText}>{ANALYSIS_STAGES[stageIndex].subtext}</Text>
-        </View>
-
+        <CurrentIcon size={28} color={Colors.gold} style={{ marginBottom: 10 }} />
+        <Text style={styles.mainText}>{ANALYSIS_STAGES[stageIndex].text}</Text>
+        <Text style={styles.subText}>{ANALYSIS_STAGES[stageIndex].subtext}</Text>
         <View style={styles.progressBg}>
           <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
         </View>
@@ -139,7 +108,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 3,
-    backgroundColor: Colors.gold || '#F59E0B',
+    backgroundColor: Colors.gold,
   },
   gridOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -150,52 +119,36 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: Colors.gold || '#F59E0B',
+    backgroundColor: Colors.gold,
   },
-  cornerBase: CORNER_BASE,
-  cornerTL: { top: 40, left: 40, borderTopWidth: 2, borderLeftWidth: 2 },
-  cornerTR: { top: 40, right: 40, borderTopWidth: 2, borderRightWidth: 2 },
-  cornerBL: { bottom: 40, left: 40, borderBottomWidth: 2, borderLeftWidth: 2 },
-  cornerBR: { bottom: 40, right: 40, borderBottomWidth: 2, borderRightWidth: 2 },
-  targetEllipse: {
+  cornerBase: {
     position: 'absolute',
-    top: '30%',
-    left: '50%',
-    marginLeft: -100,
-    width: 200,
-    height: 280,
-    borderRadius: 100,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.2)',
-    borderStyle: 'dashed',
+    width: CORNER_SIZE,
+    height: CORNER_SIZE,
+    borderColor: Colors.gold,
   },
   statusPanel: {
     position: 'absolute',
-    bottom: 50,
+    bottom: 60,
     left: 20,
     right: 20,
     backgroundColor: 'rgba(0,0,0,0.8)',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 20,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
-  },
-  iconWrapper: {
-    marginBottom: 10,
-  },
-  textBlock: {
-    alignItems: 'center',
-    marginBottom: 15,
+    borderColor: 'rgba(245,158,11,0.3)',
   },
   mainText: {
     color: '#FFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   subText: {
-    color: '#999',
+    color: '#AAA',
     fontSize: 12,
+    marginTop: 4,
+    marginBottom: 16,
   },
   progressBg: {
     width: '100%',
@@ -206,6 +159,6 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: Colors.gold || '#F59E0B',
+    backgroundColor: Colors.gold,
   },
 });
