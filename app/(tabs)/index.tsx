@@ -1124,18 +1124,9 @@ Fitzpatrick: Assess accurately for treatment safety (V-VI = high IPL risk).`
 
     return null;
   };
-
-
-
-  if (introPhase === 'biomarkers') {
-    return (
-      <BiomarkerLoadingScreen onComplete={() => {
-        console.log('[Intro] Biomarkers complete, moving to facescan');
-        setBiomarkersComplete(true);
-        setIntroPhase('facescan');
-      }} />
-    );
-  }
+	if (isLoadingIntro) {
+  return <BiometricIntroScan />; 
+}
 
   if (introPhase === 'facescan' && biomarkersComplete) {
     return (
