@@ -1,95 +1,29 @@
 {
+  {
   "expo": {
     "name": "Aura Gold AI Biometrics",
     "slug": "aura-gold-ai-biometrics",
     "version": "1.0.10",
-    "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "rork-app",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#000000"
-    },
     "ios": {
-      "supportsTablet": false,
       "bundleIdentifier": "app.rork.aura-gold-ai-biometrics",
       "infoPlist": {
-        "NSCameraUsageDescription": "Aura Gold requires camera access for real-time facial biometric analysis and skin health assessment.",
-        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone.",
-        "NSPhotoLibraryUsageDescription": "Aura Gold accesses your photos to allow uploading existing clinical records for analysis.",
-        "NSFaceIDUsageDescription": "Aura Gold uses Face ID to securely authenticate staff members and protect sensitive patient PHI."
-      },
-      "config": {
-        "usesNonExemptEncryption": false
+        "NSCameraUsageDescription": "Aura Gold requires camera access for real-time facial biometric analysis.",
+        "NSFaceIDUsageDescription": "Aura Gold uses Face ID to securely authenticate staff and protect patient PHI."
       }
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#000000"
-      },
       "package": "app.rork.aura_gold_ai_biometrics",
       "permissions": [
         "CAMERA",
-        "RECORD_AUDIO",
-        "android.permission.VIBRATE",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "INTERNET",
         "USE_BIOMETRIC",
-        "USE_FINGERPRINT"
-      ],
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "data": {
-            "scheme": "rork-app"
-          },
-          "category": ["BROWSABLE", "DEFAULT"]
-        }
+        "USE_FINGERPRINT",
+        "INTERNET"
       ]
     },
-    "web": {
-      "favicon": "./assets/images/favicon.png",
-      "bundler": "metro"
-    },
     "plugins": [
-      [
-        "expo-router",
-        {
-          "origin": "https://rork.com/"
-        }
-      ],
-      "expo-font",
-      "expo-web-browser",
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Aura Gold requires camera access for facial biometric analysis.",
-          "microphonePermission": "Allow Aura Gold to access your microphone.",
-          "recordAudioAndroid": true
-        }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "The app accesses your photos to allow clinical analysis of saved images."
-        }
-      ],
-      [
-        "expo-secure-store",
-        {
-          "configureAndroidBackup": true,
-          "faceIDPermission": "Allow Aura Gold to use Face ID to protect patient biometric data."
-        }
-      ],
-      "expo-localization"
-    ],
-    "experiments": {
-      "typedRoutes": true
-    }
+      "expo-router",
+      ["expo-camera", { "cameraPermission": "Aura Gold requires camera access for biometric analysis." }],
+      ["expo-secure-store", { "faceIDPermission": "Allow Aura Gold to use Face ID to protect data." }]
+    ]
   }
 }

@@ -1,5 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+} from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Camera } from 'lucide-react-native';
@@ -11,7 +18,7 @@ import BiometricIntroScan from '@/components/BiometricIntroScan';
 
 const GOLD = Colors.gold || '#F59E0B';
 
-// --- STYLES DEFINED AT TOP ---
+// --- STYLES DEFINED AT TOP TO PREVENT INITIALIZATION ERROR ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -73,6 +80,7 @@ export default function ScanScreen() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const { isLoadingIntro, completeIntro } = useApp();
   
+  // Camera reference to trigger takePictureAsync
   const cameraRef = useRef<CameraView>(null);
 
   if (isLoadingIntro) {
@@ -95,11 +103,12 @@ export default function ScanScreen() {
       try {
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.8,
-          skipProcessing: true,
+          skipProcessing: true, 
         });
-        console.log('Capture Success:', photo?.uri);
+        console.log('Biometric Data Captured:', photo?.uri);
+        // Add navigation to results here
       } catch (error) {
-        console.error('Capture Error:', error);
+        console.error('Capture failed:', error);
       }
     }
   };
