@@ -6,16 +6,17 @@ import Colors from '@/constants/colors';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const ANALYSIS_STAGES = [
-  { icon: Microscope, text: 'Analyzing skin texture...', subtext: 'Detecting pore size and surface quality' },
-  { icon: Brain, text: 'Processing facial geometry...', subtext: 'Mapping structural landmarks' },
-  { icon: Dna, text: 'Evaluating aging markers...', subtext: 'Assessing volume and elasticity' },
-  { icon: Activity, text: 'Generating treatment plan...', subtext: 'Matching clinical protocols' },
-  { icon: Sparkles, text: 'Finalizing your Aura Index...', subtext: 'Computing personalized score' },
+  { icon: Microscope, text: 'Analyzing skin texture...', subtext: 'Detecting pore size' },
+  { icon: Brain, text: 'Processing facial geometry...', subtext: 'Mapping landmarks' },
+  { icon: Dna, text: 'Evaluating aging markers...', subtext: 'Assessing elasticity' },
+  { icon: Activity, text: 'Generating treatment plan...', subtext: 'Matching protocols' },
+  { icon: Sparkles, text: 'Finalizing Aura Index...', subtext: 'Computing score' },
 ];
 
-// 1. Define shared constants OUTSIDE to avoid 'styles' initialization issues
+// CRITICAL: Define shared constants OUTSIDE the StyleSheet
 const CORNER_SIZE = 32;
-const CORNER_THICKNESS = 2;
+const CORNER_BORDER = 2;
+const GOLD = Colors.gold || '#F59E0B';
 
 export default function BiometricScanOverlay() {
   const scanLineY = useRef(new Animated.Value(0)).current;
@@ -24,46 +25,43 @@ export default function BiometricScanOverlay() {
   const [stageIndex, setStageIndex] = useState(0);
 
   useEffect(() => {
-    const scanAnim = Animated.loop(
+    // 1. Scan Line Loop
+    Animated.loop(
       Animated.sequence([
-        Animated.timing(scanLineY, { toValue: 1, duration: 2000, useNativeDriver: true }),
-        Animated.timing(scanLineY, { toValue: 0, duration: 2000, useNativeDriver: true }),
+        Animated.timing(scanLineY, { toValue: 1, duration: 2500, useNativeDriver: true }),
+        Animated.timing(scanLineY, { toValue: 0, duration: 2500, useNativeDriver: true }),
       ])
-    );
+    ).start();
 
-    const pulseAnim = Animated.loop(
+    // 2. Pulse Loop
+    Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseOpacity, { toValue: 1, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulseOpacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseOpacity, { toValue: 0.8, duration: 1000, useNativeDriver: true }),
+        Animated.timing(pulseOpacity, { toValue: 0.3, duration: 1000, useNativeDriver: true }),
       ])
-    );
+    ).start();
 
+    // 3. Progress Bar (12 seconds)
     Animated.timing(progress, {
       toValue: 100,
       duration: 12000,
       useNativeDriver: false,
     }).start();
 
-    const stageTimer = setInterval(() => {
+    // 4. Stage Cycling
+    const timer = setInterval(() => {
       setStageIndex((prev) => (prev + 1) % ANALYSIS_STAGES.length);
     }, 2400);
 
-    scanAnim.start();
-    pulseAnim.start();
-
-    return () => {
-      scanAnim.stop();
-      pulseAnim.stop();
-      clearInterval(stageTimer);
-    };
+    return () => clearInterval(timer);
   }, []);
 
-  const scanLineTranslateY = scanLineY.interpolate({
+  const translateY = scanLineY.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, SCREEN_HEIGHT * 0.62],
+    outputRange: [0, SCREEN_HEIGHT * 0.5],
   });
 
-  const progressWidth = progress.interpolate({
+  const width = progress.interpolate({
     inputRange: [0, 100],
     outputRange: ['0%', '100%'],
   });
@@ -72,26 +70,30 @@ export default function BiometricScanOverlay() {
 
   return (
     <View style={styles.container} pointerEvents="none">
-      <Animated.View style={[styles.scanLine, { transform: [{ translateY: scanLineTranslateY }], opacity: pulseOpacity }]} />
+      {/* Moving Scan Line */}
+      <Animated.View style={[styles.scanLine, { transform: [{ translateY }], opacity: pulseOpacity }]} />
 
+      {/* Grid Background */}
       <View style={styles.gridOverlay}>
-        {[...Array(8)].map((_, i) => (
-          <View key={`h-${i}`} style={[styles.gridLineH, { top: `${(i + 1) * 12.5}%` }]} />
+        {[...Array(6)].map((_, i) => (
+          <View key={i} style={[styles.gridLine, { top: `${(i + 1) * 15}%` }]} />
         ))}
       </View>
 
-      {/* 2. Merge styles in the prop rather than the StyleSheet object */}
-      <View style={[styles.cornerBase, { top: 40, left: 40, borderTopWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS }]} />
-      <View style={[styles.cornerBase, { top: 40, right: 40, borderTopWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS }]} />
-      <View style={[styles.cornerBase, { bottom: 40, left: 40, borderBottomWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS }]} />
-      <View style={[styles.cornerBase, { bottom: 40, right: 40, borderBottomWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS }]} />
+      {/* Frame Corners */}
+      <View style={[styles.corner, { top: 60, left: 40, borderTopWidth: CORNER_BORDER, borderLeftWidth: CORNER_BORDER }]} />
+      <View style={[styles.corner, { top: 60, right: 40, borderTopWidth: CORNER_BORDER, borderRightWidth: CORNER_BORDER }]} />
+      <View style={[styles.corner, { bottom: 60, left: 40, borderBottomWidth: CORNER_BORDER, borderLeftWidth: CORNER_BORDER }]} />
+      <View style={[styles.corner, { bottom: 60, right: 40, borderBottomWidth: CORNER_BORDER, borderRightWidth: CORNER_BORDER }]} />
 
-      <View style={styles.statusPanel}>
-        <CurrentIcon size={28} color={Colors.gold} style={{ marginBottom: 10 }} />
-        <Text style={styles.mainText}>{ANALYSIS_STAGES[stageIndex].text}</Text>
-        <Text style={styles.subText}>{ANALYSIS_STAGES[stageIndex].subtext}</Text>
-        <View style={styles.progressBg}>
-          <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
+      {/* Status Panel */}
+      <View style={styles.panel}>
+        <CurrentIcon size={32} color={GOLD} strokeWidth={1.5} />
+        <Text style={styles.title}>{ANALYSIS_STAGES[stageIndex].text}</Text>
+        <Text style={styles.subtitle}>{ANALYSIS_STAGES[stageIndex].subtext}</Text>
+        
+        <View style={styles.progressContainer}>
+          <Animated.View style={[styles.progressBar, { width }]} />
         </View>
       </View>
     </View>
@@ -99,66 +101,41 @@ export default function BiometricScanOverlay() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: 'hidden',
-  },
+  container: { ...StyleSheet.absoluteFillObject, zIndex: 10 },
   scanLine: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 3,
-    backgroundColor: Colors.gold,
+    width: '100%',
+    height: 2,
+    backgroundColor: GOLD,
+    shadowColor: GOLD,
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  gridOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.1,
-  },
-  gridLineH: {
+  gridOverlay: { ...StyleSheet.absoluteFillObject, opacity: 0.15 },
+  gridLine: { position: 'absolute', width: '100%', height: 1, backgroundColor: GOLD },
+  corner: { position: 'absolute', width: CORNER_SIZE, height: CORNER_SIZE, borderColor: GOLD },
+  panel: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: Colors.gold,
-  },
-  cornerBase: {
-    position: 'absolute',
-    width: CORNER_SIZE,
-    height: CORNER_SIZE,
-    borderColor: Colors.gold,
-  },
-  statusPanel: {
-    position: 'absolute',
-    bottom: 60,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    borderRadius: 20,
-    padding: 20,
+    bottom: 80,
+    alignSelf: 'center',
+    width: '85%',
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    padding: 24,
+    borderRadius: 24,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(245,158,11,0.3)',
   },
-  mainText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  subText: {
-    color: '#AAA',
-    fontSize: 12,
-    marginTop: 4,
-    marginBottom: 16,
-  },
-  progressBg: {
+  title: { color: '#FFF', fontSize: 18, fontWeight: '700', marginTop: 12 },
+  subtitle: { color: '#999', fontSize: 13, marginTop: 4 },
+  progressContainer: {
     width: '100%',
     height: 4,
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 2,
+    marginTop: 20,
     overflow: 'hidden',
   },
-  progressFill: {
-    height: '100%',
-    backgroundColor: Colors.gold,
-  },
+  progressBar: { height: '100%', backgroundColor: GOLD },
 });
