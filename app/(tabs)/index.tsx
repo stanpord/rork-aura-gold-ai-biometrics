@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,145 +6,20 @@ import {
   TouchableOpacity,
   ScrollView,
   useWindowDimensions,
-  ActivityIndicator,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
-import {
-  Camera,
-  RefreshCw,
-} from 'lucide-react-native';
+import { Camera, RefreshCw } from 'lucide-react-native';
 
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import AuraScoreGauge from '@/components/AuraScoreGauge';
 import BiometricScanOverlay from '@/components/BiometricScanOverlay';
-import LeadCaptureModal from '@/components/LeadCaptureModal';
-import EmailCaptureModal from '@/components/EmailCaptureModal';
-import BeforeAfterSlider from '@/components/BeforeAfterSlider';
-import GuidedCaptureOverlay from '@/components/GuidedCaptureOverlay';
-import HealthQuestionnaire from '@/components/HealthQuestionnaire';
-import PatientResultsModal from '@/components/PatientResultsModal';
-import PatientConsentModal from '@/components/PatientConsentModal';
-
-// This is your new high-end replacement for the old folder
 import BiometricIntroScan from '@/components/BiometricIntroScan';
 
-export default function ScanScreen() {
-  const { width: windowWidth } = useWindowDimensions();
-  
-  const {
-    currentAnalysis,
-    capturedImage,
-    setCapturedImage,
-    resetScan,
-    completeIntro,
-    hasCompletedIntro,
-    isLoadingIntro,
-  } = useApp();
+const GOLD = Colors.gold || '#F59E0B';
 
-  const [permission, requestPermission] = useCameraPermissions();
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const [introPhase, setIntroPhase] = useState<'biomarkers' | 'facescan' | 'complete'>(
-    hasCompletedIntro ? 'complete' : 'biomarkers'
-  );
-
-  const introCompletedRef = useRef(hasCompletedIntro);
-
-  // Sync intro state with AppContext
-  useEffect(() => {
-    if (hasCompletedIntro && !introCompletedRef.current) {
-      introCompletedRef.current = true;
-      setIntroPhase('complete');
-    }
-  }, [hasCompletedIntro]);
-
-  // --- 1. BOOT LOADER (App Initialization) ---
-  if (isLoadingIntro) {
-    return <BiometricIntroScan />;
-  }
-
-  // --- 2. INTRO SEQUENCE (The High-End Scan Animation) ---
-  if (introPhase === 'biomarkers' && !introCompletedRef.current) {
-    return (
-      <BiometricIntroScan 
-        onComplete={() => setIntroPhase('facescan')} 
-      />
-    );
-  }
-
-  // --- 3. INTRO SEQUENCE (Final Handshake) ---
-  if (introPhase === 'facescan' && !introCompletedRef.current) {
-    return (
-      <BiometricIntroScan 
-        onComplete={() => {
-          introCompletedRef.current = true;
-          completeIntro(); // Updates AsyncStorage and Context
-          setIntroPhase('complete');
-        }} 
-      />
-    );
-  }
-
-  // --- 4. MAIN CAMERA / SCAN UI ---
-  const startCamera = async () => {
-    if (!permission?.granted) {
-      const result = await requestPermission();
-      if (!result.granted) return;
-    }
-    setIsCameraActive(true);
-  };
-
-  if (!capturedImage) {
-    return (
-      <View style={styles.container}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.heroSection}>
-            <Text style={styles.heroTitle}>
-              REVEAL YOUR{'\n'}
-              <Text style={styles.heroTitleGold}>AURA INDEX</Text>
-            </Text>
-            <Text style={styles.heroSubtitle}>
-              AI-POWERED BIOMETRIC ANALYSIS & CLINICAL ROADMAP
-            </Text>
-          </View>
-
-          <View style={styles.cameraContainer}>
-            {isCameraActive ? (
-              <CameraView style={styles.camera} facing="front">
-                <BiometricScanOverlay />
-              </CameraView>
-            ) : (
-              <TouchableOpacity style={styles.capturePlaceholder} onPress={startCamera}>
-                <LinearGradient
-                  colors={[Colors.gold || '#D4AF37', '#B8860B']}
-                  style={styles.captureIconGradient}
-                >
-                  <Camera size={32} color="#000" />
-                </LinearGradient>
-                <Text style={styles.captureText}>START BIOMETRIC SCAN</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // --- 5. RESULTS VIEW ---
-  return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <AuraScoreGauge score={currentAnalysis?.auraScore || 0} />
-        <TouchableOpacity style={styles.resetButton} onPress={resetScan}>
-          <RefreshCw size={20} color={Colors.gold} />
-          <Text style={styles.resetButtonText}>NEW ANALYSIS</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
-  );
-}
-
+// --- STYLES DEFINED AT TOP TO PREVENT INITIALIZATION ERROR ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -167,7 +42,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   heroTitleGold: {
-    color: Colors.gold || '#D4AF37',
+    color: GOLD,
   },
   heroSubtitle: {
     color: 'rgba(255,255,255,0.5)',
@@ -177,9 +52,9 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     textAlign: 'center',
   },
-  cameraContainer: {
+  cameraWrapper: {
     width: '100%',
-    aspectRatio: 3/4,
+    aspectRatio: 3 / 4,
     borderRadius: 40,
     overflow: 'hidden',
     backgroundColor: '#111',
@@ -189,12 +64,12 @@ const styles = StyleSheet.create({
   camera: {
     flex: 1,
   },
-  capturePlaceholder: {
+  placeholder: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  captureIconGradient: {
+  iconCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
@@ -202,13 +77,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  captureText: {
-    color: Colors.gold || '#D4AF37',
+  btnText: {
+    color: GOLD,
     fontWeight: '900',
     letterSpacing: 2,
     fontSize: 12,
   },
-  resetButton: {
+  resetBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 40,
@@ -216,10 +91,119 @@ const styles = StyleSheet.create({
     backgroundColor: '#111',
     borderRadius: 20,
   },
-  resetButtonText: {
-    color: Colors.gold || '#D4AF37',
+  resetBtnText: {
+    color: GOLD,
     marginLeft: 10,
     fontWeight: '800',
     letterSpacing: 1,
   },
 });
+
+export default function ScanScreen() {
+  const { width: windowWidth } = useWindowDimensions();
+  const [permission, requestPermission] = useCameraPermissions();
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [introPhase, setIntroPhase] = useState<'biomarkers' | 'facescan' | 'complete'>('biomarkers');
+
+  const {
+    currentAnalysis,
+    capturedImage,
+    resetScan,
+    completeIntro,
+    hasCompletedIntro,
+    isLoadingIntro,
+  } = useApp();
+
+  const introCompletedRef = useRef(hasCompletedIntro);
+
+  // Sync intro state with persistence
+  useEffect(() => {
+    if (hasCompletedIntro) {
+      introCompletedRef.current = true;
+      setIntroPhase('complete');
+    }
+  }, [hasCompletedIntro]);
+
+  // 1. APP BOOT LOADER
+  if (isLoadingIntro) {
+    return <BiometricIntroScan />;
+  }
+
+  // 2. BIOMARKER ANALYSIS PHASE (12s Animation)
+  if (introPhase === 'biomarkers' && !introCompletedRef.current) {
+    return (
+      <BiometricIntroScan onComplete={() => setIntroPhase('facescan')} />
+    );
+  }
+
+  // 3. FACIAL GEOMETRY PHASE (Final Handshake)
+  if (introPhase === 'facescan' && !introCompletedRef.current) {
+    return (
+      <BiometricIntroScan
+        onComplete={() => {
+          introCompletedRef.current = true;
+          completeIntro();
+          setIntroPhase('complete');
+        }}
+      />
+    );
+  }
+
+  // 4. MAIN CAMERA LOGIC
+  const handleStartScan = async () => {
+    if (!permission?.granted) {
+      const { granted } = await requestPermission();
+      if (!granted) return;
+    }
+    setIsCameraActive(true);
+  };
+
+  if (!capturedImage) {
+    return (
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.heroSection}>
+            <Text style={styles.heroTitle}>
+              REVEAL YOUR{'\n'}
+              <Text style={styles.heroTitleGold}>AURA INDEX</Text>
+            </Text>
+            <Text style={styles.heroSubtitle}>
+              AI-POWERED BIOMETRIC ANALYSIS
+            </Text>
+          </View>
+
+          <View style={styles.cameraWrapper}>
+            {isCameraActive ? (
+              <CameraView style={styles.camera} facing="front">
+                <BiometricScanOverlay />
+              </CameraView>
+            ) : (
+              <TouchableOpacity style={styles.placeholder} onPress={handleStartScan}>
+                <LinearGradient
+                  colors={[GOLD, '#B8860B']}
+                  style={styles.iconCircle}
+                >
+                  <Camera size={32} color="#000" />
+                </LinearGradient>
+                <Text style={styles.btnText}>START BIOMETRIC SCAN</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // 5. RESULTS DISPLAY
+  return (
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <AuraScoreGauge score={currentAnalysis?.auraScore || 0} />
+        <TouchableOpacity style={styles.resetBtn} onPress={resetScan}>
+          <RefreshCw size={20} color={GOLD} />
+          <Text style={styles.resetBtnText}>NEW ANALYSIS</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
+}
