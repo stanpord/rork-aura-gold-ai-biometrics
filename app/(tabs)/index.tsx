@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Camera } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
@@ -17,15 +16,7 @@ const styles = StyleSheet.create({
   heroSection: { marginTop: 60, marginBottom: 40, alignItems: 'center' },
   heroTitle: { fontSize: 32, fontWeight: '900', color: '#FFF', textAlign: 'center' },
   heroTitleGold: { color: GOLD },
-  cameraWrapper: { 
-    width: '100%', 
-    aspectRatio: 3 / 4, 
-    borderRadius: 40, 
-    overflow: 'hidden', 
-    backgroundColor: '#111',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)' 
-  },
+  cameraWrapper: { width: '100%', aspectRatio: 3 / 4, borderRadius: 40, overflow: 'hidden', backgroundColor: '#111' },
   camera: { flex: 1 },
   placeholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   iconCircle: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
@@ -43,10 +34,7 @@ export default function ScanScreen() {
   const handleStartScan = async () => {
     if (!permission?.granted) {
       const { granted } = await requestPermission();
-      if (!granted) {
-        Alert.alert("Permission Required", "Camera access is needed for biometric analysis.");
-        return;
-      }
+      if (!granted) return;
     }
     setIsCameraActive(true);
   };
@@ -54,13 +42,10 @@ export default function ScanScreen() {
   const handleCapture = async () => {
     if (cameraRef.current) {
       try {
-        const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.8,
-          skipProcessing: true,
-        });
-        console.log('Biometric Data Captured:', photo?.uri);
-      } catch (error) {
-        console.error('Capture failed:', error);
+        const photo = await cameraRef.current.takePictureAsync({ quality: 0.8, skipProcessing: true });
+        console.log('Biometric Capture Success:', photo?.uri);
+      } catch (e) {
+        console.error('Biometric Capture Failed:', e);
       }
     }
   };
@@ -69,10 +54,7 @@ export default function ScanScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.heroSection}>
-          <Text style={styles.heroTitle}>
-            REVEAL YOUR{'\n'}
-            <Text style={styles.heroTitleGold}>AURA INDEX</Text>
-          </Text>
+          <Text style={styles.heroTitle}>REVEAL YOUR {'\n'}<Text style={styles.heroTitleGold}>AURA INDEX</Text></Text>
         </View>
         <View style={styles.cameraWrapper}>
           {isCameraActive ? (
@@ -81,9 +63,9 @@ export default function ScanScreen() {
             </CameraView>
           ) : (
             <TouchableOpacity style={styles.placeholder} onPress={handleStartScan}>
-              <LinearGradient colors={[GOLD, '#B8860B']} style={styles.iconCircle}>
+              <View style={[styles.iconCircle, { backgroundColor: GOLD }]}>
                 <Camera size={32} color="#000" />
-              </LinearGradient>
+              </View>
               <Text style={styles.btnText}>START BIOMETRIC SCAN</Text>
             </TouchableOpacity>
           )}
