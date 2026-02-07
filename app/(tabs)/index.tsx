@@ -1,94 +1,163 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  useWindowDimensions,
+  ActivityIndicator,
+} from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Camera } from 'lucide-react-native';
+
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
-import BiometricScanOverlay from '@/components/BiometricScanOverlay';
 import BiometricIntroScan from '@/components/BiometricIntroScan';
-
-const GOLD = Colors.gold || '#F59E0B';
 
 // --- STYLES DEFINED AT TOP (Aura Guard Compliance) ---
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
+  container: { flex: 1, backgroundColor: Colors.background || '#000' },
+  loadingContainer: { flex: 1, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  loadingText: { color: Colors.gold, marginTop: 24, fontSize: 12, fontWeight: '900', letterSpacing: 3, textAlign: 'center' },
   scrollContent: { padding: 24, alignItems: 'center' },
   heroSection: { marginTop: 60, marginBottom: 40, alignItems: 'center' },
   heroTitle: { fontSize: 32, fontWeight: '900', color: '#FFF', textAlign: 'center' },
-  heroTitleGold: { color: GOLD },
-  cameraWrapper: { 
+  heroTitleGold: { color: Colors.gold || '#F59E0B' },
+  cameraContainer: { 
     width: '100%', 
-    aspectRatio: 3 / 4, 
+    aspectRatio: 0.75, 
     borderRadius: 40, 
     overflow: 'hidden', 
-    backgroundColor: '#111',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)' 
+    backgroundColor: '#111', 
+    justifyContent: 'center' 
   },
   camera: { flex: 1 },
-  placeholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  iconCircle: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
-  btnText: { color: GOLD, fontWeight: '900', fontSize: 12, letterSpacing: 2 },
+  optionButton: { alignItems: 'center' },
+  optionIconGradient: { width: 72, height: 72, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  optionText: { color: Colors.gold, marginTop: 12, fontWeight: '900' },
+  instructionText: { color: '#888', marginTop: 20, fontSize: 10, letterSpacing: 1 },
+  newScanButton: { marginTop: 40, alignSelf: 'center', paddingVertical: 16, paddingHorizontal: 32, backgroundColor: '#1E293B', borderRadius: 20 },
+  newScanButtonText: { color: Colors.gold, fontWeight: '800' }
 });
 
+// Placeholder component for deleted biomarkers.tsx
+const BiomarkerLoadingScreen = ({ onComplete }: { onComplete?: () => void }) => {
+  return (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color={Colors.gold} />
+      <Text style={styles.loadingText}>INITIALIZING AURA GOLD</Text>
+      {onComplete && (
+        <TouchableOpacity onPress={onComplete} style={{ marginTop: 40 }}>
+          <Text style={{ color: '#888', fontSize: 10 }}>SKIP INITIALIZATION</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
+
 export default function ScanScreen() {
+  const {
+    capturedImage,
+    setCapturedImage,
+    completeIntro,
+    hasCompletedIntro,
+    isLoadingIntro,
+  } = useApp();
+
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraActive, setIsCameraActive] = useState(false);
-  const { isLoadingIntro, completeIntro } = useApp();
-  
-  // Ref to trigger the native camera shutter
+  const [introPhase, setIntroPhase] = useState<'biomarkers' | 'facescan' | 'complete'>(
+    hasCompletedIntro ? 'complete' : 'biomarkers'
+  );
+
+  // 1. ADDED: Camera Reference to enable capture
   const cameraRef = useRef<CameraView>(null);
 
-  if (isLoadingIntro) return <BiometricIntroScan onComplete={completeIntro} />;
-
-  const handleStartScan = async () => {
+  const startCamera = async () => {
     if (!permission?.granted) {
-      const { granted } = await requestPermission();
-      if (!granted) return;
+      const result = await requestPermission();
+      if (!result.granted) return;
     }
     setIsCameraActive(true);
   };
 
+  // 2. ADDED: The actual capture logic
   const handleCapture = async () => {
     if (cameraRef.current) {
       try {
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.8,
-          skipProcessing: true, 
+          skipProcessing: true,
         });
-        console.log('Biometric Capture Success:', photo?.uri);
-      } catch (error) {
-        console.error('Capture failed:', error);
+        setCapturedImage(photo.uri);
+      } catch (e) {
+        console.error("Capture Error:", e);
       }
     }
   };
 
+  // --- HANDSHAKE LOGIC ---
+  if (isLoadingIntro) return <BiomarkerLoadingScreen />;
+
+  if (introPhase === 'biomarkers' && !hasCompletedIntro) {
+    return <BiomarkerLoadingScreen onComplete={() => setIntroPhase('facescan')} />;
+  }
+
+  if (introPhase === 'facescan' && !hasCompletedIntro) {
+    return (
+      <BiometricIntroScan onComplete={() => {
+        completeIntro();
+        setIntroPhase('complete');
+      }} />
+    );
+  }
+
+  // --- MAIN UI ---
+  if (!capturedImage) {
+    return (
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.heroSection}>
+            <Text style={styles.heroTitle}>
+              REVEAL YOUR{'\n'}
+              <Text style={styles.heroTitleGold}>AURA INDEX</Text>
+            </Text>
+          </View>
+          
+          <View style={styles.cameraContainer}>
+            {isCameraActive ? (
+              // 3. CONNECTED: cameraRef and onPress trigger
+              <TouchableOpacity style={{flex: 1}} activeOpacity={1} onPress={handleCapture}>
+                <CameraView ref={cameraRef} style={styles.camera} facing="front" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.optionButton} onPress={startCamera}>
+                <LinearGradient colors={[Colors.gold, Colors.goldDark]} style={styles.optionIconGradient}>
+                  <Camera size={28} color="#000" />
+                </LinearGradient>
+                <Text style={styles.optionText}>TAKE PHOTO</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          {isCameraActive && (
+            <Text style={styles.instructionText}>TAP VIEWFINDER TO SCAN</Text>
+          )}
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.heroSection}>
-          <Text style={styles.heroTitle}>
-            REVEAL YOUR{'\n'}
-            <Text style={styles.heroTitleGold}>AURA INDEX</Text>
-          </Text>
-        </View>
-
-        <View style={styles.cameraWrapper}>
-          {isCameraActive ? (
-            <CameraView ref={cameraRef} style={styles.camera} facing="front">
-              <BiometricScanOverlay onReadyToCapture={handleCapture} />
-            </CameraView>
-          ) : (
-            <TouchableOpacity style={styles.placeholder} onPress={handleStartScan}>
-              <LinearGradient colors={[GOLD, '#B8860B']} style={styles.iconCircle}>
-                <Camera size={32} color="#000" />
-              </LinearGradient>
-              <Text style={styles.btnText}>START BIOMETRIC SCAN</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </ScrollView>
+      <TouchableOpacity 
+        onPress={() => { setCapturedImage(null); setIsCameraActive(false); }} 
+        style={styles.newScanButton}
+      >
+        <Text style={styles.newScanButtonText}>RESET BIOMETRICS</Text>
+      </TouchableOpacity>
     </View>
   );
 }
