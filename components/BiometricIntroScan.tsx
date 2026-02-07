@@ -1,153 +1,308 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
-import { Sparkles, Brain, Microscope, Dna, Activity } from 'lucide-react-native';
+import {
+  View,
+  StyleSheet,
+  Animated,
+  Dimensions,
+  Platform,
+} from 'react-native';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
+import { CheckCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const GOLD = Colors.gold || '#F59E0B';
-const CORNER_SIZE = 32;
-const CORNER_THICKNESS = 2;
+// Beautiful model with biometric scanning overlay - ideal for medspa diagnostic
+const FACE_IMAGE = 'https://r2-pub.rork.com/generated-images/475a6908-3419-4157-b237-ce96bff62622.png';
 
-const ANALYSIS_STAGES = [
-  { icon: Microscope, text: 'Analyzing skin texture...', subtext: 'Detecting pore size' },
-  { icon: Brain, text: 'Processing facial geometry...', subtext: 'Mapping landmarks' },
-  { icon: Dna, text: 'Evaluating aging markers...', subtext: 'Assessing elasticity' },
-  { icon: Activity, text: 'Generating treatment plan...', subtext: 'Matching protocols' },
-  { icon: Sparkles, text: 'Finalizing Aura Index...', subtext: 'Computing score' },
-];
+const getScreenDimensions = () => {
+  const { width, height } = Dimensions.get('window');
+  return { width, height };
+};
 
-// --- CRITICAL FIX: styles must be defined BEFORE the function below ---
+interface BiometricIntroScanProps {
+  onComplete: () => void;
+}
+
+
+
+export default function BiometricIntroScan({ onComplete }: BiometricIntroScanProps) {
+  const [currentPhase, setCurrentPhase] = useState(0);
+  const [dimensions, setDimensions] = useState(getScreenDimensions());
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDimensions({ width: window.width, height: window.height });
+    });
+    return () => subscription?.remove();
+  }, []);
+
+  const SCREEN_WIDTH = dimensions.width;
+  const SCREEN_HEIGHT = dimensions.height;
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const scanLineAnim = useRef(new Animated.Value(0)).current;
+  const gridOpacity = useRef(new Animated.Value(0)).current;
+  const faceOutlineScale = useRef(new Animated.Value(0.8)).current;
+  const faceOutlineOpacity = useRef(new Animated.Value(0)).current;
+
+  const exitAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    startIntroSequence();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const startIntroSequence = () => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+
+    setTimeout(() => {
+      setCurrentPhase(1);
+      runPhase1();
+    }, 500);
+  };
+
+  const runPhase1 = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+
+    Animated.parallel([
+      Animated.timing(gridOpacity, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(faceOutlineScale, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+      Animated.timing(faceOutlineOpacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    setTimeout(() => {
+      setCurrentPhase(2);
+      runPhase2();
+    }, 1200);
+  };
+
+  const runPhase2 = () => {
+    // Start scan line animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(scanLineAnim, {
+          toValue: 1,
+          duration: 3500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scanLineAnim, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+      progress += 3;
+      if (progress >= 100) {
+        progress = 100;
+        clearInterval(progressInterval);
+      }
+      if (Platform.OS !== 'web' && progress % 10 === 0) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    }, 100);
+
+    setTimeout(() => {
+      setCurrentPhase(3);
+      runPhase3();
+    }, 4200);
+  };
+
+  const runPhase3 = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+
+    setTimeout(() => {
+      Animated.timing(exitAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }).start(() => {
+        onComplete();
+      });
+    }, 1000);
+  };
+
+
+
+
+
+  return (
+    <Animated.View
+      style={[
+        styles.container,
+        {
+          opacity: Animated.multiply(fadeAnim, exitAnim),
+        },
+      ]}
+    >
+      {/* Face-only centered image */}
+      <View style={styles.faceContainer}>
+        <Animated.View
+          style={[
+            styles.faceImageContainer,
+            {
+              opacity: faceOutlineOpacity,
+              transform: [
+                { scale: faceOutlineScale },
+              ],
+            },
+          ]}
+        >
+          <Image
+            source={{ uri: FACE_IMAGE }}
+            style={styles.faceImage}
+            contentFit="cover"
+            contentPosition="center"
+          />
+          {/* Subtle scan overlay */}
+          <LinearGradient
+            colors={['rgba(0, 0, 0, 0.4)', 'rgba(245, 158, 11, 0.05)', 'rgba(0, 0, 0, 0.4)']}
+            style={styles.faceGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+          />
+          <View style={styles.scanLinesOverlay}>
+            {Array.from({ length: 60 }).map((_, i) => (
+              <View key={`scan-h-${i}`} style={[styles.scanLineH, { top: `${(i / 60) * 100}%` }]} />
+            ))}
+          </View>
+        </Animated.View>
+
+
+
+        {/* Scan line */}
+        <Animated.View
+          style={[
+            styles.scanLine,
+            {
+              transform: [
+                {
+                  translateY: scanLineAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, SCREEN_HEIGHT],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={['transparent', 'rgba(245, 158, 11, 0.6)', 'transparent']}
+            style={styles.scanLineGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          />
+        </Animated.View>
+
+      </View>
+
+      {currentPhase === 3 && (
+        <Animated.View style={[styles.completeOverlay, { opacity: exitAnim }]}>
+          <View style={styles.completeBadge}>
+            <CheckCircle size={24} color={Colors.success} />
+          </View>
+        </Animated.View>
+      )}
+    </Animated.View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 999,
+    backgroundColor: '#000',
+    zIndex: 100,
   },
+  faceContainer: {
+    flex: 1,
+  },
+  faceImageContainer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  faceImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+  },
+  faceGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  scanLinesOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  scanLineH: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(245, 158, 11, 0.05)',
+  },
+
   scanLine: {
     position: 'absolute',
-    width: '100%',
-    height: 2,
-    backgroundColor: GOLD,
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 3,
   },
-  cornerBase: {
-    position: 'absolute',
-    width: CORNER_SIZE,
-    height: CORNER_SIZE,
-    borderColor: GOLD,
+  scanLineGradient: {
+    flex: 1,
   },
-  panel: {
-    position: 'absolute',
-    bottom: 80,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(0,0,0,0.85)',
-    borderRadius: 20,
-    padding: 24,
+
+  completeOverlay: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
   },
-  textContainer: {
+  completeBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
-    marginVertical: 15,
-  },
-  title: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  subtitle: {
-    color: '#888',
-    fontSize: 14,
-    marginTop: 4,
-  },
-  progressBg: {
-    width: '100%',
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: GOLD,
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(16, 185, 129, 0.5)',
   },
 });
-
-export default function BiometricScanOverlay() {
-  const scanLineY = useRef(new Animated.Value(0)).current;
-  const pulseOpacity = useRef(new Animated.Value(0.3)).current;
-  const progress = useRef(new Animated.Value(0)).current;
-  const [stageIndex, setStageIndex] = useState(0);
-
-  useEffect(() => {
-    const scanLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(scanLineY, { toValue: 1, duration: 2500, useNativeDriver: false }),
-        Animated.timing(scanLineY, { toValue: 0, duration: 2500, useNativeDriver: false }),
-      ])
-    );
-
-    const pulseLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseOpacity, { toValue: 1, duration: 1000, useNativeDriver: false }),
-        Animated.timing(pulseOpacity, { toValue: 0.3, duration: 1000, useNativeDriver: false }),
-      ])
-    );
-
-    const progressAnim = Animated.timing(progress, {
-      toValue: 100,
-      duration: 12000,
-      useNativeDriver: false,
-    });
-
-    const timer = setInterval(() => {
-      setStageIndex((prev) => (prev + 1) % ANALYSIS_STAGES.length);
-    }, 2400);
-
-    scanLoop.start();
-    pulseLoop.start();
-    progressAnim.start();
-
-    return () => {
-      scanLoop.stop();
-      pulseLoop.stop();
-      progressAnim.stop();
-      clearInterval(timer);
-    };
-  }, []);
-
-  const translateY = scanLineY.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, SCREEN_HEIGHT * 0.55],
-  });
-
-  const barWidth = progress.interpolate({
-    inputRange: [0, 100],
-    outputRange: ['0%', '100%'],
-  });
-
-  const CurrentIcon = ANALYSIS_STAGES[stageIndex].icon;
-
-  return (
-    <View style={styles.container} pointerEvents="none">
-      <Animated.View
-        style={[styles.scanLine, { transform: [{ translateY }], opacity: pulseOpacity }]}
-      />
-      <View style={[styles.cornerBase, { top: 60, left: 40, borderTopWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS }]} />
-      <View style={[styles.cornerBase, { top: 60, right: 40, borderTopWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS }]} />
-      <View style={[styles.cornerBase, { bottom: 60, left: 40, borderBottomWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS }]} />
-      <View style={[styles.cornerBase, { bottom: 60, right: 40, borderBottomWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS }]} />
-      
-      <View style={styles.panel}>
-        <CurrentIcon size={32} color={GOLD} />
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>{ANALYSIS_STAGES[stageIndex].text}</Text>
-          <Text style={styles.subtitle}>{ANALYSIS_STAGES[stageIndex].subtext}</Text>
-        </View>
-        <View style={styles.progressBg}>
-          <Animated.View style={[styles.progressFill, { width: barWidth }]} />
-        </View>
-      </View>
-    </View>
-  );
-}
