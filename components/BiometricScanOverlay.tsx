@@ -18,7 +18,7 @@ const ANALYSIS_STAGES = [
 ];
 
 // ────────────────────────────────────────────────
-// THIS MUST BE BEFORE THE COMPONENT FUNCTION
+// Styles are correctly placed BEFORE the component
 // ────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
