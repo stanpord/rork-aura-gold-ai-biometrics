@@ -6,79 +6,26 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "rork-app",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
-      "supportsTablet": false,
       "bundleIdentifier": "app.rork.aura-gold-ai-biometrics",
       "infoPlist": {
         "NSCameraUsageDescription": "Aura Gold requires camera access for real-time facial biometric analysis.",
-        "NSMicrophoneUsageDescription": "Allow Aura Gold to access your microphone.",
-        "NSPhotoLibraryUsageDescription": "Allow Aura Gold to access your photos.",
         "NSFaceIDUsageDescription": "Aura Gold uses Face ID to securely authenticate staff and protect patient PHI."
-      },
-      "config": {
-        "usesNonExemptEncryption": false
       }
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
       "package": "app.rork.aura_gold_ai_biometrics",
       "permissions": [
         "CAMERA",
-        "RECORD_AUDIO",
-        "android.permission.VIBRATE",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
         "INTERNET",
         "USE_BIOMETRIC",
         "USE_FINGERPRINT"
       ]
     },
-    "web": {
-      "favicon": "./assets/images/favicon.png"
-    },
     "plugins": [
-      [
-        "expo-router",
-        {
-          "origin": "https://rork.com/"
-        }
-      ],
-      "expo-font",
-      "expo-web-browser",
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Aura Gold requires camera access for biometric analysis.",
-          "microphonePermission": "Allow Aura Gold to access your microphone.",
-          "recordAudioAndroid": true
-        }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "The app accesses your photos to let you share them with your friends."
-        }
-      ],
-      [
-        "expo-secure-store",
-        {
-          "configureAndroidBackup": true,
-          "faceIDPermission": "Allow Aura Gold to use Face ID to protect biometric data."
-        }
-      ]
-    ],
-    "experiments": {
-      "typedRoutes": true
-    }
+      "expo-router",
+      ["expo-camera", { "cameraPermission": "Allow Aura Gold to use the camera." }],
+      ["expo-secure-store", { "faceIDPermission": "Allow Aura Gold to use FaceID." }]
+    ]
   }
 }

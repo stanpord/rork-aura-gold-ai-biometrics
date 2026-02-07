@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Camera } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
@@ -9,7 +10,7 @@ import BiometricIntroScan from '@/components/BiometricIntroScan';
 
 const GOLD = Colors.gold || '#F59E0B';
 
-// --- STYLES DEFINED AT TOP ---
+// --- STYLES DEFINED AT TOP (Aura Guard Compliance) ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   scrollContent: { padding: 24, alignItems: 'center' },
@@ -23,7 +24,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden', 
     backgroundColor: '#111',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)'
+    borderColor: 'rgba(255,255,255,0.1)' 
   },
   camera: { flex: 1 },
   placeholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -36,7 +37,7 @@ export default function ScanScreen() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const { isLoadingIntro, completeIntro } = useApp();
   
-  // Camera reference to trigger the hardware shutter
+  // Ref to trigger the native camera shutter
   const cameraRef = useRef<CameraView>(null);
 
   if (isLoadingIntro) return <BiometricIntroScan onComplete={completeIntro} />;
@@ -54,12 +55,11 @@ export default function ScanScreen() {
       try {
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.8,
-          skipProcessing: true,
+          skipProcessing: true, 
         });
-        console.log('Aura Index Captured:', photo?.uri);
-        // You can now navigate to your results page with the URI
+        console.log('Biometric Capture Success:', photo?.uri);
       } catch (error) {
-        console.error('Failed to capture biometric photo:', error);
+        console.error('Capture failed:', error);
       }
     }
   };
@@ -76,18 +76,14 @@ export default function ScanScreen() {
 
         <View style={styles.cameraWrapper}>
           {isCameraActive ? (
-            <CameraView 
-              ref={cameraRef} 
-              style={styles.camera} 
-              facing="front"
-            >
+            <CameraView ref={cameraRef} style={styles.camera} facing="front">
               <BiometricScanOverlay onReadyToCapture={handleCapture} />
             </CameraView>
           ) : (
             <TouchableOpacity style={styles.placeholder} onPress={handleStartScan}>
-              <View style={[styles.iconCircle, { backgroundColor: GOLD }]}>
+              <LinearGradient colors={[GOLD, '#B8860B']} style={styles.iconCircle}>
                 <Camera size={32} color="#000" />
-              </View>
+              </LinearGradient>
               <Text style={styles.btnText}>START BIOMETRIC SCAN</Text>
             </TouchableOpacity>
           )}
