@@ -4,8 +4,6 @@ import { Sparkles, Brain, Microscope, Dna, Activity } from 'lucide-react-native'
 import Colors from '@/constants/colors';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-// 1. Constants defined first
 const GOLD = Colors.gold || '#F59E0B';
 const CORNER_SIZE = 32;
 const CORNER_THICKNESS = 2;
@@ -18,7 +16,7 @@ const ANALYSIS_STAGES = [
   { icon: Sparkles, text: 'Finalizing Aura Index...', subtext: 'Computing score' },
 ];
 
-// 2. STYLES defined at the TOP to prevent "Cannot access before initialization"
+// --- CRITICAL: Styles MUST be defined BEFORE the component function ---
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
@@ -75,7 +73,6 @@ const styles = StyleSheet.create({
   },
 });
 
-// 3. Component definition
 export default function BiometricScanOverlay() {
   const scanLineY = useRef(new Animated.Value(0)).current;
   const pulseOpacity = useRef(new Animated.Value(0.3)).current;
@@ -83,7 +80,6 @@ export default function BiometricScanOverlay() {
   const [stageIndex, setStageIndex] = useState(0);
 
   useEffect(() => {
-    // Scan animation loop
     const scanLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(scanLineY, { toValue: 1, duration: 2500, useNativeDriver: false }),
@@ -91,7 +87,6 @@ export default function BiometricScanOverlay() {
       ])
     );
 
-    // Pulsing effect loop
     const pulseLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseOpacity, { toValue: 1, duration: 1000, useNativeDriver: false }),
@@ -99,14 +94,12 @@ export default function BiometricScanOverlay() {
       ])
     );
 
-    // Progress bar animation
     const progressAnim = Animated.timing(progress, {
       toValue: 100,
       duration: 12000,
       useNativeDriver: false,
     });
 
-    // Stage switcher timer
     const timer = setInterval(() => {
       setStageIndex((prev) => (prev + 1) % ANALYSIS_STAGES.length);
     }, 2400);
@@ -140,13 +133,11 @@ export default function BiometricScanOverlay() {
       <Animated.View
         style={[styles.scanLine, { transform: [{ translateY }], opacity: pulseOpacity }]}
       />
-      {/* Viewfinder Corners */}
       <View style={[styles.cornerBase, { top: 60, left: 40, borderTopWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS }]} />
       <View style={[styles.cornerBase, { top: 60, right: 40, borderTopWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS }]} />
       <View style={[styles.cornerBase, { bottom: 60, left: 40, borderBottomWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS }]} />
       <View style={[styles.cornerBase, { bottom: 60, right: 40, borderBottomWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS }]} />
       
-      {/* Analysis Panel */}
       <View style={styles.panel}>
         <CurrentIcon size={32} color={GOLD} />
         <View style={styles.textContainer}>
