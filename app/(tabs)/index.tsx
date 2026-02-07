@@ -52,7 +52,6 @@ import EmailCaptureModal from '@/components/EmailCaptureModal';
 import BeforeAfterSlider from '@/components/BeforeAfterSlider';
 
 import BiometricIntroScan from '@/components/BiometricIntroScan';
-import BiomarkerLoadingScreen from '@/components/BiomarkerLoadingScreen';
 import GuidedCaptureOverlay from '@/components/GuidedCaptureOverlay';
 import HealthQuestionnaire from '@/components/HealthQuestionnaire';
 import PatientResultsModal from '@/components/PatientResultsModal';
