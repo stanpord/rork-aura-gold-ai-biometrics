@@ -5,7 +5,7 @@ import Colors from '@/constants/colors';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// 1. Move shared logic to plain constants (safe from initialization errors)
+// Shared constants (safe at top)
 const GOLD = Colors.gold || '#F59E0B';
 const CORNER_SIZE = 32;
 const CORNER_THICKNESS = 2;
@@ -18,79 +18,9 @@ const ANALYSIS_STAGES = [
   { icon: Sparkles, text: 'Finalizing Aura Index...', subtext: 'Computing score' },
 ];
 
-export default function BiometricScanOverlay() {
-  const scanLineY = useRef(new Animated.Value(0)).current;
-  const pulseOpacity = useRef(new Animated.Value(0.3)).current;
-  const progress = useRef(new Animated.Value(0)).current;
-  const [stageIndex, setStageIndex] = useState(0);
-
-  useEffect(() => {
-    // Scan Line Animation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(scanLineY, { toValue: 1, duration: 2500, useNativeDriver: true }),
-        Animated.timing(scanLineY, { toValue: 0, duration: 2500, useNativeDriver: true }),
-      ])
-    ).start();
-
-    // Pulse Animation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseOpacity, { toValue: 1, duration: 1000, useNativeDriver: true }),
-        Animated.timing(pulseOpacity, { toValue: 0.3, duration: 1000, useNativeDriver: true }),
-      ])
-    ).start();
-
-    // Progress Bar
-    Animated.timing(progress, {
-      toValue: 100,
-      duration: 12000,
-      useNativeDriver: false,
-    }).start();
-
-    const timer = setInterval(() => {
-      setStageIndex((prev) => (prev + 1) % ANALYSIS_STAGES.length);
-    }, 2400);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  const translateY = scanLineY.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, SCREEN_HEIGHT * 0.55],
-  });
-
-  const barWidth = progress.interpolate({
-    inputRange: [0, 100],
-    outputRange: ['0%', '100%'],
-  });
-
-  const CurrentIcon = ANALYSIS_STAGES[stageIndex].icon;
-
-  return (
-    <View style={styles.container} pointerEvents="none">
-      <Animated.View style={[styles.scanLine, { transform: [{ translateY }], opacity: pulseOpacity }]} />
-
-      {/* 2. Merge styles in the component prop to avoid StyleSheet recursion */}
-      <View style={[styles.cornerBase, { top: 60, left: 40, borderTopWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS }]} />
-      <View style={[styles.cornerBase, { top: 60, right: 40, borderTopWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS }]} />
-      <View style={[styles.cornerBase, { bottom: 60, left: 40, borderBottomWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS }]} />
-      <View style={[styles.cornerBase, { bottom: 60, right: 40, borderBottomWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS }]} />
-
-      <View style={styles.panel}>
-        <CurrentIcon size={32} color={GOLD} />
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>{ANALYSIS_STAGES[stageIndex].text}</Text>
-          <Text style={styles.subtitle}>{ANALYSIS_STAGES[stageIndex].subtext}</Text>
-        </View>
-        <View style={styles.progressBg}>
-          <Animated.View style={[styles.progressFill, { width: barWidth }]} />
-        </View>
-      </View>
-    </View>
-  );
-}
-
+// ────────────────────────────────────────────────
+// MOVE STYLES HERE — BEFORE ANY JSX OR COMPONENT LOGIC
+// ────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
@@ -146,3 +76,79 @@ const styles = StyleSheet.create({
     backgroundColor: GOLD,
   },
 });
+
+export default function BiometricScanOverlay() {
+  const scanLineY = useRef(new Animated.Value(0)).current;
+  const pulseOpacity = useRef(new Animated.Value(0.3)).current;
+  const progress = useRef(new Animated.Value(0)).current;
+  const [stageIndex, setStageIndex] = useState(0);
+
+  useEffect(() => {
+    // Scan Line Animation
+    const scanLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scanLineY, { toValue: 1, duration: 2500, useNativeDriver: true }),
+        Animated.timing(scanLineY, { toValue: 0, duration: 2500, useNativeDriver: true }),
+      ])
+    );
+    scanLoop.start();
+
+    // Pulse Animation
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseOpacity, { toValue: 1, duration: 1000, useNativeDriver: true }),
+        Animated.timing(pulseOpacity, { toValue: 0.3, duration: 1000, useNativeDriver: true }),
+      ])
+    );
+    pulseLoop.start();
+
+    // Progress Bar
+    Animated.timing(progress, {
+      toValue: 100,
+      duration: 12000,
+      useNativeDriver: false,
+    }).start();
+
+    const timer = setInterval(() => {
+      setStageIndex((prev) => (prev + 1) % ANALYSIS_STAGES.length);
+    }, 2400);
+
+    return () => {
+      scanLoop.stop();
+      pulseLoop.stop();
+      clearInterval(timer);
+    };
+  }, []);
+
+  const translateY = scanLineY.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, SCREEN_HEIGHT * 0.55],
+  });
+
+  const barWidth = progress.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  });
+
+  const CurrentIcon = ANALYSIS_STAGES[stageIndex].icon;
+
+  return (
+    <View style={styles.container} pointerEvents="none">
+      <Animated.View style={[styles.scanLine, { transform: [{ translateY }], opacity: pulseOpacity }]} />
+      <View style={[styles.cornerBase, { top: 60, left: 40, borderTopWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS }]} />
+      <View style={[styles.cornerBase, { top: 60, right: 40, borderTopWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS }]} />
+      <View style={[styles.cornerBase, { bottom: 60, left: 40, borderBottomWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS }]} />
+      <View style={[styles.cornerBase, { bottom: 60, right: 40, borderBottomWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS }]} />
+      <View style={styles.panel}>
+        <CurrentIcon size={32} color={GOLD} />
+        <View style={styles.textContainer}>
+          <Text style={styles.title}>{ANALYSIS_STAGES[stageIndex].text}</Text>
+          <Text style={styles.subtitle}>{ANALYSIS_STAGES[stageIndex].subtext}</Text>
+        </View>
+        <View style={styles.progressBg}>
+          <Animated.View style={[styles.progressFill, { width: barWidth }]} />
+        </View>
+      </View>
+    </View>
+  );
+}
