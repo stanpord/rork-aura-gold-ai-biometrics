@@ -6,21 +6,61 @@ import Colors from '@/constants/colors';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const GOLD = Colors.gold || '#F59E0B';
 
-// --- STYLES AT TOP ---
+// ✅ DEFINE ALL CONSTANTS AND STYLES FIRST
 const styles = StyleSheet.create({
-  container: { ...StyleSheet.absoluteFillObject, zIndex: 999 },
-  scanLine: { position: 'absolute', width: '100%', height: 2, backgroundColor: GOLD },
-  cornerBase: { position: 'absolute', width: 32, height: 32, borderColor: GOLD },
-  panel: {
-    position: 'absolute', bottom: 80, left: 20, right: 20,
-    backgroundColor: 'rgba(0,0,0,0.9)', borderRadius: 20, padding: 24, alignItems: 'center'
+  container: { 
+    ...StyleSheet.absoluteFillObject, 
+    zIndex: 999 
   },
-  progressBg: { width: '100%', height: 6, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 3, marginTop: 15, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: GOLD },
-  statusText: { color: '#FFF', fontSize: 16, fontWeight: '600', marginTop: 10 },
+  scanLine: { 
+    position: 'absolute', 
+    width: '100%', 
+    height: 2, 
+    backgroundColor: GOLD 
+  },
+  cornerBase: { 
+    position: 'absolute', 
+    width: 32, 
+    height: 32, 
+    borderColor: GOLD 
+  },
+  panel: {
+    position: 'absolute', 
+    bottom: 80, 
+    left: 20, 
+    right: 20,
+    backgroundColor: 'rgba(0,0,0,0.9)', 
+    borderRadius: 20, 
+    padding: 24, 
+    alignItems: 'center'
+  },
+  progressBg: { 
+    width: '100%', 
+    height: 6, 
+    backgroundColor: 'rgba(255,255,255,0.1)', 
+    borderRadius: 3, 
+    marginTop: 15, 
+    overflow: 'hidden' 
+  },
+  progressFill: { 
+    height: '100%', 
+    backgroundColor: GOLD 
+  },
+  statusText: { 
+    color: '#FFF', 
+    fontSize: 16, 
+    fontWeight: '600', 
+    marginTop: 10 
+  },
 });
 
-export default function BiometricScanOverlay({ onReadyToCapture }: { onReadyToCapture: () => void }) {
+// ✅ DEFINE INTERFACE BEFORE COMPONENT
+interface BiometricScanOverlayProps {
+  onReadyToCapture: () => void;
+}
+
+// ✅ COMPONENT COMES AFTER ALL DEFINITIONS
+export default function BiometricScanOverlay({ onReadyToCapture }: BiometricScanOverlayProps) {
   const scanLineY = useRef(new Animated.Value(0)).current;
   const progress = useRef(new Animated.Value(0)).current;
 
@@ -50,7 +90,6 @@ export default function BiometricScanOverlay({ onReadyToCapture }: { onReadyToCa
       }
     });
 
-    // Cleanup function
     return () => {
       scanAnimation.stop();
       progressAnimation.stop();
