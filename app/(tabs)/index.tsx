@@ -1,3 +1,4 @@
+// app/tabs/scan.tsx (or wherever this file is located)
 import React, { useState, useRef } from 'react';
 import {
   View,
@@ -15,7 +16,7 @@ import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import BiometricIntroScan from '@/components/BiometricIntroScan';
 
-// --- STYLES DEFINED AT TOP (Aura Guard Compliance) ---
+// --- STYLES DEFINED AT TOP ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background || '#000' },
   loadingContainer: { flex: 1, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center', padding: 40 },
@@ -41,8 +42,8 @@ const styles = StyleSheet.create({
   newScanButtonText: { color: Colors.gold, fontWeight: '800' }
 });
 
-// Placeholder component for deleted biomarkers.tsx
-const BiomarkerLoadingScreen = ({ onComplete }) => {
+// Move BiomarkerLoadingScreen to separate file or simplify
+const BiomarkerLoadingScreen = ({ onComplete }: { onComplete?: () => void }) => {
   return (
     <View style={styles.loadingContainer}>
       <ActivityIndicator size="large" color={Colors.gold} />
@@ -67,12 +68,7 @@ export default function ScanScreen() {
 
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraActive, setIsCameraActive] = useState(false);
-  const [introPhase, setIntroPhase] = useState(() =>
-    hasCompletedIntro ? 'complete' : 'biomarkers'
-  );
-
-  // 1. FIXED: Proper typing for CameraView ref
-  const cameraRef = useRef(null);
+  const cameraRef = useRef<any>(null);
 
   const startCamera = async () => {
     if (!permission?.granted) {
@@ -82,45 +78,38 @@ export default function ScanScreen() {
     setIsCameraActive(true);
   };
 
-  // 2. FIXED: Enhanced capture logic with proper error handling
   const handleCapture = async () => {
     if (cameraRef.current) {
       try {
-        // FIXED: Correct method call for expo-camera v13+
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.8,
           skipProcessing: true,
         });
         if (photo && photo.uri) {
           setCapturedImage(photo.uri);
-        } else {
-          console.error("Capture failed: No photo returned");
         }
       } catch (e) {
         console.error("Capture Error:", e);
       }
-    } else {
-      console.error("Camera reference is null");
     }
   };
 
-  // --- HANDSHAKE LOGIC ---
-  if (isLoadingIntro) return <BiomarkerLoadingScreen />;
-
-  if (introPhase === 'biomarkers' && !hasCompletedIntro) {
-    return <BiomarkerLoadingScreen onComplete={() => setIntroPhase('facescan')} />;
+  // Simplified handshake logic
+  if (isLoadingIntro) {
+    return <BiomarkerLoadingScreen />;
   }
 
-  if (introPhase === 'facescan' && !hasCompletedIntro) {
+  if (!hasCompletedIntro) {
     return (
-      <BiometricIntroScan onComplete={() => {
-        completeIntro();
-        setIntroPhase('complete');
-      }} />
+      <BiometricIntroScan 
+        onComplete={() => {
+          completeIntro();
+        }} 
+      />
     );
   }
 
-  // --- MAIN UI ---
+  // Main UI
   if (!capturedImage) {
     return (
       <View style={styles.container}>
@@ -134,7 +123,6 @@ export default function ScanScreen() {
           
           <View style={styles.cameraContainer}>
             {isCameraActive ? (
-              // 3. FIXED: Added proper CameraView configuration
               <TouchableOpacity style={{flex: 1}} activeOpacity={1} onPress={handleCapture}>
                 <CameraView 
                   ref={cameraRef} 
@@ -162,11 +150,10 @@ export default function ScanScreen() {
     );
   }
 
-  // FIXED: Added complete view when image is captured
+  // Captured image view
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Display captured image or analysis results here */}
         <View style={{alignItems: 'center', marginVertical: 40}}>
           <Text style={{color: '#FFF', fontSize: 18}}>BIOMETRIC ANALYSIS COMPLETE</Text>
           <Text style={{color: Colors.gold, fontSize: 24, marginTop: 10}}>AURA INDEX: 87%</Text>
