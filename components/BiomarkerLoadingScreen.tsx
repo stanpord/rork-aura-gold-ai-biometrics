@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
 import { Activity } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
 const GOLD = Colors.gold || '#F59E0B';
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // --- STYLES AT TOP (Aura Guard Compliance) ---
 const styles = StyleSheet.create({
@@ -43,6 +44,7 @@ const styles = StyleSheet.create({
   loaderBarFill: {
     height: '100%',
     backgroundColor: GOLD,
+    width: '30%', // Default width for indeterminate animation
   }
 });
 
@@ -52,17 +54,18 @@ export default function BiomarkerLoadingScreen() {
 
   useEffect(() => {
     // Rotation animation for the icon
-    Animated.loop(
+    const spinAnimation = Animated.loop(
       Animated.timing(spinValue, {
         toValue: 1,
         duration: 2000,
         easing: Easing.linear,
         useNativeDriver: true,
       })
-    ).start();
+    );
+    spinAnimation.start();
 
     // Indeterminate progress bar animation
-    Animated.loop(
+    const progressAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(progressValue, {
           toValue: 1,
@@ -76,8 +79,15 @@ export default function BiomarkerLoadingScreen() {
           useNativeDriver: false,
         })
       ])
-    ).start();
-  }, []);
+    );
+    progressAnimation.start();
+
+    // Cleanup function to stop animations
+    return () => {
+      spinAnimation.stop();
+      progressAnimation.stop();
+    };
+  }, [spinValue, progressValue]);
 
   const spin = spinValue.interpolate({
     inputRange: [0, 1],
@@ -86,7 +96,7 @@ export default function BiomarkerLoadingScreen() {
 
   const translateX = progressValue.interpolate({
     inputRange: [0, 1],
-    outputRange: [-200, 200],
+    outputRange: [-SCREEN_WIDTH, SCREEN_WIDTH],
   });
 
   return (
@@ -105,7 +115,6 @@ export default function BiomarkerLoadingScreen() {
           style={[
             styles.loaderBarFill, 
             { 
-              width: '100%',
               transform: [{ translateX }] 
             }
           ]} 
