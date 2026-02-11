@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 
-const AuraScoreGauge = ({ score = 500 }) => {
+const AuraScoreGauge = ({ score = 500 }: { score?: number }) => {
   return (
     <View style={{ 
       padding: 20, 
