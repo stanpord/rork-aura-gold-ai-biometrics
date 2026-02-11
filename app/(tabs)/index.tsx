@@ -3,7 +3,7 @@ import { Tabs } from 'expo-router';
 import { StyleSheet } from 'react-native';
 import Colors from '@/constants/colors';
 
-// ✅ STEP 1: DEFINE STYLES FIRST (THIS IS CRITICAL!)
+// ✅ STEP 1: DEFINE STYLES FIRST (BEFORE ANY USAGE)
 const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: Colors.background || '#000',
@@ -17,14 +17,14 @@ const styles = StyleSheet.create({
   },
 });
 
-// ✅ STEP 2: NOW USE THE STYLES
+// ✅ STEP 2: USE STYLES AFTER DEFINING THEM
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors.gold || '#F59E0B',
         tabBarInactiveTintColor: '#888',
-        tabBarStyle: styles.tabBar, // ✅ Now this works!
+        tabBarStyle: styles.tabBar,
         headerShown: false,
       }}
     >
@@ -32,7 +32,7 @@ export default function TabLayout() {
         name="scan"
         options={{
           title: 'Scan',
-          tabBarLabelStyle: styles.tabLabel, // ✅ This works too!
+          tabBarLabelStyle: styles.tabLabel,
           tabBarIcon: ({ color }) => (
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="3" stroke={color} strokeWidth="2"/>
