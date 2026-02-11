@@ -26,44 +26,101 @@ export default function BiometricIntroScan({ onComplete }: { onComplete: () => v
   const scanLineAnim = useRef(new Animated.Value(0)).current;
   const exitAnim = useRef(new Animated.Value(1)).current;
   const [phase, setPhase] = useState(0);
+  const windowHeight = Dimensions.get('window').height;
 
   useEffect(() => {
     // Start Intro
-    Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
+    Animated.timing(fadeAnim, { 
+      toValue: 1, 
+      duration: 800, 
+      useNativeDriver: true 
+    }).start();
 
     // Scan Animation
     Animated.loop(
-      Animated.timing(scanLineAnim, { toValue: 1, duration: 3000, useNativeDriver: true })
+      Animated.timing(scanLineAnim, { 
+        toValue: 1, 
+        duration: 3000, 
+        useNativeDriver: true,
+        easing: Animated.Easing.linear
+      })
     ).start();
 
     // Auto-complete intro sequence after 4 seconds
     const timer = setTimeout(() => {
       setPhase(3);
-      if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+          .catch(error => console.warn('Haptics error:', error));
+      }
       
-      Animated.timing(exitAnim, { toValue: 0, duration: 600, useNativeDriver: true }).start(() => onComplete());
+      Animated.timing(exitAnim, { 
+        toValue: 0, 
+        duration: 600, 
+        useNativeDriver: true 
+      }).start(() => {
+        if (onComplete) onComplete();
+      });
     }, 4000);
 
-    return () => clearTimeout(timer);
-  }, []);
+    return () => {
+      clearTimeout(timer);
+      // Stop animations to prevent memory leaks
+      fadeAnim.stopAnimation();
+      scanLineAnim.stopAnimation();
+      exitAnim.stopAnimation();
+    };
+  }, [fadeAnim, scanLineAnim, exitAnim, onComplete]);
 
   const translateY = scanLineAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, Dimensions.get('window').height]
+    outputRange: [0, windowHeight]
   });
 
+  // Handle case where onComplete might not be provided
+  const handleComplete = () => {
+    if (onComplete && typeof onComplete === 'function') {
+      onComplete();
+    }
+  };
+
   return (
-    <Animated.View style={[styles.container, { opacity: Animated.multiply(fadeAnim, exitAnim) }]}>
-      
+    <Animated.View 
+      style={[
+        styles.container, 
+        { 
+          opacity: Animated.multiply(
+            fadeAnim, 
+            exitAnim
+          ).interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 1]
+          })
+        }
+      ]}
+    >
       <View style={styles.faceContainer}>
-        <Image source={{ uri: FACE_IMAGE }} style={styles.faceImage} contentFit="cover" />
+        <Image 
+          source={{ uri: FACE_IMAGE }} 
+          style={styles.faceImage} 
+          contentFit="cover" 
+          cachePolicy="memory-disk"
+        />
         <Animated.View style={[styles.scanLine, { transform: [{ translateY }] }]}>
-          <LinearGradient colors={['transparent', Colors.gold || '#F59E0B', 'transparent']} start={{x:0, y:0}} end={{x:1, y:0}} style={{flex: 1}} />
+          <LinearGradient 
+            colors={['transparent', Colors.gold || '#F59E0B', 'transparent']} 
+            start={{x: 0, y: 0}} 
+            end={{x: 1, y: 0}} 
+            style={{flex: 1}} 
+          />
         </Animated.View>
       </View>
+      
       {phase === 3 && (
         <View style={styles.completeOverlay}>
-          <View style={styles.completeBadge}><CheckCircle size={32} color="#10B981" /></View>
+          <View style={styles.completeBadge}>
+            <CheckCircle size={32} color="#10B981" />
+          </View>
         </View>
       )}
     </Animated.View>
