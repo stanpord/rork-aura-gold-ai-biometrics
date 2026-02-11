@@ -16,7 +16,6 @@ enhancedConfig.resolver.assetExts = [
   "gltf",
   "glb",
   "mtl",
-  "mp3", // if you have audio files
 ];
 
 enhancedConfig.resolver.sourceExts = [
@@ -37,6 +36,27 @@ enhancedConfig.transformer = {
     ]),
   },
 };
+
+// Add timeout and performance optimizations
+enhancedConfig.server = {
+  ...enhancedConfig.server,
+  enhanceMiddleware: (middleware) => {
+    return (req, res, next) => {
+      // Add timeout headers
+      res.setTimeout(300000); // 5 minutes
+      req.setTimeout(300000);
+      return middleware(req, res, next);
+    };
+  },
+};
+
+// Performance optimizations
+enhancedConfig.cacheStores = [
+  // Add memory cache for faster rebuilds
+  require('metro-cache').getDefaultCacheStore({
+    cacheDirectory: '.metro-cache',
+  }),
+];
 
 module.exports = enhancedConfig;
 ```__
