@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
 import { Activity } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
@@ -25,18 +25,37 @@ export default function BiometricScanOverlay({ onReadyToCapture }: { onReadyToCa
   const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.loop(
-      Animated.timing(scanLineY, { toValue: 1, duration: 3000, useNativeDriver: true })
-    ).start();
+    // Scan line animation
+    const scanAnimation = Animated.loop(
+      Animated.timing(scanLineY, { 
+        toValue: 1, 
+        duration: 3000, 
+        useNativeDriver: true,
+        easing: Easing.linear
+      })
+    );
+    scanAnimation.start();
 
-    Animated.timing(progress, {
+    // Progress animation
+    const progressAnimation = Animated.timing(progress, {
       toValue: 100,
       duration: 12000,
       useNativeDriver: false,
-    }).start(({ finished }) => {
-      if (finished) onReadyToCapture();
+      easing: Easing.linear
     });
-  }, []);
+    
+    progressAnimation.start(({ finished }) => {
+      if (finished && onReadyToCapture) {
+        onReadyToCapture();
+      }
+    });
+
+    // Cleanup function
+    return () => {
+      scanAnimation.stop();
+      progressAnimation.stop();
+    };
+  }, [onReadyToCapture]);
 
   const translateY = scanLineY.interpolate({
     inputRange: [0, 1],
@@ -58,7 +77,9 @@ export default function BiometricScanOverlay({ onReadyToCapture }: { onReadyToCa
       <View style={styles.panel}>
         <Activity size={32} color={GOLD} />
         <Text style={styles.statusText}>Performing Clinical Handshake...</Text>
-        <View style={styles.progressBg}><Animated.View style={[styles.progressFill, { width: barWidth }]} /></View>
+        <View style={styles.progressBg}>
+          <Animated.View style={[styles.progressFill, { width: barWidth }]} />
+        </View>
       </View>
     </View>
   );
