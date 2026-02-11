@@ -1,5 +1,6 @@
+// components/AuraScoreGauge.tsx
 import React from 'react';
-import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '@/constants/colors';
 
@@ -22,7 +23,7 @@ const AuraScoreGauge: React.FC<AuraScoreGaugeProps> = ({
         toValue: displayScore,
         duration: 2000,
         easing: Easing.out(Easing.ease),
-        useNativeDriver: false,
+        useNativeDriver: Platform.OS !== 'web', // Fix for web platform
       }).start();
     }
   }, [displayScore, animated]);
@@ -53,6 +54,93 @@ const AuraScoreGauge: React.FC<AuraScoreGaugeProps> = ({
     return "Beginning Awareness";
   };
 
+  // STYLES DEFINED FIRST (IMPORTANT!)
+  const styles = StyleSheet.create({
+    container: {
+      backgroundColor: Colors.cardBackground || '#1a1a2e',
+      borderRadius: 20,
+      padding: 20,
+      marginVertical: 16,
+      marginHorizontal: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(255, 215, 0, 0.2)',
+      shadowColor: '#FFD700',
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: '#FFD700',
+      marginBottom: 4,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: '#aaa',
+    },
+    gaugeContainer: {
+      alignItems: 'center',
+    },
+    scoreDisplay: {
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    scoreNumber: {
+      fontSize: 48,
+      fontWeight: 'bold',
+      color: '#FFD700',
+      textShadowColor: 'rgba(255, 215, 0, 0.5)',
+      textShadowOffset: { width: 2, height: 2 },
+      textShadowRadius: 4,
+    },
+    scoreLabel: {
+      fontSize: 14,
+      color: '#FFD700',
+      fontWeight: '600',
+      letterSpacing: 1,
+      marginTop: 4,
+    },
+    visualGauge: {
+      width: '100%',
+      height: 20,
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      borderRadius: 10,
+      overflow: 'hidden',
+      marginBottom: 20,
+    },
+    gaugeBar: {
+      height: '100%',
+      borderRadius: 10,
+    },
+    gaugeFill: {
+      height: '100%',
+      backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    descriptionContainer: {
+      alignItems: 'center',
+    },
+    descriptionText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#FFD700',
+      textAlign: 'center',
+      marginBottom: 4,
+    },
+    scoreRange: {
+      fontSize: 12,
+      color: '#888',
+    },
+  });
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -67,6 +155,7 @@ const AuraScoreGauge: React.FC<AuraScoreGaugeProps> = ({
             {animated ? animatedValue.interpolate({
               inputRange: [0, 1000],
               outputRange: ['0', displayScore.toString()],
+              extrapolate: 'clamp',
             }) : displayScore}
           </Animated.Text>
           <Text style={styles.scoreLabel}>AURA SCORE</Text>
@@ -100,91 +189,5 @@ const AuraScoreGauge: React.FC<AuraScoreGaugeProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: Colors.cardBackground || '#1a1a2e',
-    borderRadius: 20,
-    padding: 20,
-    marginVertical: 16,
-    marginHorizontal: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.2)',
-    shadowColor: '#FFD700',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFD700',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#aaa',
-  },
-  gaugeContainer: {
-    alignItems: 'center',
-  },
-  scoreDisplay: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  scoreNumber: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#FFD700',
-    textShadowColor: 'rgba(255, 215, 0, 0.5)',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
-  },
-  scoreLabel: {
-    fontSize: 14,
-    color: '#FFD700',
-    fontWeight: '600',
-    letterSpacing: 1,
-    marginTop: 4,
-  },
-  visualGauge: {
-    width: '100%',
-    height: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 10,
-    overflow: 'hidden',
-    marginBottom: 20,
-  },
-  gaugeBar: {
-    height: '100%',
-    borderRadius: 10,
-  },
-  gaugeFill: {
-    height: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  descriptionContainer: {
-    alignItems: 'center',
-  },
-  descriptionText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFD700',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  scoreRange: {
-    fontSize: 12,
-    color: '#888',
-  },
-});
 
 export default AuraScoreGauge;
