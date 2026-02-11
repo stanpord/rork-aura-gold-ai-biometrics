@@ -1,136 +1,190 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
-import { trpc, trpcClient } from '@/lib/trpc';
-import * as SplashScreen from 'expo-splash-screen';
-import React, { useEffect, useState, useCallback } from 'react';
-import { StatusBar } from 'expo-status-bar';
-import * as ScreenOrientation from 'expo-screen-orientation';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
-import { AppProvider, useApp } from '@/contexts/AppContext';
-import BiometricIntroScan from '@/components/BiometricIntroScan';
+import React from 'react';
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '@/constants/colors';
-import BiomarkerLoadingScreen from '@/components/BiomarkerLoadingScreen';
 
-// Prevent splash screen from hiding until we are ready
-SplashScreen.preventAutoHideAsync().catch(() => {
-  /* handle error */
+interface AuraScoreGaugeProps {
+  score: number; // 1-1000
+  animated?: boolean;
+}
+
+const AuraScoreGauge: React.FC<AuraScoreGaugeProps> = ({ 
+  score = 500, 
+  animated = true 
+}) => {
+  const [animatedValue] = React.useState(new Animated.Value(0));
+  const displayScore = Math.min(Math.max(score, 1), 1000);
+
+  // Animate on mount
+  React.useEffect(() => {
+    if (animated) {
+      Animated.timing(animatedValue, {
+        toValue: displayScore,
+        duration: 2000,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [displayScore, animated]);
+
+  // Calculate percentage for gauge visualization
+  const percentage = displayScore / 1000;
+  
+  // Determine color based on score range
+  const getScoreColor = () => {
+    if (displayScore >= 800) return ['#FFD700', '#FFA500']; // Golden
+    if (displayScore >= 600) return ['#FFA500', '#FF8C00']; // Orange-Gold
+    if (displayScore >= 400) return ['#FF8C00', '#FF6347']; // Orange-Red
+    if (displayScore >= 200) return ['#FF6347', '#FF4500']; // Red-Orange
+    return ['#FF4500', '#DC143C']; // Deep Red
+  };
+
+  // Get descriptive text based on score
+  const getScoreDescription = () => {
+    if (displayScore >= 900) return "Divine Radiance";
+    if (displayScore >= 800) return "Brilliant Aura";
+    if (displayScore >= 700) return "Radiant Energy";
+    if (displayScore >= 600) return "Strong Presence";
+    if (displayScore >= 500) return "Balanced Aura";
+    if (displayScore >= 400) return "Moderate Energy";
+    if (displayScore >= 300) return "Developing Aura";
+    if (displayScore >= 200) return "Awakening Energy";
+    if (displayScore >= 100) return "Subtle Presence";
+    return "Beginning Awareness";
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>YOUR AURA ANALYSIS</Text>
+        <Text style={styles.subtitle}>Personal Energy Assessment</Text>
+      </View>
+      
+      <View style={styles.gaugeContainer}>
+        {/* Main Score Display */}
+        <View style={styles.scoreDisplay}>
+          <Animated.Text style={styles.scoreNumber}>
+            {animated ? animatedValue.interpolate({
+              inputRange: [0, 1000],
+              outputRange: ['0', displayScore.toString()],
+            }) : displayScore}
+          </Animated.Text>
+          <Text style={styles.scoreLabel}>AURA SCORE</Text>
+        </View>
+
+        {/* Visual Gauge */}
+        <View style={styles.visualGauge}>
+          <LinearGradient
+            colors={getScoreColor()}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.gaugeBar}
+          >
+            <View 
+              style={[
+                styles.gaugeFill, 
+                { width: `${percentage * 100}%` }
+              ]} 
+            />
+          </LinearGradient>
+        </View>
+
+        {/* Score Description */}
+        <View style={styles.descriptionContainer}>
+          <Text style={styles.descriptionText}>{getScoreDescription()}</Text>
+          <Text style={styles.scoreRange}>
+            Score Range: 1 - 1000
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: Colors.cardBackground || '#1a1a2e',
+    borderRadius: 20,
+    padding: 20,
+    marginVertical: 16,
+    marginHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.2)',
+    shadowColor: '#FFD700',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#aaa',
+  },
+  gaugeContainer: {
+    alignItems: 'center',
+  },
+  scoreDisplay: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  scoreNumber: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    textShadowColor: 'rgba(255, 215, 0, 0.5)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
+  },
+  scoreLabel: {
+    fontSize: 14,
+    color: '#FFD700',
+    fontWeight: '600',
+    letterSpacing: 1,
+    marginTop: 4,
+  },
+  visualGauge: {
+    width: '100%',
+    height: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  gaugeBar: {
+    height: '100%',
+    borderRadius: 10,
+  },
+  gaugeFill: {
+    height: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  descriptionContainer: {
+    alignItems: 'center',
+  },
+  descriptionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFD700',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  scoreRange: {
+    fontSize: 12,
+    color: '#888',
+  },
 });
 
-const queryClient = new QueryClient();
-
-function RootLayoutNav() {
-  return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: Colors.background || '#000' },
-      }}
-    >
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen
-        name="modal"
-        options={{
-          presentation: 'modal',
-          animation: 'slide_from_bottom',
-        }}
-      />
-    </Stack>
-  );
-}
-
-function AppContent() {
-  const appContext = useApp();
-  const { hasCompletedIntro, isLoadingIntro, completeIntro } = appContext;
-  const [showIntro, setShowIntro] = useState(false);
-  const [isPreparing, setIsPreparing] = useState(true);
-
-  useEffect(() => {
-    // Lock orientation to portrait for clinical facial scanning accuracy
-    const lockOrientation = async () => {
-      try {
-        if (ScreenOrientation.lockAsync) {
-          await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-        }
-      } catch (e) {
-        console.warn('Orientation lock not supported:', e);
-      }
-    };
-    lockOrientation();
-  }, []);
-
-  useEffect(() => {
-    let prepareTimer: NodeJS.Timeout;
-    
-    const prepareApp = async () => {
-      try {
-        if (!isLoadingIntro) {
-          // Small delay to ensure proper component mounting
-          prepareTimer = setTimeout(async () => {
-            if (!hasCompletedIntro) {
-              setShowIntro(true);
-            }
-            try {
-              await SplashScreen.hideAsync();
-            } catch (hideError) {
-              console.warn('Error hiding splash screen:', hideError);
-            }
-            setIsPreparing(false);
-          }, 100);
-        }
-      } catch (error) {
-        console.warn('Error preparing app:', error);
-        // Ensure splash screen is hidden even if there's an error
-        try {
-          await SplashScreen.hideAsync();
-        } catch (hideError) {
-          console.warn('Error hiding splash screen:', hideError);
-        }
-        setIsPreparing(false);
-      }
-    };
-
-    prepareApp();
-
-    return () => {
-      if (prepareTimer) {
-        clearTimeout(prepareTimer);
-      }
-    };
-  }, [isLoadingIntro, hasCompletedIntro]);
-
-  const handleIntroComplete = useCallback(() => {
-    setShowIntro(false);
-    completeIntro();
-  }, [completeIntro]);
-
-  // Show loading screen while context is initializing
-  if (isLoadingIntro || isPreparing) {
-    return <BiomarkerLoadingScreen />;
-  }
-
-  return (
-    <>
-      <StatusBar style="light" />
-      <RootLayoutNav />
-      {/* Intro Overlay is rendered on top of the stack 
-        to ensure a smooth transition into the Aura Scan 
-      */}
-      {showIntro && <BiometricIntroScan onComplete={handleIntroComplete} />}
-    </>
-  );
-}
-
-export default function RootLayout() {
-  return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <AppProvider>
-            <AppContent />
-          </AppProvider>
-        </GestureHandlerRootView>
-      </QueryClientProvider>
-    </trpc.Provider>
-  );
-}
+export default AuraScoreGauge;
