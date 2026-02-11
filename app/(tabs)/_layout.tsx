@@ -13,26 +13,26 @@ import ClinicLoginModal from '@/components/ClinicLoginModal';
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: Colors.surface,
-    borderTopColor: Colors.border,
+    backgroundColor: Colors.surface || '#1F2937',
+    borderTopColor: Colors.border || '#374151',
     borderTopWidth: 1,
     paddingTop: 8,
     height: 88,
   },
   tabBarLabel: {
     fontSize: 10,
-    fontWeight: '700' as const,
+    fontWeight: '700',
     letterSpacing: 0.5,
   },
   header: {
-    backgroundColor: Colors.background,
-    borderBottomColor: Colors.border,
+    backgroundColor: Colors.background || '#000000',
+    borderBottomColor: Colors.border || '#374151',
     borderBottomWidth: 1,
   },
   headerTitle: {
     fontSize: 14,
-    fontWeight: '900' as const,
-    color: Colors.white,
+    fontWeight: '900',
+    color: Colors.white || '#FFFFFF',
     letterSpacing: 2,
   },
   headerButtonLeft: {
@@ -50,24 +50,29 @@ export default function TabLayout() {
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   const handleLogin = async (passcode: string): Promise<boolean> => {
-    const success = await authenticateStaff(passcode);
-    if (success) {
-      setShowLoginModal(false);
+    try {
+      const success = await authenticateStaff(passcode);
+      if (success) {
+        setShowLoginModal(false);
+      }
+      return success;
+    } catch (error) {
+      console.error('Authentication error:', error);
+      return false;
     }
-    return success;
   };
 
   return (
     <>
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: Colors.gold,
-          tabBarInactiveTintColor: Colors.textMuted,
+          tabBarActiveTintColor: Colors.gold || '#F59E0B',
+          tabBarInactiveTintColor: Colors.textMuted || '#9CA3AF',
           tabBarStyle: styles.tabBar,
           tabBarLabelStyle: styles.tabBarLabel,
           headerStyle: styles.header,
           headerTitleStyle: styles.headerTitle,
-          headerTintColor: Colors.white,
+          headerTintColor: Colors.white || '#FFFFFF',
         }}
       >
         <Tabs.Screen
@@ -82,13 +87,14 @@ export default function TabLayout() {
               <TouchableOpacity
                 style={styles.headerButtonLeft}
                 onPress={() => setShowLoginModal(true)}
+                accessibilityLabel="Open clinic login"
               >
                 <Lock
                   size={18}
                   color={
                     isStaffAuthenticated
-                      ? Colors.gold
-                      : Colors.textMuted
+                      ? Colors.gold || '#F59E0B'
+                      : Colors.textMuted || '#9CA3AF'
                   }
                 />
               </TouchableOpacity>
@@ -105,6 +111,10 @@ export default function TabLayout() {
               <LayoutDashboard size={size} color={color} />
             ),
             tabBarBadge: isStaffAuthenticated ? undefined : '🔒',
+            tabBarBadgeStyle: {
+              backgroundColor: Colors.error || '#EF4444',
+              color: Colors.white || '#FFFFFF',
+            },
           }}
         />
       </Tabs>
