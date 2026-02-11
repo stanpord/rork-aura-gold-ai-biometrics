@@ -11,38 +11,51 @@
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.rork.aura-gold-ai-biometrics-clone",
       "infoPlist": {
-        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
-        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
-        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
-        "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to access your Face ID biometric data."
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera for biometric scanning",
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone for voice features",
+        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos for profile images",
+        "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to access your Face ID for secure authentication"
       },
       "config": {
         "usesNonExemptEncryption": false
+      },
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          }
+        ]
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#000000"
       },
       "package": "app.rork.aura_gold_ai_biometrics_clone",
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
-        "android.permission.VIBRATE",
+        "VIBRATE",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "INTERNET"
+      ],
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.REQUEST_INSTALL_PACKAGES"
       ]
     },
     "web": {
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "bundler": "metro"
     },
     "plugins": [
       [
@@ -56,27 +69,56 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera for biometric scanning",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone for voice features",
           "recordAudioAndroid": true
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "The app accesses your photos to let you share them with your friends."
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos for profile images"
         }
       ],
       [
         "expo-secure-store",
         {
-          "configureAndroidBackup": true,
-          "faceIDPermission": "Allow $(PRODUCT_NAME) to access your Face ID biometric data."
+          "configureAndroidBackup": false,
+          "faceIDPermission": "Allow $(PRODUCT_NAME) to access your Face ID for secure authentication"
+        }
+      ],
+      [
+        "expo-screen-orientation",
+        {
+          "initialOrientation": "PORTRAIT"
+        }
+      ],
+      "expo-haptics",
+      "expo-crypto",
+      [
+        "expo-clipboard",
+        {
+          "ios": {
+            "userTrackingPermission": "Allow $(PRODUCT_NAME) to access clipboard for sharing features"
+          }
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      " eas": {
+        "projectId": "your-eas-project-id-here"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_ERROR_RECOVERY",
+      "fallbackToCacheTimeout": 30000
     }
   }
 }
