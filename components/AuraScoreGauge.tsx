@@ -1,91 +1,136 @@
-iimport React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Stack } from 'expo-router';
+import { trpc, trpcClient } from '@/lib/trpc';
+import * as SplashScreen from 'expo-splash-screen';
+import React, { useEffect, useState, useCallback } from 'react';
+import { StatusBar } from 'expo-status-bar';
+import * as ScreenOrientation from 'expo-screen-orientation';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+import { AppProvider, useApp } from '@/contexts/AppContext';
+import BiometricIntroScan from '@/components/BiometricIntroScan';
 import Colors from '@/constants/colors';
+import BiomarkerLoadingScreen from '@/components/BiomarkerLoadingScreen';
 
-interface AuraScoreGaugeProps {
-  score: number;
-  size?: number;
-}
-
-// --- 1. STYLES AT TOP (Initialization Guard) ---
-const styles = StyleSheet.create({
-  container: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  textContainer: {
-    position: 'absolute',
-    alignItems: 'center',
-  },
-  scoreText: {
-    fontSize: 48,
-    fontWeight: '900',
-    color: '#FFF',
-  },
-  label: {
-    fontSize: 10,
-    color: Colors.gold || '#F59E0B',
-    fontWeight: '700',
-    letterSpacing: 2,
-    marginTop: -5,
-  },
+// Prevent splash screen from hiding until we are ready
+SplashScreen.preventAutoHideAsync().catch(() => {
+  /* handle error */
 });
 
-// --- 2. COMPONENT LOGIC ---
-export default function AuraScoreGauge({ score, size = 200 }: AuraScoreGaugeProps) {
-  const strokeWidth = 15;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  
-  // Ensure score is clamped between 0 and 100 to prevent SVG "bleeding"
-  const clampedScore = Math.min(Math.max(score, 0), 100);
-  const strokeDashoffset = circumference - (clampedScore / 100) * circumference;
+const queryClient = new QueryClient();
+
+function RootLayoutNav() {
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: Colors.background || '#000' },
+      }}
+    >
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen
+        name="modal"
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
+    </Stack>
+  );
+}
+
+function AppContent() {
+  const appContext = useApp();
+  const { hasCompletedIntro, isLoadingIntro, completeIntro } = appContext;
+  const [showIntro, setShowIntro] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(true);
+
+  useEffect(() => {
+    // Lock orientation to portrait for clinical facial scanning accuracy
+    const lockOrientation = async () => {
+      try {
+        if (ScreenOrientation.lockAsync) {
+          await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+        }
+      } catch (e) {
+        console.warn('Orientation lock not supported:', e);
+      }
+    };
+    lockOrientation();
+  }, []);
+
+  useEffect(() => {
+    let prepareTimer: NodeJS.Timeout;
+    
+    const prepareApp = async () => {
+      try {
+        if (!isLoadingIntro) {
+          // Small delay to ensure proper component mounting
+          prepareTimer = setTimeout(async () => {
+            if (!hasCompletedIntro) {
+              setShowIntro(true);
+            }
+            try {
+              await SplashScreen.hideAsync();
+            } catch (hideError) {
+              console.warn('Error hiding splash screen:', hideError);
+            }
+            setIsPreparing(false);
+          }, 100);
+        }
+      } catch (error) {
+        console.warn('Error preparing app:', error);
+        // Ensure splash screen is hidden even if there's an error
+        try {
+          await SplashScreen.hideAsync();
+        } catch (hideError) {
+          console.warn('Error hiding splash screen:', hideError);
+        }
+        setIsPreparing(false);
+      }
+    };
+
+    prepareApp();
+
+    return () => {
+      if (prepareTimer) {
+        clearTimeout(prepareTimer);
+      }
+    };
+  }, [isLoadingIntro, hasCompletedIntro]);
+
+  const handleIntroComplete = useCallback(() => {
+    setShowIntro(false);
+    completeIntro();
+  }, [completeIntro]);
+
+  // Show loading screen while context is initializing
+  if (isLoadingIntro || isPreparing) {
+    return <BiomarkerLoadingScreen />;
+  }
 
   return (
-    <View style={[styles.container, { width: size, height: size }]}>
-      
-      <Svg width={size} height={size}>
-        <Defs>
-          <LinearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <Stop offset="0%" stopColor={Colors.gold || '#F59E0B'} />
-            <Stop offset="100%" stopColor="#B8860B" />
-          </LinearGradient>
-        </Defs>
-        
-        {/* Background Circle (Track) */}
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="rgba(255,255,255,0.1)"
-          strokeWidth={strokeWidth}
-          fill="none"
-        />
-        
-        {/* Foreground Circle (Progress) */}
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="url(#grad)"
-          strokeWidth={strokeWidth}
-          fill="none"
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          // Better compatibility for rotation
-          rotation="-90"
-          originX={size / 2}
-          originY={size / 2}
-        />
-      </Svg>
-      
-      <View style={styles.textContainer}>
-        <Text style={styles.scoreText}>{Math.round(clampedScore)}</Text>
-        <Text style={styles.label}>AURA INDEX</Text>
-      </View>
-    </View>
+    <>
+      <StatusBar style="light" />
+      <RootLayoutNav />
+      {/* Intro Overlay is rendered on top of the stack 
+        to ensure a smooth transition into the Aura Scan 
+      */}
+      {showIntro && <BiometricIntroScan onComplete={handleIntroComplete} />}
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <AppProvider>
+            <AppContent />
+          </AppProvider>
+        </GestureHandlerRootView>
+      </QueryClientProvider>
+    </trpc.Provider>
   );
 }
