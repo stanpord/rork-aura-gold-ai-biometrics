@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { trpc, trpcClient } from '@/lib/trpc';
 import * as SplashScreen from 'expo-splash-screen';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -47,9 +47,11 @@ function AppContent() {
     // Lock orientation to portrait for clinical facial scanning accuracy
     const lockOrientation = async () => {
       try {
-        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+        if (ScreenOrientation.lockAsync) {
+          await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+        }
       } catch (e) {
-        console.warn('Orientation lock not supported');
+        console.warn('Orientation lock not supported:', e);
       }
     };
     lockOrientation();
@@ -57,22 +59,32 @@ function AppContent() {
 
   useEffect(() => {
     async function prepare() {
-      if (!isLoadingIntro) {
-        // Subtle delay to ensure the IntroScan component is mounted
-        // before we pull the curtain back on the Splash screen
-        if (!hasCompletedIntro) {
-          setShowIntro(true);
+      try {
+        if (!isLoadingIntro) {
+          // Subtle delay to ensure the IntroScan component is mounted
+          // before we pull the curtain back on the Splash screen
+          if (!hasCompletedIntro) {
+            setShowIntro(true);
+          }
+          await SplashScreen.hideAsync();
         }
-        await SplashScreen.hideAsync();
+      } catch (error) {
+        console.warn('Error preparing app:', error);
+        // Still hide splash screen to prevent hanging
+        try {
+          await SplashScreen.hideAsync();
+        } catch (hideError) {
+          console.warn('Error hiding splash screen:', hideError);
+        }
       }
     }
     prepare();
   }, [isLoadingIntro, hasCompletedIntro]);
 
-  const handleIntroComplete = () => {
+  const handleIntroComplete = useCallback(() => {
     setShowIntro(false);
     completeIntro();
-  };
+  }, [completeIntro]);
 
   // While the AppContext is fetching the initial auth/session state
   if (isLoadingIntro) {
