@@ -3,7 +3,40 @@ import { View, Text, Modal, StyleSheet, ScrollView, TouchableOpacity } from 'rea
 import { Info, ShieldAlert, CheckCircle2, ChevronRight } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 
-const PatientResultsModal = ({ analysis, onClose }) => {
+interface VolumeLossZone {
+  zone: string;
+  percentage: number;
+}
+
+interface ClinicalRoadmapItem {
+  name: string;
+  reasoning: string;
+  isSafe: boolean;
+  safetyWarning?: string;
+}
+
+interface FitzpatrickAssessment {
+  type: number;
+}
+
+interface AnalysisData {
+  auraScore: number;
+  fitzpatrickAssessment: FitzpatrickAssessment;
+  volumeLoss: VolumeLossZone[];
+  clinicalRoadmap: ClinicalRoadmapItem[];
+}
+
+interface PatientResultsModalProps {
+  analysis: AnalysisData | null;
+  onClose: () => void;
+}
+
+const PatientResultsModal: React.FC<PatientResultsModalProps> = ({ analysis, onClose }) => {
+  // Return null if no analysis data
+  if (!analysis) {
+    return null;
+  }
+
   // Helper to color-code severity
   const getSeverityColor = (percentage: number) => {
     if (percentage > 60) return '#EF4444'; // High loss
@@ -12,8 +45,8 @@ const PatientResultsModal = ({ analysis, onClose }) => {
   };
 
   return (
-    <Modal animationType="slide" transparent={true} visible={!!analysis}>
-      <BlurView intensity={80} style={styles.modalOverlay}>
+    <Modal animationType="slide" transparent={true} visible={!!analysis} onRequestClose={onClose}>
+      <BlurView intensity={80} style={styles.modalOverlay} tint="dark">
         <View style={styles.modalContent}>
           <View style={styles.indicator} />
           
@@ -21,65 +54,80 @@ const PatientResultsModal = ({ analysis, onClose }) => {
             <View style={styles.headerRow}>
               <View>
                 <Text style={styles.modalTitle}>Clinical Profile</Text>
-                <Text style={styles.skinType}>Fitzpatrick Type {analysis.fitzpatrickAssessment.type}</Text>
+                <Text style={styles.skinType}>Fitzpatrick Type {analysis.fitzpatrickAssessment?.type || 'N/A'}</Text>
               </View>
               <View style={styles.auraBadge}>
-                <Text style={styles.auraText}>Aura Score: {analysis.auraScore}</Text>
+                <Text style={styles.auraText}>Aura Score: {analysis.auraScore || 0}</Text>
               </View>
             </View>
 
             {/* --- VOLUME LOSS VISUALIZER --- */}
             <Text style={styles.sectionTitle}>Volume & Laxity Analysis</Text>
             <View style={styles.grid}>
-              {analysis.volumeLoss.map((zone, index) => (
-                <View key={index} style={styles.zoneCard}>
-                  <View style={styles.zoneHeader}>
-                    <Text style={styles.zoneName}>{zone.zone}</Text>
-                    <Text style={[styles.zoneValue, { color: getSeverityColor(zone.percentage) }]}>
-                      {zone.percentage}%
-                    </Text>
+              {analysis.volumeLoss && analysis.volumeLoss.length > 0 ? (
+                analysis.volumeLoss.map((zone, index) => (
+                  <View key={index} style={styles.zoneCard}>
+                    <View style={styles.zoneHeader}>
+                      <Text style={styles.zoneName}>{zone.zone || 'Unknown Zone'}</Text>
+                      <Text style={[styles.zoneValue, { color: getSeverityColor(zone.percentage || 0) }]}>
+                        {zone.percentage || 0}%
+                      </Text>
+                    </View>
+                    <View style={styles.progressBarBg}>
+                      <View 
+                        style={[
+                          styles.progressBarFill, 
+                          { 
+                            width: `${Math.min(zone.percentage || 0, 100)}%`, 
+                            backgroundColor: getSeverityColor(zone.percentage || 0) 
+                          }
+                        ]} 
+                      />
+                    </View>
                   </View>
-                  <View style={styles.progressBarBg}>
-                    <View 
-                      style={[
-                        styles.progressBarFill, 
-                        { width: `${zone.percentage}%`, backgroundColor: getSeverityColor(zone.percentage) }
-                      ]} 
-                    />
-                  </View>
+                ))
+              ) : (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>No volume loss data available</Text>
                 </View>
-              ))}
+              )}
             </View>
 
             {/* --- TREATMENT ROADMAP --- */}
             <Text style={styles.sectionTitle}>Recommended Roadmap</Text>
-            {analysis.clinicalRoadmap.map((item, idx) => (
-              <View key={idx} style={[styles.treatmentCard, !item.isSafe && styles.unsafeCard]}>
-                <View style={styles.treatmentIcon}>
-                  {item.isSafe ? (
-                    <CheckCircle2 size={20} color="#10B981" />
-                  ) : (
-                    <ShieldAlert size={20} color="#EF4444" />
-                  )}
-                </View>
-                
-                <View style={styles.treatmentInfo}>
-                  <Text style={styles.treatmentName}>{item.name}</Text>
-                  <Text style={styles.treatmentReason}>{item.reasoning}</Text>
+            {analysis.clinicalRoadmap && analysis.clinicalRoadmap.length > 0 ? (
+              analysis.clinicalRoadmap.map((item, idx) => (
+                <View key={idx} style={[styles.treatmentCard, !item.isSafe && styles.unsafeCard]}>
+                  <View style={styles.treatmentIcon}>
+                    {item.isSafe ? (
+                      <CheckCircle2 size={20} color="#10B981" />
+                    ) : (
+                      <ShieldAlert size={20} color="#EF4444" />
+                    )}
+                  </View>
                   
-                  {!item.isSafe && (
-                    <View style={styles.warningBox}>
-                      <Info size={14} color="#EF4444" />
-                      <Text style={styles.warningText}>{item.safetyWarning}</Text>
-                    </View>
-                  )}
+                  <View style={styles.treatmentInfo}>
+                    <Text style={styles.treatmentName}>{item.name || 'Unnamed Treatment'}</Text>
+                    <Text style={styles.treatmentReason}>{item.reasoning || 'No reasoning provided'}</Text>
+                    
+                    {!item.isSafe && item.safetyWarning && (
+                      <View style={styles.warningBox}>
+                        <Info size={14} color="#EF4444" />
+                        <Text style={styles.warningText}>{item.safetyWarning}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <ChevronRight size={18} color="#CBD5E1" />
                 </View>
-                <ChevronRight size={18} color="#CBD5E1" />
+              ))
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>No treatment recommendations available</Text>
               </View>
-            ))}
+            )}
           </ScrollView>
 
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+          <TouchableOpacity style={styles.closeButton} onPress={onClose} activeOpacity={0.8}>
             <Text style={styles.closeButtonText}>Done</Text>
           </TouchableOpacity>
         </View>
@@ -133,5 +181,20 @@ const styles = StyleSheet.create({
   warningBox: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
   warningText: { fontSize: 12, color: '#EF4444', fontWeight: '500' },
   closeButton: { backgroundColor: '#1E293B', padding: 18, borderRadius: 16, alignItems: 'center', marginTop: 20 },
-  closeButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 }
+  closeButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+  emptyState: { 
+    padding: 20, 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    marginVertical: 10
+  },
+  emptyStateText: { 
+    color: '#64748B', 
+    fontSize: 14, 
+    fontStyle: 'italic' 
+  }
 });
+
+export default PatientResultsModal;
