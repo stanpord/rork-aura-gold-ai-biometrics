@@ -96,8 +96,13 @@ const arrayBufferToString = (buffer: ArrayBuffer): string => {
 };
 
 const generateKey = async (): Promise<string> => {
-  const randomBytes = await Crypto.getRandomBytesAsync(KEY_LENGTH);
-  return arrayBufferToBase64(toArrayBuffer(randomBytes.buffer));
+  try {
+    const randomBytes = await Crypto.getRandomBytesAsync(KEY_LENGTH);
+    return arrayBufferToBase64(toArrayBuffer(randomBytes.buffer));
+  } catch (error) {
+    console.error('[Encryption] Failed to generate key:', error);
+    throw new Error('Failed to generate encryption key');
+  }
 };
 
 const getOrCreateEncryptionKey = async (): Promise<string> => {
@@ -113,53 +118,82 @@ const getOrCreateEncryptionKey = async (): Promise<string> => {
     
     return key;
   } catch (error) {
-    console.log('[Encryption] Error with SecureStore, using fallback:', error);
-    const fallbackKey = await generateKey();
-    return fallbackKey;
+    console.warn('[Encryption] Error with SecureStore, using fallback:', error);
+    try {
+      const fallbackKey = await generateKey();
+      return fallbackKey;
+    } catch (fallbackError) {
+      console.error('[Encryption] Fallback key generation failed:', fallbackError);
+      throw new Error('Failed to obtain encryption key');
+    }
   }
 };
 
 const deriveKeyMaterial = async (keyBase64: string, salt: Uint8Array): Promise<Uint8Array> => {
-  const keyBytes = new Uint8Array(base64ToArrayBuffer(keyBase64));
-  const combined = new Uint8Array(keyBytes.length + salt.length);
-  combined.set(keyBytes);
-  combined.set(salt, keyBytes.length);
-  
-  const hash = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    arrayBufferToBase64(combined.buffer),
-    { encoding: Crypto.CryptoEncoding.BASE64 }
-  );
-  
-  return new Uint8Array(base64ToArrayBuffer(hash)).slice(0, KEY_LENGTH);
+  try {
+    const keyBytes = new Uint8Array(base64ToArrayBuffer(keyBase64));
+    const combined = new Uint8Array(keyBytes.length + salt.length);
+    combined.set(keyBytes);
+    combined.set(salt, keyBytes.length);
+    
+    const hash = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      arrayBufferToBase64(combined.buffer),
+      { encoding: Crypto.CryptoEncoding.BASE64 }
+    );
+    
+    return new Uint8Array(base64ToArrayBuffer(hash)).slice(0, KEY_LENGTH);
+  } catch (error) {
+    console.error('[Encryption] Key derivation failed:', error);
+    throw new Error('Failed to derive encryption key material');
+  }
 };
 
 const xorEncrypt = (data: Uint8Array, key: Uint8Array): Uint8Array => {
-  const result = new Uint8Array(data.length);
-  for (let i = 0; i < data.length; i++) {
-    result[i] = data[i] ^ key[i % key.length];
+  try {
+    const result = new Uint8Array(data.length);
+    for (let i = 0; i < data.length; i++) {
+      result[i] = data[i] ^ key[i % key.length];
+    }
+    return result;
+  } catch (error) {
+    console.error('[Encryption] XOR encryption failed:', error);
+    throw new Error('Failed to perform XOR encryption');
   }
-  return result;
 };
 
 const computeHMAC = async (data: Uint8Array, key: Uint8Array): Promise<Uint8Array> => {
-  const combined = new Uint8Array(data.length + key.length);
-  combined.set(key);
-  combined.set(data, key.length);
-  
-  const hash = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    arrayBufferToBase64(combined.buffer),
-    { encoding: Crypto.CryptoEncoding.BASE64 }
-  );
-  
-  return new Uint8Array(base64ToArrayBuffer(hash)).slice(0, TAG_LENGTH);
+  try {
+    const combined = new Uint8Array(data.length + key.length);
+    combined.set(key);
+    combined.set(data, key.length);
+    
+    const hash = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      arrayBufferToBase64(combined.buffer),
+      { encoding: Crypto.CryptoEncoding.BASE64 }
+    );
+    
+    return new Uint8Array(base64ToArrayBuffer(hash)).slice(0, TAG_LENGTH);
+  } catch (error) {
+    console.error('[Encryption] HMAC computation failed:', error);
+    throw new Error('Failed to compute HMAC');
+  }
 };
 
 export const encryptData = async (plaintext: string): Promise<EncryptedData> => {
   try {
+    if (typeof plaintext !== 'string') {
+      throw new Error('Plaintext must be a string');
+    }
+
     const key = await getOrCreateEncryptionKey();
     const iv = await Crypto.getRandomBytesAsync(IV_LENGTH);
+    
+    // Validate that we got proper IV
+    if (!iv || iv.length !== IV_LENGTH) {
+      throw new Error('Failed to generate valid IV');
+    }
     
     if (Platform.OS === 'web' && typeof crypto !== 'undefined' && crypto.subtle) {
       try {
@@ -193,7 +227,7 @@ export const encryptData = async (plaintext: string): Promise<EncryptedData> => 
           version: 2,
         };
       } catch (webCryptoError) {
-        console.log('[Encryption] Web Crypto failed, using fallback:', webCryptoError);
+        console.warn('[Encryption] Web Crypto failed, using fallback:', webCryptoError);
       }
     }
     
@@ -212,12 +246,21 @@ export const encryptData = async (plaintext: string): Promise<EncryptedData> => 
     };
   } catch (error) {
     console.error('[Encryption] Encryption failed:', error);
-    throw new Error('Failed to encrypt sensitive data');
+    throw new Error(`Failed to encrypt sensitive data: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 
 export const decryptData = async (encryptedData: EncryptedData): Promise<string> => {
   try {
+    // Validate input
+    if (!encryptedData || typeof encryptedData !== 'object') {
+      throw new Error('Invalid encrypted data format');
+    }
+    
+    if (!encryptedData.iv || !encryptedData.ciphertext || !encryptedData.tag) {
+      throw new Error('Missing required encrypted data fields');
+    }
+
     const key = await getOrCreateEncryptionKey();
     const iv = new Uint8Array(base64ToArrayBuffer(encryptedData.iv));
     const ciphertext = new Uint8Array(base64ToArrayBuffer(encryptedData.ciphertext));
@@ -247,13 +290,14 @@ export const decryptData = async (encryptedData: EncryptedData): Promise<string>
         console.log('[Encryption] Data decrypted with AES-256-GCM (Web Crypto)');
         return arrayBufferToString(decrypted);
       } catch (webCryptoError) {
-        console.log('[Encryption] Web Crypto decryption failed:', webCryptoError);
+        console.warn('[Encryption] Web Crypto decryption failed:', webCryptoError);
       }
     }
     
     const derivedKey = await deriveKeyMaterial(key, iv);
     const computedTag = await computeHMAC(ciphertext, derivedKey);
     
+    // Constant-time comparison to prevent timing attacks
     let tagValid = true;
     if (computedTag.length !== tag.length) {
       tagValid = false;
@@ -261,7 +305,6 @@ export const decryptData = async (encryptedData: EncryptedData): Promise<string>
       for (let i = 0; i < tag.length; i++) {
         if (computedTag[i] !== tag[i]) {
           tagValid = false;
-          break;
         }
       }
     }
@@ -277,24 +320,50 @@ export const decryptData = async (encryptedData: EncryptedData): Promise<string>
     return plaintext;
   } catch (error) {
     console.error('[Encryption] Decryption failed:', error);
-    throw new Error('Failed to decrypt sensitive data');
+    throw new Error(`Failed to decrypt sensitive data: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 
 export const encryptObject = async <T>(obj: T): Promise<string> => {
-  const jsonString = JSON.stringify(obj);
-  const encrypted = await encryptData(jsonString);
-  return JSON.stringify(encrypted);
+  try {
+    if (obj === null || obj === undefined) {
+      throw new Error('Cannot encrypt null or undefined object');
+    }
+    
+    const jsonString = JSON.stringify(obj);
+    const encrypted = await encryptData(jsonString);
+    return JSON.stringify(encrypted);
+  } catch (error) {
+    console.error('[Encryption] Object encryption failed:', error);
+    throw new Error(`Failed to encrypt object: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 };
 
 export const decryptObject = async <T>(encryptedString: string): Promise<T> => {
-  const encryptedData: EncryptedData = JSON.parse(encryptedString);
-  const jsonString = await decryptData(encryptedData);
-  return JSON.parse(jsonString) as T;
+  try {
+    if (typeof encryptedString !== 'string') {
+      throw new Error('Encrypted string must be a string');
+    }
+    
+    if (!encryptedString.trim()) {
+      throw new Error('Encrypted string cannot be empty');
+    }
+    
+    const encryptedData: EncryptedData = JSON.parse(encryptedString);
+    const jsonString = await decryptData(encryptedData);
+    return JSON.parse(jsonString) as T;
+  } catch (error) {
+    console.error('[Encryption] Object decryption failed:', error);
+    throw new Error(`Failed to decrypt object: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 };
 
 export const isEncryptedData = (data: string): boolean => {
   try {
+    if (typeof data !== 'string' || !data.trim()) {
+      return false;
+    }
+    
     const parsed = JSON.parse(data);
     return (
       typeof parsed === 'object' &&
@@ -302,7 +371,11 @@ export const isEncryptedData = (data: string): boolean => {
       'ciphertext' in parsed &&
       'iv' in parsed &&
       'tag' in parsed &&
-      'version' in parsed
+      'version' in parsed &&
+      typeof parsed.ciphertext === 'string' &&
+      typeof parsed.iv === 'string' &&
+      typeof parsed.tag === 'string' &&
+      typeof parsed.version === 'number'
     );
   } catch {
     return false;
@@ -319,7 +392,8 @@ export const getEncryptionStatus = async (): Promise<EncryptionStatus> => {
       algorithm: isWebCryptoAvailable ? 'AES-256-GCM' : 'HMAC-SHA256-XOR',
       keyGenerated: !!key,
     };
-  } catch {
+  } catch (error) {
+    console.warn('[Encryption] Failed to get encryption status:', error);
     return {
       isEnabled: true,
       algorithm: 'HMAC-SHA256-XOR',
@@ -329,24 +403,43 @@ export const getEncryptionStatus = async (): Promise<EncryptionStatus> => {
 };
 
 export const rotateEncryptionKey = async (): Promise<void> => {
-  console.log('[Encryption] Rotating encryption key...');
-  const newKey = await generateKey();
-  await SecureStore.setItemAsync(ENCRYPTION_KEY_ALIAS, newKey);
-  console.log('[Encryption] Encryption key rotated successfully');
+  try {
+    console.log('[Encryption] Rotating encryption key...');
+    const newKey = await generateKey();
+    await SecureStore.setItemAsync(ENCRYPTION_KEY_ALIAS, newKey);
+    console.log('[Encryption] Encryption key rotated successfully');
+  } catch (error) {
+    console.error('[Encryption] Key rotation failed:', error);
+    throw new Error('Failed to rotate encryption key');
+  }
 };
 
 export const hashSensitiveData = async (data: string): Promise<string> => {
-  return await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    data,
-    { encoding: Crypto.CryptoEncoding.HEX }
-  );
+  try {
+    if (typeof data !== 'string') {
+      throw new Error('Data to hash must be a string');
+    }
+    
+    return await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      data,
+      { encoding: Crypto.CryptoEncoding.HEX }
+    );
+  } catch (error) {
+    console.error('[Encryption] Hashing failed:', error);
+    throw new Error('Failed to hash sensitive data');
+  }
 };
 
 export const generateSecureId = async (): Promise<string> => {
-  const bytes = await Crypto.getRandomBytesAsync(16);
-  const hex = Array.from(new Uint8Array(bytes))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  try {
+    const bytes = await Crypto.getRandomBytesAsync(16);
+    const hex = Array.from(new Uint8Array(bytes))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  } catch (error) {
+    console.error('[Encryption] Secure ID generation failed:', error);
+    throw new Error('Failed to generate secure ID');
+  }
 };
