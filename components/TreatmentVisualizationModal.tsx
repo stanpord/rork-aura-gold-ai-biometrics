@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Platform,
   Animated,
+  ScrollView,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { File } from 'expo-file-system';
@@ -15,6 +16,7 @@ import * as Haptics from 'expo-haptics';
 import { X, Sparkles, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '@/constants/colors';
+import AuraScoreGauge from '@/components/AuraScoreGauge';
 
 interface TreatmentVisualizationModalProps {
   visible: boolean;
@@ -161,6 +163,7 @@ export default function TreatmentVisualizationModal({
   const [simulatedImage, setSimulatedImage] = useState<string | null>(null);
   const [showAfter, setShowAfter] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [auraScore, setAuraScore] = useState<number | null>(null);
   const fadeAnim = useState(new Animated.Value(1))[0];
 
   const generateTreatmentVisualization = useCallback(async () => {
@@ -169,6 +172,7 @@ export default function TreatmentVisualizationModal({
     setIsGenerating(true);
     setError(null);
     setSimulatedImage(null);
+    setAuraScore(null);
 
     try {
       console.log(`Generating ${treatmentName} visualization...`);
@@ -217,6 +221,11 @@ export default function TreatmentVisualizationModal({
         const imageUri = `data:${result.image.mimeType};base64,${result.image.base64Data}`;
         setSimulatedImage(imageUri);
         setShowAfter(true);
+        
+        // Generate aura score after successful visualization
+        const calculatedScore = Math.floor(Math.random() * 400) + 600; // Random score 600-1000 for demo
+        setAuraScore(calculatedScore);
+        
         console.log(`${treatmentName} visualization generated successfully`);
         
         if (Platform.OS !== 'web') {
@@ -247,6 +256,7 @@ export default function TreatmentVisualizationModal({
       setSimulatedImage(null);
       setShowAfter(false);
       setError(null);
+      setAuraScore(null);
     }
   }, [visible]);
 
@@ -311,99 +321,111 @@ export default function TreatmentVisualizationModal({
             <Text style={styles.treatmentBadgeText}>{treatmentName.toUpperCase()}</Text>
           </View>
 
-          <View style={styles.imageContainer}>
-            {isGenerating ? (
-              <View style={styles.loadingContainer}>
-                <View style={styles.loadingImageWrapper}>
+          {/* Add Aura Score Gauge here - only show when we have a score */}
+          {auraScore !== null && (
+            <View style={styles.auraScoreContainer}>
+              <AuraScoreGauge score={auraScore} animated={true} />
+            </View>
+          )}
+
+          <ScrollView 
+            style={styles.scrollContainer}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.imageContainer}>
+              {isGenerating ? (
+                <View style={styles.loadingContainer}>
+                  <View style={styles.loadingImageWrapper}>
+                    <Image
+                      source={{ uri: originalImage }}
+                      style={styles.loadingImage}
+                      contentFit="cover"
+                    />
+                    <View style={styles.loadingOverlay}>
+                      <ActivityIndicator size="large" color={Colors.gold} />
+                      <Text style={styles.loadingText}>Generating your preview...</Text>
+                      <Text style={styles.loadingSubtext}>AI is visualizing {treatmentName} results</Text>
+                    </View>
+                  </View>
+                </View>
+              ) : error ? (
+                <View style={styles.errorContainer}>
                   <Image
                     source={{ uri: originalImage }}
-                    style={styles.loadingImage}
+                    style={styles.errorImage}
                     contentFit="cover"
                   />
-                  <View style={styles.loadingOverlay}>
-                    <ActivityIndicator size="large" color={Colors.gold} />
-                    <Text style={styles.loadingText}>Generating your preview...</Text>
-                    <Text style={styles.loadingSubtext}>AI is visualizing {treatmentName} results</Text>
+                  <View style={styles.errorOverlay}>
+                    <Text style={styles.errorText}>{error}</Text>
+                    <TouchableOpacity
+                      style={styles.retryButton}
+                      onPress={generateTreatmentVisualization}
+                      activeOpacity={0.8}
+                    >
+                      <RefreshCw size={16} color={Colors.black} />
+                      <Text style={styles.retryButtonText}>TRY AGAIN</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
-              </View>
-            ) : error ? (
-              <View style={styles.errorContainer}>
-                <Image
-                  source={{ uri: originalImage }}
-                  style={styles.errorImage}
-                  contentFit="cover"
-                />
-                <View style={styles.errorOverlay}>
-                  <Text style={styles.errorText}>{error}</Text>
-                  <TouchableOpacity
-                    style={styles.retryButton}
-                    onPress={generateTreatmentVisualization}
-                    activeOpacity={0.8}
-                  >
-                    <RefreshCw size={16} color={Colors.black} />
-                    <Text style={styles.retryButtonText}>TRY AGAIN</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.comparisonContainer}>
-                <Animated.View style={[styles.imageWrapper, { opacity: fadeAnim }]}>
-                  <Image
-                    source={{ uri: showAfter && simulatedImage ? simulatedImage : originalImage }}
-                    style={styles.comparisonImage}
-                    contentFit="cover"
-                  />
-                  <View style={styles.labelBadge}>
-                    <Text style={styles.labelText}>{showAfter ? 'AFTER' : 'BEFORE'}</Text>
-                  </View>
-                </Animated.View>
+              ) : (
+                <View style={styles.comparisonContainer}>
+                  <Animated.View style={[styles.imageWrapper, { opacity: fadeAnim }]}>
+                    <Image
+                      source={{ uri: showAfter && simulatedImage ? simulatedImage : originalImage }}
+                      style={styles.comparisonImage}
+                      contentFit="cover"
+                    />
+                    <View style={styles.labelBadge}>
+                      <Text style={styles.labelText}>{showAfter ? 'AFTER' : 'BEFORE'}</Text>
+                    </View>
+                  </Animated.View>
 
-                {simulatedImage && (
-                  <View style={styles.toggleContainer}>
-                    <TouchableOpacity
-                      style={[styles.toggleButton, !showAfter && styles.toggleButtonActive]}
-                      onPress={() => !showAfter || toggleView()}
-                      activeOpacity={0.8}
-                    >
-                      <ChevronLeft size={16} color={!showAfter ? Colors.black : Colors.gold} />
-                      <Text style={[styles.toggleButtonText, !showAfter && styles.toggleButtonTextActive]}>
-                        BEFORE
-                      </Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity
-                      style={[styles.toggleButton, showAfter && styles.toggleButtonActive]}
-                      onPress={() => showAfter || toggleView()}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={[styles.toggleButtonText, showAfter && styles.toggleButtonTextActive]}>
-                        AFTER
-                      </Text>
-                      <ChevronRight size={16} color={showAfter ? Colors.black : Colors.gold} />
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
+                  {simulatedImage && (
+                    <View style={styles.toggleContainer}>
+                      <TouchableOpacity
+                        style={[styles.toggleButton, !showAfter && styles.toggleButtonActive]}
+                        onPress={() => !showAfter || toggleView()}
+                        activeOpacity={0.8}
+                      >
+                        <ChevronLeft size={16} color={!showAfter ? Colors.black : Colors.gold} />
+                        <Text style={[styles.toggleButtonText, !showAfter && styles.toggleButtonTextActive]}>
+                          BEFORE
+                        </Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        style={[styles.toggleButton, showAfter && styles.toggleButtonActive]}
+                        onPress={() => showAfter || toggleView()}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.toggleButtonText, showAfter && styles.toggleButtonTextActive]}>
+                          AFTER
+                        </Text>
+                        <ChevronRight size={16} color={showAfter ? Colors.black : Colors.gold} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+
+            <View style={styles.disclaimerContainer}>
+              <Text style={styles.disclaimerText}>
+                AI-generated visualization for illustrative purposes only. Actual results may vary based on individual factors.
+              </Text>
+            </View>
+
+            {simulatedImage && (
+              <TouchableOpacity
+                style={styles.regenerateButton}
+                onPress={generateTreatmentVisualization}
+                activeOpacity={0.8}
+              >
+                <RefreshCw size={16} color={Colors.gold} />
+                <Text style={styles.regenerateButtonText}>REGENERATE PREVIEW</Text>
+              </TouchableOpacity>
             )}
-          </View>
-
-          <View style={styles.disclaimerContainer}>
-            <Text style={styles.disclaimerText}>
-              AI-generated visualization for illustrative purposes only. Actual results may vary based on individual factors.
-            </Text>
-          </View>
-
-          {simulatedImage && (
-            <TouchableOpacity
-              style={styles.regenerateButton}
-              onPress={generateTreatmentVisualization}
-              activeOpacity={0.8}
-            >
-              <RefreshCw size={16} color={Colors.gold} />
-              <Text style={styles.regenerateButtonText}>REGENERATE PREVIEW</Text>
-            </TouchableOpacity>
-          )}
+          </ScrollView>
         </LinearGradient>
       </View>
     </Modal>
@@ -465,6 +487,10 @@ const styles = StyleSheet.create({
     color: Colors.gold,
     letterSpacing: 2,
   },
+  auraScoreContainer: {
+    marginBottom: 16,
+    marginHorizontal: 16,
+  },
   imageContainer: {
     flex: 1,
     borderRadius: 32,
@@ -472,6 +498,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceLight,
     borderWidth: 1,
     borderColor: Colors.border,
+    marginBottom: 20,
   },
   loadingContainer: {
     flex: 1,
@@ -601,6 +628,7 @@ const styles = StyleSheet.create({
   disclaimerContainer: {
     marginTop: 20,
     paddingHorizontal: 12,
+    marginBottom: 20,
   },
   disclaimerText: {
     fontSize: 10,
@@ -619,11 +647,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(245, 158, 11, 0.3)',
     backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    marginBottom: 20,
   },
   regenerateButtonText: {
     fontSize: 11,
     fontWeight: '700' as const,
     color: Colors.gold,
     letterSpacing: 1,
+  },
+  scrollContainer: {
+    flex: 1,
   },
 });
