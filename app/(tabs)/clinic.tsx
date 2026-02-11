@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -66,39 +66,65 @@ export default function ClinicScreen() {
   const [showFrontDeskCheckIn, setShowFrontDeskCheckIn] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
+  // Add missing state for stats initialization
+  const [initializedStats, setInitializedStats] = useState({
+    pipeline: 0,
+    scans: 0,
+    conversion: 0,
+    ...stats
+  });
+
+  useEffect(() => {
+    // Update stats when they change
+    setInitializedStats({
+      pipeline: stats?.pipeline || 0,
+      scans: stats?.scans || 0,
+      conversion: stats?.conversion || 0,
+    });
+  }, [stats]);
+
   const handleLogin = async (passcode: string): Promise<boolean> => {
-    const success = await authenticateStaff(passcode);
-    if (success) {
-      setIsTransitioning(true);
-      fadeAnim.setValue(0);
-      setShowLoginModal(false);
-      
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start(() => {
-        setIsTransitioning(false);
-      });
-      
-      if (!tosAcknowledgment) {
-        setPendingAuth(true);
-        setShowTosModal(true);
-      } else {
-        if (Platform.OS !== 'web') {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    try {
+      const success = await authenticateStaff(passcode);
+      if (success) {
+        setIsTransitioning(true);
+        fadeAnim.setValue(0);
+        setShowLoginModal(false);
+        
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          setIsTransitioning(false);
+        });
+        
+        if (!tosAcknowledgment) {
+          setPendingAuth(true);
+          setShowTosModal(true);
+        } else {
+          if (Platform.OS !== 'web') {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }
         }
       }
+      return success;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
     }
-    return success;
   };
 
   const handleTosAccept = (acknowledgment: TermsOfServiceAcknowledgment) => {
-    saveTosAcknowledgment(acknowledgment);
-    setShowTosModal(false);
-    setPendingAuth(false);
-    if (Platform.OS !== 'web') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    try {
+      saveTosAcknowledgment(acknowledgment);
+      setShowTosModal(false);
+      setPendingAuth(false);
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (error) {
+      console.error('TOS acceptance error:', error);
     }
   };
 
@@ -119,7 +145,18 @@ export default function ClinicScreen() {
     setIsValidating(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Simulate API call with proper error handling
+      await new Promise((resolve, reject) => {
+        setTimeout(() => {
+          // Simulate validation logic
+          if (zenotiConfig.apiKey.length > 10 && zenotiConfig.centerId.length > 5) {
+            resolve(true);
+          } else {
+            reject(new Error('Invalid credentials'));
+          }
+        }, 1500);
+      });
+      
       setIsConnected(true);
       if (Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -142,7 +179,18 @@ export default function ClinicScreen() {
     setIsSyncing(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Simulate API call with proper error handling
+      await new Promise((resolve, reject) => {
+        setTimeout(() => {
+          // Simulate sync logic
+          if (leads && leads.length >= 0) {
+            resolve(true);
+          } else {
+            reject(new Error('Sync failed'));
+          }
+        }, 2000);
+      });
+      
       if (Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
@@ -160,7 +208,7 @@ export default function ClinicScreen() {
       <View style={styles.container}>
         <View style={styles.lockedContainer}>
           <View style={styles.lockIconContainer}>
-            <Lock size={40} color={Colors.gold} />
+            <Lock size={40} color={Colors.gold || '#F59E0B'} />
           </View>
           <Text style={styles.lockedTitle}>Patient Dashboard Locked</Text>
           <Text style={styles.lockedSubtitle}>
@@ -175,7 +223,7 @@ export default function ClinicScreen() {
           </TouchableOpacity>
 
           <View style={styles.securityNote}>
-            <AlertCircle size={14} color={Colors.textMuted} />
+            <AlertCircle size={14} color={Colors.textMuted || '#9CA3AF'} />
             <Text style={styles.securityNoteText}>
               Protected by clinic access code
             </Text>
@@ -213,7 +261,7 @@ export default function ClinicScreen() {
             onPress={logoutStaff}
             activeOpacity={0.7}
           >
-            <ChevronLeft size={16} color={Colors.textMuted} />
+            <ChevronLeft size={16} color={Colors.textMuted || '#9CA3AF'} />
             <Text style={styles.logoutText}>Exit</Text>
           </TouchableOpacity>
         </View>
@@ -235,33 +283,33 @@ export default function ClinicScreen() {
           activeOpacity={0.8}
         >
           <View style={styles.checkInIconContainer}>
-            <Users size={24} color={Colors.white} />
+            <Users size={24} color={Colors.white || '#FFFFFF'} />
           </View>
           <View style={styles.checkInContent}>
             <Text style={styles.checkInTitle}>PATIENT CHECK-IN</Text>
             <Text style={styles.checkInSubtitle}>Biometric facial recognition</Text>
           </View>
-          <ChevronDown size={20} color={Colors.gold} style={{ transform: [{ rotate: '-90deg' }] }} />
+          <ChevronDown size={20} color={Colors.gold || '#F59E0B'} style={{ transform: [{ rotate: '-90deg' }] }} />
         </TouchableOpacity>
 
         <View style={styles.statsGrid}>
           <View style={styles.statCardLarge}>
             <View style={styles.statIconContainer}>
-              <DollarSign size={20} color={Colors.gold} />
+              <DollarSign size={20} color={Colors.gold || '#F59E0B'} />
             </View>
             <Text style={styles.statLabel}>ESTIMATED VALUE</Text>
-            <Text style={styles.statValueGold}>${stats.pipeline.toLocaleString()}</Text>
+            <Text style={styles.statValueGold}>${initializedStats.pipeline.toLocaleString()}</Text>
           </View>
           <View style={styles.statRow}>
             <View style={styles.statCardSmall}>
-              <Users size={16} color={Colors.textMuted} />
+              <Users size={16} color={Colors.textMuted || '#9CA3AF'} />
               <Text style={styles.statLabelSmall}>LEADS</Text>
-              <Text style={styles.statValueSmall}>{stats.scans}</Text>
+              <Text style={styles.statValueSmall}>{initializedStats.scans}</Text>
             </View>
             <View style={styles.statCardSmall}>
-              <TrendingUp size={16} color={Colors.textMuted} />
+              <TrendingUp size={16} color={Colors.textMuted || '#9CA3AF'} />
               <Text style={styles.statLabelSmall}>CONVERSION</Text>
-              <Text style={styles.statValueSmall}>{stats.conversion}%</Text>
+              <Text style={styles.statValueSmall}>{initializedStats.conversion}%</Text>
             </View>
           </View>
         </View>
@@ -272,14 +320,14 @@ export default function ClinicScreen() {
           activeOpacity={0.8}
         >
           <View style={styles.crmToggleLeft}>
-            <Settings size={18} color={Colors.gold} />
+            <Settings size={18} color={Colors.gold || '#F59E0B'} />
             <Text style={styles.crmToggleText}>CRM Integration</Text>
           </View>
           <View style={[styles.crmStatusBadge, isConnected && styles.crmStatusBadgeActive]}>
             {isConnected ? (
-              <CheckCircle size={12} color={Colors.success} />
+              <CheckCircle size={12} color={Colors.success || '#10B981'} />
             ) : (
-              <Link2 size={12} color={Colors.textMuted} />
+              <Link2 size={12} color={Colors.textMuted || '#9CA3AF'} />
             )}
             <Text style={[styles.crmStatusText, isConnected && styles.crmStatusTextActive]}>
               {isConnected ? 'LINKED' : 'NOT LINKED'}
@@ -296,7 +344,7 @@ export default function ClinicScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Enter Zenoti API Key"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={Colors.textMuted || '#9CA3AF'}
                 value={zenotiConfig.apiKey}
                 onChangeText={(text) => setZenotiConfig(prev => ({ ...prev, apiKey: text }))}
                 secureTextEntry
@@ -308,7 +356,7 @@ export default function ClinicScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Enter Center ID"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={Colors.textMuted || '#9CA3AF'}
                 value={zenotiConfig.centerId}
                 onChangeText={(text) => setZenotiConfig(prev => ({ ...prev, centerId: text }))}
               />
@@ -322,10 +370,10 @@ export default function ClinicScreen() {
                 activeOpacity={0.8}
               >
                 {isValidating ? (
-                  <ActivityIndicator size="small" color={Colors.black} />
+                  <ActivityIndicator size="small" color={Colors.black || '#000000'} />
                 ) : (
                   <>
-                    <Link2 size={14} color={Colors.black} />
+                    <Link2 size={14} color={Colors.black || '#000000'} />
                     <Text style={styles.crmButtonText}>VALIDATE</Text>
                   </>
                 )}
@@ -338,10 +386,10 @@ export default function ClinicScreen() {
                 activeOpacity={0.8}
               >
                 {isSyncing ? (
-                  <ActivityIndicator size="small" color={Colors.white} />
+                  <ActivityIndicator size="small" color={Colors.white || '#FFFFFF'} />
                 ) : (
                   <>
-                    <RefreshCw size={14} color={Colors.white} />
+                    <RefreshCw size={14} color={Colors.white || '#FFFFFF'} />
                     <Text style={styles.syncButtonText}>SYNC ALL</Text>
                   </>
                 )}
@@ -361,14 +409,14 @@ export default function ClinicScreen() {
           activeOpacity={0.8}
         >
           <View style={styles.crmToggleLeft}>
-            <Sliders size={18} color={Colors.gold} />
+            <Sliders size={18} color={Colors.gold || '#F59E0B'} />
             <Text style={styles.crmToggleText}>Treatment & Pricing</Text>
           </View>
           <View style={styles.treatmentSettingsIndicator}>
             {showTreatmentSettings ? (
-              <ChevronUp size={18} color={Colors.textMuted} />
+              <ChevronUp size={18} color={Colors.textMuted || '#9CA3AF'} />
             ) : (
-              <ChevronDown size={18} color={Colors.textMuted} />
+              <ChevronDown size={18} color={Colors.textMuted || '#9CA3AF'} />
             )}
           </View>
         </TouchableOpacity>
@@ -388,13 +436,13 @@ export default function ClinicScreen() {
             <Text style={[styles.tableHeaderText, styles.colDelete]}></Text>
           </View>
 
-          {leads.length === 0 ? (
+          {leads && leads.length === 0 ? (
             <View style={styles.emptyTable}>
               <Text style={styles.emptyTableText}>No leads captured yet</Text>
               <Text style={styles.emptyTableSubtext}>Start scanning to add patient records</Text>
             </View>
           ) : (
-            leads.map((lead) => (
+            leads && leads.map((lead: Lead) => (
               <TouchableOpacity 
                 key={lead.id} 
                 style={styles.tableRow}
@@ -413,20 +461,20 @@ export default function ClinicScreen() {
                       <Text style={styles.avatarText}>{lead.name?.[0] || '?'}</Text>
                     </View>
                     <View>
-                      <Text style={styles.patientName}>{lead.name}</Text>
-                      <Text style={styles.patientPhone}>{lead.phone}</Text>
+                      <Text style={styles.patientName}>{lead.name || 'Unknown'}</Text>
+                      <Text style={styles.patientPhone}>{lead.phone || 'No phone'}</Text>
                     </View>
                   </View>
                 </View>
                 <View style={[styles.tableCell, styles.colScore]}>
-                  <Text style={styles.scoreValue}>{lead.auraScore}</Text>
+                  <Text style={styles.scoreValue}>{lead.auraScore || 'N/A'}</Text>
                 </View>
                 <View style={[styles.tableCell, styles.colSync]}>
                   <View style={[styles.syncBadge, isConnected && styles.syncBadgeActive]}>
                     {isConnected ? (
-                      <CheckCircle size={10} color={Colors.success} />
+                      <CheckCircle size={10} color={Colors.success || '#10B981'} />
                     ) : (
-                      <Globe size={10} color={Colors.textMuted} />
+                      <Globe size={10} color={Colors.textMuted || '#9CA3AF'} />
                     )}
                   </View>
                 </View>
@@ -436,13 +484,14 @@ export default function ClinicScreen() {
                 <View style={[styles.tableCell, styles.colDelete]}>
                   <TouchableOpacity
                     style={styles.deleteButton}
-                    onPress={() => {
+                    onPress={(e) => {
+                      e.stopPropagation();
                       if (Platform.OS !== 'web') {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                       }
                       Alert.alert(
                         'Remove Patient',
-                        `Are you sure you want to remove ${lead.name} from the records? This action cannot be undone.`,
+                        `Are you sure you want to remove ${lead.name || 'this patient'} from the records? This action cannot be undone.`,
                         [
                           { text: 'Cancel', style: 'cancel' },
                           {
@@ -470,32 +519,32 @@ export default function ClinicScreen() {
       </ScrollView>
 
       <LeadDetailModal
-          visible={showLeadDetail}
-          onClose={() => {
-            setShowLeadDetail(false);
-            setSelectedLead(null);
-          }}
-          lead={selectedLead}
-        />
+        visible={showLeadDetail}
+        onClose={() => {
+          setShowLeadDetail(false);
+          setSelectedLead(null);
+        }}
+        lead={selectedLead}
+      />
 
-        <TermsOfServiceModal
-          visible={showTosModal}
-          onClose={handleTosDecline}
-          onAccept={handleTosAccept}
-        />
+      <TermsOfServiceModal
+        visible={showTosModal}
+        onClose={handleTosDecline}
+        onAccept={handleTosAccept}
+      />
 
-        <FrontDeskCheckIn
-          visible={showFrontDeskCheckIn}
-          onClose={() => setShowFrontDeskCheckIn(false)}
-          onPatientSelected={(lead) => {
-            setSelectedLead(lead);
-            setShowLeadDetail(true);
-          }}
-          onNewPatientCreated={(lead) => {
-            setSelectedLead(lead);
-            setShowLeadDetail(true);
-          }}
-        />
+      <FrontDeskCheckIn
+        visible={showFrontDeskCheckIn}
+        onClose={() => setShowFrontDeskCheckIn(false)}
+        onPatientSelected={(lead) => {
+          setSelectedLead(lead);
+          setShowLeadDetail(true);
+        }}
+        onNewPatientCreated={(lead) => {
+          setSelectedLead(lead);
+          setShowLeadDetail(true);
+        }}
+      />
     </Animated.View>
   );
 }
@@ -503,7 +552,7 @@ export default function ClinicScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.background || '#000000',
   },
   scrollContent: {
     padding: 20,
@@ -528,21 +577,21 @@ const styles = StyleSheet.create({
   },
   lockedTitle: {
     fontSize: 22,
-    fontWeight: '900' as const,
-    color: Colors.white,
+    fontWeight: '900',
+    color: Colors.white || '#FFFFFF',
     marginBottom: 12,
     textAlign: 'center',
   },
   lockedSubtitle: {
     fontSize: 14,
-    color: Colors.textMuted,
+    color: Colors.textMuted || '#9CA3AF',
     textAlign: 'center',
     maxWidth: 280,
     lineHeight: 22,
     marginBottom: 32,
   },
   unlockButton: {
-    backgroundColor: Colors.gold,
+    backgroundColor: Colors.gold || '#F59E0B',
     paddingHorizontal: 40,
     paddingVertical: 16,
     borderRadius: 30,
@@ -550,8 +599,8 @@ const styles = StyleSheet.create({
   },
   unlockButtonText: {
     fontSize: 12,
-    fontWeight: '900' as const,
-    color: Colors.black,
+    fontWeight: '900',
+    color: Colors.black || '#000000',
     letterSpacing: 2,
   },
   securityNote: {
@@ -561,7 +610,7 @@ const styles = StyleSheet.create({
   },
   securityNoteText: {
     fontSize: 12,
-    color: Colors.textMuted,
+    color: Colors.textMuted || '#9CA3AF',
   },
   header: {
     flexDirection: 'row',
@@ -571,8 +620,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: '900' as const,
-    color: Colors.white,
+    fontWeight: '900',
+    color: Colors.white || '#FFFFFF',
     letterSpacing: -0.5,
   },
   syncStatus: {
@@ -585,15 +634,15 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: Colors.textMuted,
+    backgroundColor: Colors.textMuted || '#9CA3AF',
   },
   syncDotActive: {
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.success || '#10B981',
   },
   syncText: {
     fontSize: 9,
-    fontWeight: '700' as const,
-    color: Colors.textMuted,
+    fontWeight: '700',
+    color: Colors.textMuted || '#9CA3AF',
     letterSpacing: 1,
   },
   logoutButton: {
@@ -602,26 +651,26 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: Colors.surfaceLight || '#1E293B',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.border || '#374151',
   },
   logoutText: {
     fontSize: 12,
-    fontWeight: '600' as const,
-    color: Colors.textMuted,
+    fontWeight: '600',
+    color: Colors.textMuted || '#9CA3AF',
   },
   statsGrid: {
     marginBottom: 20,
   },
   statCardLarge: {
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: Colors.surfaceLight || '#1E293B',
     borderRadius: 20,
     padding: 24,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.border || '#374151',
     alignItems: 'center',
   },
   statIconContainer: {
@@ -639,48 +688,48 @@ const styles = StyleSheet.create({
   },
   statCardSmall: {
     flex: 1,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: Colors.surfaceLight || '#1E293B',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.border || '#374151',
   },
   statLabel: {
     fontSize: 9,
-    fontWeight: '700' as const,
-    color: Colors.textMuted,
+    fontWeight: '700',
+    color: Colors.textMuted || '#9CA3AF',
     letterSpacing: 2,
     marginBottom: 4,
   },
   statLabelSmall: {
     fontSize: 8,
-    fontWeight: '700' as const,
-    color: Colors.textMuted,
+    fontWeight: '700',
+    color: Colors.textMuted || '#9CA3AF',
     letterSpacing: 1,
     marginTop: 8,
     marginBottom: 4,
   },
   statValueGold: {
     fontSize: 32,
-    fontWeight: '900' as const,
-    color: Colors.gold,
+    fontWeight: '900',
+    color: Colors.gold || '#F59E0B',
   },
   statValueSmall: {
     fontSize: 20,
-    fontWeight: '900' as const,
-    color: Colors.white,
+    fontWeight: '900',
+    color: Colors.white || '#FFFFFF',
   },
   crmToggle: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: Colors.surfaceLight || '#1E293B',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.border || '#374151',
   },
   crmToggleLeft: {
     flexDirection: 'row',
@@ -689,8 +738,8 @@ const styles = StyleSheet.create({
   },
   crmToggleText: {
     fontSize: 14,
-    fontWeight: '700' as const,
-    color: Colors.white,
+    fontWeight: '700',
+    color: Colors.white || '#FFFFFF',
   },
   crmStatusBadge: {
     flexDirection: 'row',
@@ -706,25 +755,25 @@ const styles = StyleSheet.create({
   },
   crmStatusText: {
     fontSize: 9,
-    fontWeight: '700' as const,
-    color: Colors.textMuted,
+    fontWeight: '700',
+    color: Colors.textMuted || '#9CA3AF',
     letterSpacing: 1,
   },
   crmStatusTextActive: {
-    color: Colors.success,
+    color: Colors.success || '#10B981',
   },
   crmSetupContainer: {
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: Colors.surfaceLight || '#1E293B',
     borderRadius: 20,
     padding: 20,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.border || '#374151',
   },
   crmSetupTitle: {
     fontSize: 14,
-    fontWeight: '800' as const,
-    color: Colors.white,
+    fontWeight: '800',
+    color: Colors.white || '#FFFFFF',
     marginBottom: 20,
   },
   inputGroup: {
@@ -732,20 +781,20 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 9,
-    fontWeight: '700' as const,
-    color: Colors.textMuted,
+    fontWeight: '700',
+    color: Colors.textMuted || '#9CA3AF',
     letterSpacing: 1,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.background || '#000000',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.border || '#374151',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 14,
-    color: Colors.white,
+    color: Colors.white || '#FFFFFF',
   },
   crmButtons: {
     flexDirection: 'row',
@@ -762,32 +811,32 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   validateButton: {
-    backgroundColor: Colors.gold,
+    backgroundColor: Colors.gold || '#F59E0B',
   },
   syncButton: {
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.success || '#10B981',
   },
   buttonDisabled: {
     opacity: 0.5,
   },
   crmButtonText: {
     fontSize: 11,
-    fontWeight: '800' as const,
-    color: Colors.black,
+    fontWeight: '800',
+    color: Colors.black || '#000000',
     letterSpacing: 1,
   },
   syncButtonText: {
     fontSize: 11,
-    fontWeight: '800' as const,
-    color: Colors.white,
+    fontWeight: '800',
+    color: Colors.white || '#FFFFFF',
     letterSpacing: 1,
   },
   tableContainer: {
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: Colors.surfaceLight || '#1E293B',
     borderRadius: 24,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.border || '#374151',
   },
   tableHeader: {
     flexDirection: 'row',
@@ -795,12 +844,12 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: Colors.border || '#374151',
   },
   tableHeaderText: {
     fontSize: 9,
-    fontWeight: '900' as const,
-    color: Colors.textMuted,
+    fontWeight: '900',
+    color: Colors.textMuted || '#9CA3AF',
     letterSpacing: 1,
   },
   colPatient: {
@@ -827,7 +876,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: Colors.border || '#374151',
     alignItems: 'center',
   },
   tableCell: {
@@ -842,30 +891,30 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.surface || '#1F2937',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
     fontSize: 14,
-    fontWeight: '800' as const,
-    color: Colors.gold,
+    fontWeight: '800',
+    color: Colors.gold || '#F59E0B',
   },
   patientName: {
     fontSize: 13,
-    fontWeight: '700' as const,
-    color: Colors.white,
+    fontWeight: '700',
+    color: Colors.white || '#FFFFFF',
   },
   patientPhone: {
     fontSize: 10,
-    fontWeight: '600' as const,
-    color: Colors.textMuted,
+    fontWeight: '600',
+    color: Colors.textMuted || '#9CA3AF',
     marginTop: 1,
   },
   scoreValue: {
     fontSize: 14,
-    fontWeight: '800' as const,
-    color: Colors.white,
+    fontWeight: '800',
+    color: Colors.white || '#FFFFFF',
   },
   syncBadge: {
     width: 24,
@@ -880,8 +929,8 @@ const styles = StyleSheet.create({
   },
   valueText: {
     fontSize: 13,
-    fontWeight: '700' as const,
-    color: Colors.gold,
+    fontWeight: '700',
+    color: Colors.gold || '#F59E0B',
   },
   emptyTable: {
     padding: 40,
@@ -889,24 +938,24 @@ const styles = StyleSheet.create({
   },
   emptyTableText: {
     fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.text,
+    fontWeight: '600',
+    color: Colors.text || '#F3F4F6',
     marginBottom: 4,
   },
   emptyTableSubtext: {
     fontSize: 12,
-    color: Colors.textMuted,
+    color: Colors.textMuted || '#9CA3AF',
   },
   treatmentSettingsIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   treatmentSettingsContainer: {
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: Colors.surfaceLight || '#1E293B',
     borderRadius: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.border || '#374151',
   },
   deleteButton: {
     width: 32,
@@ -924,13 +973,13 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: Colors.gold,
+    borderColor: Colors.gold || '#F59E0B',
   },
   checkInIconContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.gold,
+    backgroundColor: Colors.gold || '#F59E0B',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -940,14 +989,14 @@ const styles = StyleSheet.create({
   },
   checkInTitle: {
     fontSize: 14,
-    fontWeight: '800' as const,
-    color: Colors.white,
+    fontWeight: '800',
+    color: Colors.white || '#FFFFFF',
     letterSpacing: 1,
     marginBottom: 2,
   },
   checkInSubtitle: {
     fontSize: 12,
-    color: Colors.gold,
-    fontWeight: '500' as const,
+    color: Colors.gold || '#F59E0B',
+    fontWeight: '500',
   },
 });
