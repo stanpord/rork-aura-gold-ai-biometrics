@@ -73,24 +73,30 @@ export default function BeforeAfterSlider({
   // Logic remains mostly the same, ensuring variables are initialized
   const isSameImage = beforeImage === afterImage;
   const { width: windowWidth } = useWindowDimensions();
-  const [containerWidth, setContainerWidth] = useState(Math.min(windowWidth - 40, maxWidth));
+  const [containerWidth, setContainerWidth] = useState(0);
   const [showAfter, setShowAfter] = useState(false);
   const [progress, setProgress] = useState(0);
   const shimmerAnim = useRef(new Animated.Value(0)).current;
-  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Initialize container width properly
+  useEffect(() => {
+    setContainerWidth(Math.min(windowWidth - 40, maxWidth));
+  }, [windowWidth, maxWidth]);
 
   useEffect(() => {
     if (isSimulationPending) {
       setProgress(0);
       setShowAfter(false);
       
-      Animated.loop(
+      const shimmerAnimation = Animated.loop(
         Animated.timing(shimmerAnim, {
           toValue: 1,
           duration: 1500,
           useNativeDriver: true,
         })
-      ).start();
+      );
+      shimmerAnimation.start();
 
       progressIntervalRef.current = setInterval(() => {
         setProgress(prev => {
@@ -108,26 +114,28 @@ export default function BeforeAfterSlider({
       }
       if (progress > 0 && progress < 100) {
         setProgress(100);
-        setTimeout(() => setProgress(0), 800);
+        const resetTimer = setTimeout(() => setProgress(0), 800);
+        return () => clearTimeout(resetTimer);
       }
     }
 
     return () => {
       if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+      shimmerAnim.stopAnimation();
     };
-  }, [isSimulationPending]);
+  }, [isSimulationPending, shimmerAnim]);
 
   const shimmerTranslate = shimmerAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [-200, 200],
+    outputRange: [-200, containerWidth + 200],
   });
 
   const onLayout = useCallback((event: LayoutChangeEvent) => {
     const { width } = event.nativeEvent.layout;
-    if (width > 0 && Math.abs(width - containerWidth) > 1) {
+    if (width > 0) {
       setContainerWidth(width);
     }
-  }, [containerWidth]);
+  }, []);
 
   const handleToggle = useCallback(() => {
     if (Platform.OS !== 'web') {
@@ -139,19 +147,38 @@ export default function BeforeAfterSlider({
   const currentImage = showAfter ? afterImage : beforeImage;
   const canShowAfter = !isSameImage && !isSimulationPending;
 
+  // Handle case where images might not be provided
+  if (!beforeImage && !afterImage) {
+    return (
+      <View style={[styles.container, { height, maxWidth }]}>
+        <View style={[styles.imageContainer, { justifyContent: 'center', alignItems: 'center' }]}>
+          <Text style={{ color: Colors.textMuted, fontSize: 16 }}>
+            No image data available
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { height, maxWidth }]} onLayout={onLayout}>
       <View style={styles.imageContainer}>
-        <Image
-          key={currentImage}
-          source={{ uri: currentImage }}
-          style={styles.image}
-          contentFit="cover"
-          cachePolicy="none"
-          transition={400}
-        />
+        {currentImage ? (
+          <Image
+            key={currentImage}
+            source={{ uri: currentImage }}
+            style={styles.image}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={400}
+          />
+        ) : (
+          <View style={[styles.image, { backgroundColor: Colors.surface, justifyContent: 'center', alignItems: 'center' }]}>
+            <Text style={{ color: Colors.textMuted }}>Image unavailable</Text>
+          </View>
+        )}
 
-        {!isSimulationPending && (
+        {!isSimulationPending && currentImage && (
           <View style={showAfter ? styles.labelAfter : styles.labelBefore}>
             <Text style={showAfter ? styles.labelTextGold : styles.labelText}>
               {showAfter ? 'AI SIMULATION' : 'BEFORE'}
@@ -192,7 +219,7 @@ export default function BeforeAfterSlider({
           </>
         )}
 
-        {isSameImage && !isSimulationPending && progress === 0 && (
+        {isSameImage && !isSimulationPending && progress === 0 && currentImage && (
           <View style={styles.simulationUnavailable}>
             <Text style={styles.simulationUnavailableText}>AI SIMULATION READY</Text>
             <Text style={styles.simulationUnavailableSubtext}>Tap button to analyze</Text>
@@ -206,10 +233,10 @@ export default function BeforeAfterSlider({
             style={[styles.toggleButton, !canShowAfter && styles.toggleButtonDisabled]}
             onPress={handleToggle}
             activeOpacity={0.8}
-            disabled={!canShowAfter}
+            disabled={!canShowAfter || !currentImage}
           >
-            <Sparkles size={16} color={canShowAfter ? Colors.black : Colors.textMuted} />
-            <Text style={[styles.toggleButtonText, !canShowAfter && styles.toggleButtonTextDisabled]}>
+            <Sparkles size={16} color={canShowAfter && currentImage ? Colors.black : Colors.textMuted} />
+            <Text style={[styles.toggleButtonText, (!canShowAfter || !currentImage) && styles.toggleButtonTextDisabled]}>
               {isSimulationPending ? 'GENERATING...' : 'SEE POTENTIAL'}
             </Text>
           </TouchableOpacity>
