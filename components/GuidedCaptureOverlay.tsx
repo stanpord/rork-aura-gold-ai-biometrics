@@ -5,13 +5,14 @@ import {
   StyleSheet,
   Animated,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import {
   CheckCircle,
   Sun,
   SunDim,
-  Camera,
+  Camera as CameraIcon,
   Move,
   Timer,
 } from 'lucide-react-native';
@@ -130,6 +131,45 @@ const styles = StyleSheet.create({
   statusDotPassed: {
     backgroundColor: Colors.success || '#10B981',
   },
+  // --- NEW CAMERA BUTTON STYLES ---
+  cameraButtonContainer: {
+    position: 'absolute',
+    bottom: 40,
+    alignItems: 'center',
+  },
+  cameraButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraButtonInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraButtonDisabled: {
+    opacity: 0.5,
+  },
+  manualCaptureButton: {
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 20,
+  },
+  manualCaptureText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
 });
 
 // --- 2. TYPES ---
@@ -147,6 +187,7 @@ interface GuidedCaptureOverlayProps {
   isActive: boolean;
   brightnessLevel?: number;
   onLightingStatusChange?: (isAcceptable: boolean) => void;
+  onManualCapture?: () => void; // NEW: Manual capture handler
 }
 
 // --- 3. COMPONENT ---
@@ -155,6 +196,7 @@ export default function GuidedCaptureOverlay({
   isActive,
   brightnessLevel = 50,
   onLightingStatusChange,
+  onManualCapture, // NEW: Manual capture prop
 }: GuidedCaptureOverlayProps) {
   const [validationChecks, setValidationChecks] = useState<ValidationCheck[]>([
     { id: 'position', label: 'Face centered', icon: Move, passed: false },
@@ -169,6 +211,7 @@ export default function GuidedCaptureOverlay({
   const [lightingStatus, setLightingStatus] = useState<LightingStatus>('checking');
   const [lightingWarning, setLightingWarning] = useState<string | null>(null);
   const [positionValidated, setPositionValidated] = useState(false);
+  const [canManualCapture, setCanManualCapture] = useState(false); // NEW: Manual capture state
   
   const hasCapturedRef = useRef(false);
   const lightingStableCountRef = useRef(0);
@@ -292,6 +335,16 @@ export default function GuidedCaptureOverlay({
     }, interval);
   }, [updateCheck, progressAnim, startCaptureCountdown, getLightingStatus, brightnessLevel]);
 
+  // NEW: Manual capture function
+  const handleManualCapture = useCallback(() => {
+    if (canManualCapture && onManualCapture) {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      }
+      onManualCapture();
+    }
+  }, [canManualCapture, onManualCapture]);
+
   useEffect(() => {
     if (!isActive) {
       hasCapturedRef.current = false;
@@ -319,8 +372,9 @@ export default function GuidedCaptureOverlay({
     return () => {
       if (stabilityTimerRef.current) clearInterval(stabilityTimerRef.current);
       if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+      if (stableBrightnessTimerRef.current) clearInterval(stableBrightnessTimerRef.current);
     };
-  }, [isActive, updateCheck]);
+  }, [isActive, updateCheck, pulseAnim, scanLineAnim]);
 
   useEffect(() => {
     if (!isActive || !positionValidated) return;
@@ -333,6 +387,8 @@ export default function GuidedCaptureOverlay({
       if (status === 'good') {
         lightingStableCountRef.current += 1;
         setLightingWarning(null);
+        setCanManualCapture(true); // Enable manual capture when lighting is good
+        
         if (lightingStableCountRef.current >= 3) {
           const lightingCheck = validationChecks.find(c => c.id === 'lighting');
           if (lightingCheck && !lightingCheck.passed) {
@@ -344,6 +400,7 @@ export default function GuidedCaptureOverlay({
       } else {
         lightingStableCountRef.current = 0;
         setLightingWarning(getLightingMessage(status));
+        setCanManualCapture(false); // Disable manual capture when lighting is bad
         
         const lightingCheck = validationChecks.find(c => c.id === 'lighting');
         if (lightingCheck?.passed) {
@@ -360,7 +417,7 @@ export default function GuidedCaptureOverlay({
     return () => {
       if (stableBrightnessTimerRef.current) clearInterval(stableBrightnessTimerRef.current);
     };
-  }, [brightnessLevel, isActive, positionValidated, updateCheck, startStabilityCheck, getLightingStatus]);
+  }, [brightnessLevel, isActive, positionValidated, updateCheck, startStabilityCheck, getLightingStatus, getLightingMessage, validationChecks, progressAnim]);
 
   // Interpolations
   const scanLineTranslateY = scanLineAnim.interpolate({
@@ -389,7 +446,7 @@ export default function GuidedCaptureOverlay({
 
       <View style={styles.statusBar}>
         <View style={[styles.statusPill, isReady && styles.statusPillReady, lightingWarning && styles.statusPillWarning]}>
-          <Camera size={16} color="#FFF" />
+          <CameraIcon size={16} color="#FFF" />
           <Text style={[styles.statusText, isReady && styles.statusTextReady, lightingWarning && styles.statusTextWarning]}>
             {lightingWarning || currentInstruction}
           </Text>
@@ -408,6 +465,32 @@ export default function GuidedCaptureOverlay({
         {validationChecks.map((check, index) => (
           <Animated.View key={check.id} style={[styles.statusDot, check.passed && styles.statusDotPassed, { transform: [{ scale: check.passed ? checkmarkScales[index] : 1 }] }]} />
         ))}
+      </View>
+
+      {/* --- NEW CAMERA BUTTON --- */}
+      <View style={styles.cameraButtonContainer}>
+        <TouchableOpacity
+          style={[styles.cameraButton, !canManualCapture && styles.cameraButtonDisabled]}
+          onPress={handleManualCapture}
+          disabled={!canManualCapture}
+          activeOpacity={0.7}
+        >
+          <View style={styles.cameraButtonInner}>
+            <CameraIcon size={24} color="#000" />
+          </View>
+        </TouchableOpacity>
+        
+        {/* Optional: Manual capture button for override */}
+        <TouchableOpacity
+          style={styles.manualCaptureButton}
+          onPress={handleManualCapture}
+          disabled={!canManualCapture}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.manualCaptureText}>
+            {canManualCapture ? 'CAPTURE NOW' : 'WAITING FOR OPTIMAL CONDITIONS'}
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
