@@ -9,7 +9,7 @@ import {
   ScrollView,
   Platform,
 } from 'react-native';
-import { X, AlertTriangle, Shield, CheckCircle, Settings, FileSignature, Clock, Square, CheckSquare, Pill, Sparkles, Lightbulb } from 'lucide-react-native';
+import { X, AlertTriangle, Shield, CheckCircle, Settings, FilePen, Clock, Square, CheckSquare, Pill, Sparkles, Lightbulb } from 'lucide-react-native';
 import { getPostCareRecommendations, requiresAntiviralForLipFlip } from '@/constants/contraindications';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -342,7 +342,7 @@ export default function TreatmentDosingModal({
 
             <View style={styles.legalSignOffSection}>
               <View style={styles.legalHeader}>
-                <FileSignature size={16} color={Colors.gold} />
+                <FilePen size={16} color={Colors.gold} />
                 <Text style={styles.legalHeaderTitle}>LEGAL SIGN-OFF REQUIRED</Text>
               </View>
 

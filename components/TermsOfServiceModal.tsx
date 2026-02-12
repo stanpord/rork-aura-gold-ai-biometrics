@@ -21,7 +21,7 @@ import {
   CheckSquare,
   Square,
   Gavel,
-  Building2,
+  Building,
   MapPin,
   ChevronDown,
   Syringe,
@@ -365,7 +365,7 @@ export default function TermsOfServiceModal({
             
             <View style={styles.inputGroup}>
               <View style={styles.inputRow}>
-                <Building2 size={14} color={Colors.textMuted} />
+                <Building size={14} color={Colors.textMuted} />
                 <Text style={styles.inputLabel}>Clinic/Practice Name (Optional)</Text>
               </View>
               <TextInput

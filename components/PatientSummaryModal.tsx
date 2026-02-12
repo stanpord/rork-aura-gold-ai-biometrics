@@ -23,7 +23,7 @@ import {
   Phone,
   FileText,
   Activity,
-  FileSignature,
+  FilePen,
   User,
   Stethoscope,
   Clock,
@@ -642,7 +642,7 @@ export default function PatientSummaryModal({ visible, onClose, lead }: PatientS
           {(lead.signatureLog && lead.signatureLog.length > 0) || lead.patientConsent ? (
             <View style={styles.signatureLogSection}>
               <View style={styles.signatureLogHeader}>
-                <FileSignature size={18} color={Colors.gold} />
+                <FilePen size={18} color={Colors.gold} />
                 <Text style={styles.signatureLogTitle}>SIGNATURE LOG</Text>
                 <View style={styles.signatureCountBadge}>
                   <Text style={styles.signatureCountText}>

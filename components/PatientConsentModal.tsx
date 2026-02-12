@@ -20,7 +20,7 @@ import {
   UserX,
   CheckSquare,
   Square,
-  FileSignature,
+  FilePen,
   ChevronDown,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
@@ -199,7 +199,7 @@ export default function PatientConsentModal({
       >
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <FileSignature size={20} color={Colors.gold} />
+            <FilePen size={20} color={Colors.gold} />
             <Text style={styles.headerTitle}>PATIENT INFORMED CONSENT</Text>
           </View>
           <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
