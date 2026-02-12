@@ -11,7 +11,6 @@ import {
   ScrollView,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { File } from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import { X, Sparkles, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -191,8 +190,11 @@ export default function TreatmentVisualizationModal({
           reader.readAsDataURL(blob);
         });
       } else {
-        const file = new File(originalImage);
-        base64Image = await file.base64();
+        const FileSystem = await import('expo-file-system');
+        const fileContent = await FileSystem.readAsStringAsync(originalImage, {
+          encoding: 'base64' as any,
+        });
+        base64Image = fileContent;
       }
 
       const prompt = TREATMENT_PROMPTS[treatmentName] || TREATMENT_PROMPTS['default'];
