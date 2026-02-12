@@ -66,22 +66,11 @@ export default function ClinicScreen() {
   const [showFrontDeskCheckIn, setShowFrontDeskCheckIn] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  // Add missing state for stats initialization
-  const [initializedStats, setInitializedStats] = useState({
-    pipeline: 0,
-    scans: 0,
-    conversion: 0,
-    ...stats
-  });
-
-  useEffect(() => {
-    // Update stats when they change
-    setInitializedStats({
-      pipeline: stats?.pipeline || 0,
-      scans: stats?.scans || 0,
-      conversion: stats?.conversion || 0,
-    });
-  }, [stats]);
+  const initializedStats = {
+    pipeline: stats?.pipeline || 0,
+    scans: stats?.scans || 0,
+    conversion: stats?.conversion || 0,
+  };
 
   const handleLogin = async (passcode: string): Promise<boolean> => {
     try {

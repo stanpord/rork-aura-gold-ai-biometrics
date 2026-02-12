@@ -304,4 +304,14 @@ export const TREATMENT_RECURRENCE_MAP: Record<string, { intervalMonths: number; 
 
 export const DEFAULT_TREATMENT_CONFIGS: Omit<TreatmentConfig, 'enabled' | 'customPrice'>[] = [
   { id: 'morpheus8', name: 'Morpheus8', category: 'procedure', defaultPrice: '$800-1,200' },
-  { id: 'botox', name: 'Botox
+  { id: 'botox', name: 'Botox', category: 'procedure', defaultPrice: '$10-15/unit' },
+  { id: 'fillers', name: 'Dermal Fillers', category: 'procedure', defaultPrice: '$600-1,000/syringe' },
+  { id: 'microneedling', name: 'Microneedling', category: 'procedure', defaultPrice: '$300-600' },
+  { id: 'ipl', name: 'IPL', category: 'procedure', defaultPrice: '$300-500' },
+  { id: 'chemical_peel', name: 'Chemical Peel', category: 'procedure', defaultPrice: '$150-400' },
+  { id: 'ghk_cu', name: 'GHK-Cu', category: 'peptide', defaultPrice: '$200-400' },
+  { id: 'bpc157', name: 'BPC-157', category: 'peptide', defaultPrice: '$150-300' },
+  { id: 'nad_infusion', name: 'NAD+ Infusion', category: 'iv', defaultPrice: '$400-800' },
+  { id: 'myers_cocktail', name: 'Myers Cocktail', category: 'iv', defaultPrice: '$150-300' },
+  { id: 'glutathione', name: 'Glutathione Push', category: 'iv', defaultPrice: '$50-100' },
+];

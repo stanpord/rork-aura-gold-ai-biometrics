@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, AppStateStatus } from 'react-native';
 import createContextHook from '@nkzw/create-context-hook';
 import { AnalysisResult, Lead, ViewMode, PatientHealthProfile, PatientConsent, TermsOfServiceAcknowledgment, SelectedTreatment, TreatmentConfig, DEFAULT_TREATMENT_CONFIGS, PatientBasicInfo, ClinicalProcedure, SignatureRecord, ScanRecord, BiometricProfile, SafetyStatus } from '@/types';
+import { useMemo } from 'react';
 import { encryptObject, decryptObject, isEncryptedData, getEncryptionStatus, EncryptionStatus } from '@/utils/encryption';
 import { checkTreatmentSafety, getExplainableReason, PatientDemographics, SafetyCheckResult } from '@/constants/contraindications';
 import { initializeAuditLog, logAuditEvent, logAuthEvent, logPHIAccess, logConsentEvent, getAuditSummary } from '@/utils/auditLog';
@@ -143,7 +144,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
       if (leadsData) {
         const decryptedLeads = isEncryptedData(leadsData) ? await decryptObject<Lead[]>(leadsData) : JSON.parse(leadsData);
-        setLeads(decryptedLeads.map(l => ({ ...l, createdAt: new Date(l.createdAt) })));
+        setLeads(decryptedLeads.map((l: Lead) => ({ ...l, createdAt: new Date(l.createdAt) })));
       }
       if (intro === 'true') setHasCompletedIntro(true);
       if (health) {
@@ -261,6 +262,72 @@ export const [AppProvider, useApp] = createContextHook(() => {
     return false;
   }, []);
 
+  const stats = useMemo(() => {
+    const pipeline = leads.reduce((sum, l) => sum + l.estimatedValue, 0);
+    const scans = leads.length;
+    const converted = leads.filter(l => l.status === 'converted').length;
+    const conversion = scans > 0 ? Math.round((converted / scans) * 100) : 0;
+    return { pipeline, scans, conversion };
+  }, [leads]);
+
+  const saveTosAcknowledgment = useCallback(async (tos: TermsOfServiceAcknowledgment) => {
+    setTosAcknowledgment(tos);
+    await AsyncStorage.setItem(STORAGE_KEYS.TOS_ACKNOWLEDGMENT, JSON.stringify(tos));
+  }, []);
+
+  const extendSession = useCallback(() => {
+    lastActivityRef.current = Date.now();
+    setShowSessionWarning(false);
+    console.log('[HIPAA] Session extended by user');
+  }, []);
+
+  const updateLeadTreatments = useCallback(async (leadId: string, treatments: SelectedTreatment[]) => {
+    const updated = leads.map(l => l.id === leadId ? { ...l, selectedTreatments: treatments } : l);
+    setLeads(updated);
+    await AsyncStorage.setItem(STORAGE_KEYS.LEADS, await encryptObject(updated));
+  }, [leads]);
+
+  const getLeadById = useCallback((leadId: string): Lead | undefined => {
+    return leads.find(l => l.id === leadId);
+  }, [leads]);
+
+  const getPatientScanHistory = useCallback((leadId: string): ScanRecord[] => {
+    const lead = leads.find(l => l.id === leadId);
+    return lead?.scanHistory || [];
+  }, [leads]);
+
+  const checkInPatient = useCallback(async (leadId: string) => {
+    const updated = leads.map(l => l.id === leadId ? { ...l, lastCheckIn: new Date() } : l);
+    setLeads(updated);
+    await AsyncStorage.setItem(STORAGE_KEYS.LEADS, await encryptObject(updated));
+  }, [leads]);
+
+  const createPatientWithBiometrics = useCallback(async (name: string, phone: string, email?: string, biometricData?: string) => {
+    const newLead: Lead = {
+      id: Date.now().toString(),
+      name,
+      phone,
+      email,
+      auraScore: 0,
+      faceType: 'Unknown',
+      estimatedValue: 0,
+      roadmap: [],
+      peptides: [],
+      ivDrips: [],
+      status: 'new',
+      createdAt: new Date(),
+      biometricProfile: biometricData ? {
+        faceEmbedding: biometricData,
+        capturedAt: new Date(),
+        verificationLevel: 'basic',
+      } : undefined,
+    };
+    const updated = [newLead, ...leads];
+    setLeads(updated);
+    await AsyncStorage.setItem(STORAGE_KEYS.LEADS, await encryptObject(updated));
+    return newLead;
+  }, [leads]);
+
   return {
     viewMode, setViewMode,
     isStaffAuthenticated, authenticateStaff,
@@ -275,8 +342,19 @@ export const [AppProvider, useApp] = createContextHook(() => {
     patientHealthProfile, saveHealthProfile: (p: PatientHealthProfile) => setPatientHealthProfile(p),
     patientBasicInfo, savePatientBasicInfo: (i: PatientBasicInfo) => setPatientBasicInfo(i),
     treatmentConfigs, updateTreatmentConfig: (id: string, up: any) => setTreatmentConfigs(prev => prev.map(c => c.id === id ? {...c, ...up} : c)),
+    toggleAllTreatments: useCallback((category: string, enabled: boolean) => {
+      setTreatmentConfigs(prev => prev.map(c => c.category === category ? { ...c, enabled } : c));
+    }, []),
+    resetTreatmentConfigs: useCallback(() => {
+      setTreatmentConfigs(getDefaultTreatmentConfigs());
+    }, []),
     applyTreatmentSafetyToAnalysis,
     resetScan: () => { setCapturedImage(null); setCurrentAnalysis(null); setHasUnlockedResults(false); },
-    clearAllCache: async () => { await AsyncStorage.clear(); setLeads([]); setHasCompletedIntro(false); }
+    clearAllCache: async () => { await AsyncStorage.clear(); setLeads([]); setHasCompletedIntro(false); },
+    stats,
+    tosAcknowledgment, saveTosAcknowledgment,
+    sessionTimeRemaining, showSessionWarning, extendSession, recordActivity,
+    updateLeadTreatments, getLeadById, getPatientScanHistory,
+    checkInPatient, createPatientWithBiometrics,
   };
 });

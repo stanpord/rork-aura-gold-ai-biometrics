@@ -202,7 +202,7 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
   }, [selectedTreatmentForDosing, currentLead, confirmedTreatments, updateLeadTreatments]);
 
   const isTreatmentConfirmed = useCallback((treatmentName: string) => {
-    return confirmedTreatments.some(ct => {
+    return confirmedTreatments.some((ct: SelectedTreatment) => {
       if ('name' in ct.treatment) return ct.treatment.name === treatmentName;
       return false;
     });
@@ -340,7 +340,7 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
 
   if (!currentLead) return null;
 
-  const roadmapTotal = currentLead.roadmap?.reduce((acc, proc) => {
+  const roadmapTotal = currentLead.roadmap?.reduce((acc: number, proc: ClinicalProcedure) => {
     const price = parseFloat(proc.price?.replace(/[^0-9.-]/g, '') || '0');
     return acc + price;
   }, 0) || 0;
@@ -544,7 +544,7 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
               </View>
             ) : (
               <>
-                {currentLead.roadmap.map((procedure, index) => (
+                {currentLead.roadmap.map((procedure: ClinicalProcedure, index: number) => (
                   <View key={index} style={[
                       styles.recommendationCard,
                       getTreatmentSafety(procedure.name)?.isBlocked && styles.blockedCard
@@ -618,7 +618,7 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
               </View>
             ) : (
               <>
-                {currentLead.peptides.map((peptide, index) => (
+                {currentLead.peptides.map((peptide: PeptideTherapy, index: number) => (
                 <View key={index} style={[
                       styles.peptideCard,
                       getTreatmentSafety(peptide.name)?.isBlocked && styles.blockedCardGreen
@@ -689,7 +689,7 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
               </View>
             ) : (
               <>
-                {currentLead.ivDrips.map((iv, index) => (
+                {currentLead.ivDrips.map((iv: IVOptimization, index: number) => (
                 <View key={index} style={[
                       styles.ivCard,
                       getTreatmentSafety(iv.name)?.isBlocked && styles.blockedCardBlue
@@ -799,15 +799,15 @@ export default function LeadDetailModal({ visible, onClose, lead }: LeadDetailMo
 
                   <Text style={styles.summaryListTitle}>SELECTED TREATMENTS</Text>
                   
-                  {confirmedTreatments.filter(ct => ct.treatmentType === 'procedure').length > 0 && (
+                  {confirmedTreatments.filter((ct: SelectedTreatment) => ct.treatmentType === 'procedure').length > 0 && (
                     <View style={styles.summaryCategory}>
                       <View style={styles.summaryCategoryHeader}>
                         <Syringe size={14} color={Colors.gold} />
                         <Text style={styles.summaryCategoryTitle}>Clinical Procedures</Text>
                       </View>
                       {confirmedTreatments
-                        .filter(ct => ct.treatmentType === 'procedure')
-                        .map((ct, index) => {
+                        .filter((ct: SelectedTreatment) => ct.treatmentType === 'procedure')
+                        .map((ct: SelectedTreatment, index: number) => {
                           const treatment = ct.treatment as ClinicalProcedure;
                           return (
                             <View key={index} style={styles.summaryTreatmentItem}>

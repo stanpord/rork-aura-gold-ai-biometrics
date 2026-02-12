@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Animated, Dimensions, Platform } from 'react-native';
+import { View, StyleSheet, Animated, Dimensions, Platform, Easing } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -42,7 +42,7 @@ export default function BiometricIntroScan({ onComplete }: { onComplete: () => v
         toValue: 1, 
         duration: 3000, 
         useNativeDriver: true,
-        easing: Animated.Easing.linear
+        easing: Easing.linear
       })
     ).start();
 

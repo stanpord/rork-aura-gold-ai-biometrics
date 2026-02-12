@@ -87,7 +87,7 @@ const base64ToArrayBuffer = (base64: string): ArrayBuffer => {
 
 const stringToArrayBuffer = (str: string): ArrayBuffer => {
   const encoder = new TextEncoder();
-  return encoder.encode(str).buffer;
+  return encoder.encode(str).buffer as ArrayBuffer;
 };
 
 const arrayBufferToString = (buffer: ArrayBuffer): string => {

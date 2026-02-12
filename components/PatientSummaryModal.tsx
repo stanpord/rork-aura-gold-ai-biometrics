@@ -153,7 +153,7 @@ export default function PatientSummaryModal({ visible, onClose, lead }: PatientS
     }
 
     if (Platform.OS === 'web') {
-      const printWindow = window.open('', '_blank');
+      const printWindow = (globalThis as any).window?.open('', '_blank');
       if (printWindow) {
         const htmlContent = generatePrintHTML();
         printWindow.document.write(htmlContent);
@@ -178,13 +178,13 @@ export default function PatientSummaryModal({ visible, onClose, lead }: PatientS
 
     try {
       if (Platform.OS === 'web') {
-        if (navigator.share) {
-          await navigator.share({
+        if ((globalThis as any).navigator?.share) {
+          await (globalThis as any).navigator.share({
             title: `Treatment Summary - ${lead?.name}`,
             text: summaryText,
           });
         } else {
-          await navigator.clipboard.writeText(summaryText);
+          await (globalThis as any).navigator?.clipboard?.writeText(summaryText);
           Alert.alert('Copied', 'Summary copied to clipboard');
         }
       } else {

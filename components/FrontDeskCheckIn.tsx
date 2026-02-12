@@ -231,7 +231,7 @@ export default function FrontDeskCheckIn({
     }
     
     if (checkInPatient) {
-      await checkInPatient(lead.id, capturedImage || undefined);
+      await checkInPatient(lead.id);
     }
     
     setStep('confirmed');
@@ -265,8 +265,7 @@ export default function FrontDeskCheckIn({
           newPatientName.trim(),
           newPatientPhone.trim(),
           newPatientEmail.trim() || undefined,
-          biometricProfile,
-          capturedImage || undefined
+          biometricProfile?.faceEmbedding
         );
 
         if (newLead) {

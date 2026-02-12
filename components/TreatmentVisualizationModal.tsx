@@ -324,7 +324,7 @@ export default function TreatmentVisualizationModal({
           {/* Add Aura Score Gauge here - only show when we have a score */}
           {auraScore !== null && (
             <View style={styles.auraScoreContainer}>
-              <AuraScoreGauge score={auraScore} animated={true} />
+              <AuraScoreGauge score={auraScore} />
             </View>
           )}
 
