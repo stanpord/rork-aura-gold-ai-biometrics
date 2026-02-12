@@ -2,10 +2,9 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { StyleSheet } from 'react-native';
 
-// ✅ DEFINE STYLES FIRST
 const styles = StyleSheet.create({
   tabBar: {
-    display: 'none', // Hide tabs for now
+    display: 'none',
   },
 });
 
@@ -18,7 +17,7 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen name="scan" />
-      <Tabs.Screen name="profile" />
+      <Tabs.Screen name="clinic" />
     </Tabs>
   );
 }
